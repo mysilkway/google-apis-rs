@@ -7,16 +7,16 @@ use std::thread::sleep;
 use std::time::Duration;
 
 use hyper;
-use hyper::header::{
-    Authorization, Bearer, ContentLength, ContentType, Header, HeaderFormat, Headers, UserAgent,
-};
-use hyper::http::h1::LINE_ENDING;
-use hyper::method::Method;
-use hyper::status::StatusCode;
+use hyper::header::{HeaderMap, AUTHORIZATION, CONTENT_LENGTH, CONTENT_TYPE, USER_AGENT};
+use hyper::Method;
+use hyper::StatusCode;
+
 use mime::{Attr, Mime, SubLevel, TopLevel, Value};
 use oauth2::{self, Retry, TokenType};
 
 use serde_json as json;
+
+const LINE_ENDING: &'static str = "\r\n";
 
 /// Identifies the Hub. There is only one per library, this trait is supposed
 /// to make intended use more explicit.
@@ -91,38 +91,38 @@ pub struct ServerMessage {
     pub location: Option<String>,
 }
 
-#[derive(Copy, Clone)]
-pub struct DummyNetworkStream;
+// #[derive(Copy, Clone)]
+// pub struct DummyNetworkStream;
 
-impl Read for DummyNetworkStream {
-    fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
-        Ok(0)
-    }
-}
+// impl Read for DummyNetworkStream {
+//     fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
+//         Ok(0)
+//     }
+// }
 
-impl Write for DummyNetworkStream {
-    fn write(&mut self, _: &[u8]) -> io::Result<usize> {
-        Ok(0)
-    }
+// impl Write for DummyNetworkStream {
+//     fn write(&mut self, _: &[u8]) -> io::Result<usize> {
+//         Ok(0)
+//     }
 
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
+//     fn flush(&mut self) -> io::Result<()> {
+//         Ok(())
+//     }
+// }
 
-impl hyper::net::NetworkStream for DummyNetworkStream {
-    fn peer_addr(&mut self) -> io::Result<std::net::SocketAddr> {
-        Ok("127.0.0.1:1337".parse().unwrap())
-    }
+// impl hyper::net::NetworkStream for DummyNetworkStream {
+//     fn peer_addr(&mut self) -> io::Result<std::net::SocketAddr> {
+//         Ok("127.0.0.1:1337".parse().unwrap())
+//     }
 
-    fn set_read_timeout(&self, _dur: Option<Duration>) -> io::Result<()> {
-        Ok(())
-    }
+//     fn set_read_timeout(&self, _dur: Option<Duration>) -> io::Result<()> {
+//         Ok(())
+//     }
 
-    fn set_write_timeout(&self, _dur: Option<Duration>) -> io::Result<()> {
-        Ok(())
-    }
-}
+//     fn set_write_timeout(&self, _dur: Option<Duration>) -> io::Result<()> {
+//         Ok(())
+//     }
+// }
 
 /// A trait specifying functionality to help controlling any request performed by the API.
 /// The trait has a conservative default implementation.
@@ -213,7 +213,7 @@ pub trait Delegate {
     /// [exponential backoff algorithm](http://en.wikipedia.org/wiki/Exponential_backoff).
     fn http_failure(
         &mut self,
-        _: &hyper::client::Response,
+        _: &hyper::Response,
         Option<JsonServerError>,
         _: Option<ServerError>,
     ) -> Retry {
@@ -292,7 +292,7 @@ pub enum Error {
     JsonDecodeError(String, json::Error),
 
     /// Indicates an HTTP repsonse with a non-success status code
-    Failure(hyper::client::Response),
+    Failure(hyper::Response),
 }
 
 impl Display for Error {
@@ -376,7 +376,7 @@ const BOUNDARY: &'static str = "MDuXWGyeE33QFXGchb2VFWc4Z7945d";
 /// to google APIs, and might not be a fully-featured implementation.
 #[derive(Default)]
 pub struct MultiPartReader<'a> {
-    raw_parts: Vec<(Headers, &'a mut dyn Read)>,
+    raw_parts: Vec<(HeaderMap, &'a mut dyn Read)>,
     current_part: Option<(Cursor<Vec<u8>>, &'a mut dyn Read)>,
     last_part_boundary: Option<Cursor<Vec<u8>>>,
 }
@@ -404,9 +404,9 @@ impl<'a> MultiPartReader<'a> {
         size: u64,
         mime_type: Mime,
     ) -> &mut MultiPartReader<'a> {
-        let mut headers = Headers::new();
-        headers.set(ContentType(mime_type));
-        headers.set(ContentLength(size));
+        let mut headers = HeaderMap::new();
+        headers.set(CONTENT_TYPE, mime_type);
+        headers.set(CONTENT_LENGTH, size);
         self.raw_parts.push((headers, reader));
         self
     }
@@ -530,19 +530,6 @@ impl ::std::ops::DerefMut for XUploadContentType {
         &mut self.0
     }
 }
-impl Header for XUploadContentType {
-    fn header_name() -> &'static str {
-        "X-Upload-Content-Type"
-    }
-    fn parse_header(raw: &[Vec<u8>]) -> hyper::error::Result<Self> {
-        hyper::header::parsing::from_one_raw_str(raw).map(XUploadContentType)
-    }
-}
-impl HeaderFormat for XUploadContentType {
-    fn fmt_header(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Display::fmt(&**self, f)
-    }
-}
 impl Display for XUploadContentType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&**self, f)
@@ -591,59 +578,21 @@ pub struct ContentRange {
     pub total_length: u64,
 }
 
-impl Header for ContentRange {
-    fn header_name() -> &'static str {
-        "Content-Range"
-    }
-
-    /// We are not parsable, as parsing is done by the `Range` header
-    fn parse_header(_: &[Vec<u8>]) -> hyper::error::Result<Self> {
-        Err(hyper::error::Error::Method)
-    }
-}
-
-impl HeaderFormat for ContentRange {
-    fn fmt_header(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.write_str("bytes ")?;
-        match self.range {
-            Some(ref c) => c.fmt(fmt)?,
-            None => fmt.write_str("*")?,
-        }
-        (write!(fmt, "/{}", self.total_length)).ok();
-        Ok(())
+impl ContentRange {
+    pub fn header_value(&self) -> String {
+        format!(
+            "bytes {}/{}",
+            match self.range {
+                Some(ref c) => &format!("{}", c),
+                None => "*",
+            },
+            self.total_length
+        )
     }
 }
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct RangeResponseHeader(pub Chunk);
-
-impl Header for RangeResponseHeader {
-    fn header_name() -> &'static str {
-        "Range"
-    }
-
-    fn parse_header(raw: &[Vec<u8>]) -> hyper::error::Result<Self> {
-        if raw.len() > 0 {
-            let v = &raw[0];
-            if let Ok(s) = std::str::from_utf8(v) {
-                const PREFIX: &'static str = "bytes ";
-                if s.starts_with(PREFIX) {
-                    if let Ok(c) = <Chunk as FromStr>::from_str(&s[PREFIX.len()..]) {
-                        return Ok(RangeResponseHeader(c));
-                    }
-                }
-            }
-        }
-        Err(hyper::error::Error::Method)
-    }
-}
-
-impl HeaderFormat for RangeResponseHeader {
-    /// No implmentation necessary, we just need to parse
-    fn fmt_header(&self, _: &mut fmt::Formatter) -> fmt::Result {
-        Err(fmt::Error)
-    }
-}
 
 /// A utility type to perform a resumable upload from start to end.
 pub struct ResumableUploadHelper<'a, A: 'a> {
@@ -652,7 +601,7 @@ pub struct ResumableUploadHelper<'a, A: 'a> {
     pub start_at: Option<u64>,
     pub auth: &'a mut A,
     pub user_agent: &'a str,
-    pub auth_header: Authorization<Bearer>,
+    pub auth_header: String,
     pub url: &'a str,
     pub reader: &'a mut dyn ReadSeek,
     pub media_type: Mime,
@@ -665,17 +614,21 @@ where
 {
     fn query_transfer_status(
         &mut self,
-    ) -> std::result::Result<u64, hyper::Result<hyper::client::Response>> {
+    ) -> std::result::Result<u64, hyper::Result<hyper::Response>> {
         loop {
             match self
                 .client
                 .post(self.url)
-                .header(UserAgent(self.user_agent.to_string()))
-                .header(ContentRange {
-                    range: None,
-                    total_length: self.content_length,
-                })
-                .header(self.auth_header.clone())
+                .header(USER_AGENT, self.user_agent.to_string())
+                .header(
+                    "Content-Range",
+                    ContentRange {
+                        range: None,
+                        total_length: self.content_length,
+                    }
+                    .header_value(),
+                )
+                .header(AUTHORIZATION, self.auth_header.clone())
                 .send()
             {
                 Ok(r) => {
@@ -707,7 +660,7 @@ where
     /// returns None if operation was cancelled by delegate, or the HttpResult.
     /// It can be that we return the result just because we didn't understand the status code -
     /// caller should check for status himself before assuming it's OK to use
-    pub fn upload(&mut self) -> Option<hyper::Result<hyper::client::Response>> {
+    pub fn upload(&mut self) -> Option<hyper::Result<hyper::Response>> {
         let mut start = match self.start_at {
             Some(s) => s,
             None => match self.query_transfer_status() {
@@ -745,8 +698,8 @@ where
                 .client
                 .post(self.url)
                 .header(range_header)
-                .header(ContentType(self.media_type.clone()))
-                .header(UserAgent(self.user_agent.to_string()))
+                .header(CONTENT_TYPE, self.media_type.clone())
+                .header(USER_AGENT, self.user_agent.to_string())
                 .body(&mut section_reader)
                 .send();
             match res {

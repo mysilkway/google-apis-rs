@@ -504,7 +504,7 @@ match result {
         use url::percent_encoding::{percent_encode, DEFAULT_ENCODE_SET};
         % endif
         use std::io::{Read, Seek};
-        use hyper::header::{ContentType, ContentLength, Authorization, Bearer, UserAgent, Location};
+        use hyper::header::{CONTENT_TYPE, CONTENT_LENGTH, AUTHORIZATION, USER_AGENT, LOCATION};
         use client::ToParts;
         let mut dd = client::DefaultDelegate;
         let mut dlg: &mut dyn client::Delegate = match ${delegate} {
@@ -714,7 +714,6 @@ else {
                     }
                 }
             };
-            let auth_header = Authorization(Bearer { token: token.access_token });
             % endif
             % if request_value:
             request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
@@ -727,7 +726,7 @@ else {
                     let url = upload_url.as_ref().and_then(|s| Some(hyper::Url::parse(s).unwrap())).unwrap();
                     hyper::client::Response::new(url, Box::new(client::DummyNetworkStream)).and_then(|mut res| {
                         res.status = hyper::status::StatusCode::Ok;
-                        res.headers.set(Location(upload_url.as_ref().unwrap().clone()));
+                        res.headers.set(LOCATION(upload_url.as_ref().unwrap().clone()));
                         Ok(res)
                     })
                 } else {
@@ -742,27 +741,27 @@ else {
                         mp_reader.add_part(&mut request_value_reader, request_size, json_mime_type.clone())
                                  .add_part(&mut reader, size, reader_mime_type.clone());
                         let mime_type = mp_reader.mime_type();
-                        (&mut mp_reader as &mut dyn io::Read, ContentType(mime_type))
+                        (&mut mp_reader as &mut dyn io::Read, (CONTENT_TYPE, mime_type))
                     },
-                    _ => (&mut request_value_reader as &mut dyn io::Read, ContentType(json_mime_type.clone())),
+                    _ => (&mut request_value_reader as &mut dyn io::Read, (CONTENT_TYPE, json_mime_type.clone())),
                 };
             % endif
                 let mut client = &mut *self.hub.client.borrow_mut();
                 let mut req = client.borrow_mut().request(${method_name_to_variant(m.httpMethod)}, url.clone())
-                    .header(UserAgent(self.hub._user_agent.clone()))\
+                    .header(USER_AGENT, self.hub._user_agent.clone())\
                     % if default_scope:
 
-                    .header(auth_header.clone())\
+                    .header(AUTHORIZATION, format!("Bearer {}", token.access_token))\
                     % endif
                     % if request_value:
                     % if not simple_media_param:
 
-                    .header(ContentType(json_mime_type.clone()))
-                    .header(ContentLength(request_size as u64))
+                    .header(CONTENT_TYPE, json_mime_type.clone())
+                    .header(CONTENT_LENGTH, request_size as u64)
                     .body(&mut request_value_reader)\
                     % else:
 
-                    .header(content_type)
+                    .header(content_type.0, content_type.1)
                     .body(&mut body_reader)\
                     % endif ## not simple_media_param
                     % endif
@@ -770,15 +769,15 @@ else {
                 % if simple_media_param and not request_value:
                 if protocol == "${simple_media_param.protocol}" {
                     ${READER_SEEK | indent_all_but_first_by(4)}
-                    req = req.header(ContentType(reader_mime_type.clone()))
-                             .header(ContentLength(size))
+                    req = req.header(CONTENT_TYPE, reader_mime_type.clone())
+                             .header(CONTENT_LENGTH, size)
                              .body(&mut reader);
                 }
                 % endif ## media upload handling
                 % if resumable_media_param:
                 upload_url_from_server = true;
                 if protocol == "${resumable_media_param.protocol}" {
-                    req = req.header(client::XUploadContentType(reader_mime_type.clone()));
+                    req = req.header("X-Upload-Content-Type", reader_mime_type.clone());
                 }
                 % endif
 
@@ -826,7 +825,7 @@ else {
                         ${READER_SEEK | indent_all_but_first_by(6)}
                         let mut client = &mut *self.hub.client.borrow_mut();
                         let upload_result = {
-                            let url_str = &res.headers.get::<Location>().expect("Location header is part of protocol").0;
+                            let url_str = &res.headers.get::<LOCATION>().expect("LOCATION header is part of protocol").0;
                             if upload_url_from_server {
                                 dlg.store_upload_url(Some(url_str));
                             }
@@ -837,7 +836,7 @@ else {
                                 start_at: if upload_url_from_server { Some(0) } else { None },
                                 auth: &mut *self.hub.auth.borrow_mut(),
                                 user_agent: &self.hub._user_agent,
-                                auth_header: auth_header.clone(),
+                                auth_header: format!("Bearer {}", token.access_token),
                                 url: url_str,
                                 reader: &mut reader,
                                 media_type: reader_mime_type.clone(),
