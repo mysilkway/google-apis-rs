@@ -681,7 +681,7 @@ else {
         let url = url::Url::parse_with_params(&url, params).unwrap();
 
         % if request_value:
-        let mut json_mime_type = mime::Mime(mime::TopLevel::Application, mime::SubLevel::Json, Default::default());
+        let mut json_mime_type: mime::Mime = "application/json".parse().unwrap();
         let mut request_value_reader =
             {
                 let mut value = json::value::to_value(&self.${property(REQUEST_VALUE_PROPERTY_NAME)}).expect("serde to work");
@@ -702,10 +702,10 @@ else {
 
         loop {
             % if default_scope:
-            let token = match ${auth_call}.token(self.${api.properties.scopes}.keys()) {
+            let token = match ${auth_call}.token(&self.${api.properties.scopes}.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token,
                 Err(err) => {
-                    match  dlg.token(&*err) {
+                    match  dlg.token(&err) {
                         Some(token) => token,
                         None => {
                             ${delegate_finish}(false);
@@ -752,7 +752,7 @@ else {
                         .header(USER_AGENT, self.hub._user_agent.clone())\
                         % if default_scope:
 
-                        .header(AUTHORIZATION, format!("Bearer {}", token.access_token))\
+                        .header(AUTHORIZATION, format!("Bearer {}", token.as_str()))\
                         % endif
                         % if request_value:
                         % if not simple_media_param:
@@ -803,23 +803,33 @@ else {
                     return Err(client::Error::HttpError(err))
                 }
                 Ok(mut res) => {
-                    if !res.status().is_success() {
-                        let mut json_err: String = res.body().into().unwrap();
+                    let (res_parts, res_body) = res.into_parts();
+                    let res_body_string: String = String::from_utf8(
+                        hyper::body::to_bytes(res_body)
+                            .await
+                            .unwrap()
+                            .into_iter()
+                            .collect(),
+                    )
+                    .unwrap();
+                    let reconstructed_result =
+                        hyper::Response::from_parts(res_parts, res_body_string.clone().into());
 
-                        let json_server_error = json::from_str::<client::JsonServerError>(&json_err).ok();
-                        let server_error = json::from_str::<client::ServerError>(&json_err)
-                            .or_else(|_| json::from_str::<client::ErrorResponse>(&json_err).map(|r| r.error))
+                    if !reconstructed_result.status().is_success() {
+                        let json_server_error = json::from_str::<client::JsonServerError>(&res_body_string).ok();
+                        let server_error = json::from_str::<client::ServerError>(&res_body_string)
+                            .or_else(|_| json::from_str::<client::ErrorResponse>(&res_body_string).map(|r| r.error))
                             .ok();
 
-                        if let client::Retry::After(d) = dlg.http_failure(&res,
+                        if let client::Retry::After(d) = dlg.http_failure(&reconstructed_result,
                                                               json_server_error,
                                                               server_error) {
                             sleep(d);
                             continue;
                         }
                         ${delegate_finish}(false);
-                        return match json::from_str::<client::ErrorResponse>(&json_err){
-                            Err(_) => Err(client::Error::Failure(res)),
+                        return match json::from_str::<client::ErrorResponse>(&res_body_string){
+                            Err(_) => Err(client::Error::Failure(reconstructed_result)),
                             Ok(serr) => Err(client::Error::BadRequest(serr))
                         }
                     }
@@ -828,7 +838,7 @@ else {
                         ${READER_SEEK | indent_all_but_first_by(6)}
                         let mut client = &mut *self.hub.client.borrow_mut();
                         let upload_result = {
-                            let url_str = &res.headers.get::<LOCATION>().expect("LOCATION header is part of protocol").0;
+                            let url_str = &reconstructed_result.headers.get::<LOCATION>().expect("LOCATION header is part of protocol").0;
                             if upload_url_from_server {
                                 dlg.store_upload_url(Some(url_str));
                             }
@@ -839,7 +849,7 @@ else {
                                 start_at: if upload_url_from_server { Some(0) } else { None },
                                 auth: &mut *self.hub.auth.borrow_mut(),
                                 user_agent: &self.hub._user_agent,
-                                auth_header: format!("Bearer {}", token.access_token),
+                                auth_header: format!("Bearer {}", token.as_str()),
                                 url: url_str,
                                 reader: &mut reader,
                                 media_type: reader_mime_type.clone(),
@@ -877,21 +887,20 @@ else {
 if enable_resource_parsing \
                     % endif
 {
-                        let mut json_response: String = res.body().into().unwrap();
-                        match json::from_str(&json_response) {
-                            Ok(decoded) => (res, decoded),
+                        match json::from_str(&res_body_string) {
+                            Ok(decoded) => (reconstructed_result, decoded),
                             Err(err) => {
-                                dlg.response_json_decode_error(&json_response, &err);
-                                return Err(client::Error::JsonDecodeError(json_response, err));
+                                dlg.response_json_decode_error(&res_body_string, &err);
+                                return Err(client::Error::JsonDecodeError(res_body_string, err));
                             }
                         }
                     }\
                     % if supports_download:
- else { (res, Default::default()) }\
+ else { (reconstructed_result, Default::default()) }\
                     % endif
 ;
                 % else:
-                    let result_value = res;
+                    let result_value = reconstructed_result;
                 % endif
 
                     ${delegate_finish}(true);

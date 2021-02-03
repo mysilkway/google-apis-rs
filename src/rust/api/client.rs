@@ -136,7 +136,7 @@ pub trait Delegate {
     /// impending failure.
     /// The given Error provides information about why the token couldn't be acquired in the
     /// first place
-    fn token(&mut self, err: &dyn error::Error) -> Option<oauth2::AccessToken> {
+    fn token(&mut self, err: &oauth2::Error) -> Option<oauth2::AccessToken> {
         let _ = err;
         None
     }
@@ -255,7 +255,7 @@ pub enum Error {
     MissingAPIKey,
 
     /// We required a Token, but didn't get one from the Authenticator
-    MissingToken(Box<dyn error::Error>),
+    MissingToken(oauth2::Error),
 
     /// The delgate instructed to cancel the operation
     Cancelled,
