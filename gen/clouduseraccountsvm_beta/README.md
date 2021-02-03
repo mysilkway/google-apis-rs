@@ -11,16 +11,16 @@ Everything else about the *Cloud User Accounts* *vm_beta* API can be found at th
 [official documentation site](https://cloud.google.com/compute/docs/access/user-accounts/api/latest/).
 # Features
 
-Handle the following *Resources* with ease from the central [hub](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/struct.CloudUserAccounts.html) ... 
+Handle the following *Resources* with ease from the central [hub](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/CloudUserAccounts) ... 
 
 * global accounts operations
- * [*delete*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/struct.GlobalAccountsOperationDeleteCall.html), [*get*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/struct.GlobalAccountsOperationGetCall.html) and [*list*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/struct.GlobalAccountsOperationListCall.html)
-* [groups](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/struct.Group.html)
- * [*add member*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/struct.GroupAddMemberCall.html), [*delete*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/struct.GroupDeleteCall.html), [*get*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/struct.GroupGetCall.html), [*insert*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/struct.GroupInsertCall.html), [*list*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/struct.GroupListCall.html) and [*remove member*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/struct.GroupRemoveMemberCall.html)
+ * [*delete*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/api::GlobalAccountsOperationDeleteCall), [*get*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/api::GlobalAccountsOperationGetCall) and [*list*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/api::GlobalAccountsOperationListCall)
+* [groups](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/api::Group)
+ * [*add member*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/api::GroupAddMemberCall), [*delete*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/api::GroupDeleteCall), [*get*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/api::GroupGetCall), [*insert*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/api::GroupInsertCall), [*list*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/api::GroupListCall) and [*remove member*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/api::GroupRemoveMemberCall)
 * linux
- * [*get authorized keys view*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/struct.LinuxGetAuthorizedKeysViewCall.html) and [*get linux account views*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/struct.LinuxGetLinuxAccountViewCall.html)
-* [users](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/struct.User.html)
- * [*add public key*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/struct.UserAddPublicKeyCall.html), [*delete*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/struct.UserDeleteCall.html), [*get*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/struct.UserGetCall.html), [*insert*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/struct.UserInsertCall.html), [*list*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/struct.UserListCall.html) and [*remove public key*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/struct.UserRemovePublicKeyCall.html)
+ * [*get authorized keys view*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/api::LinuxGetAuthorizedKeysViewCall) and [*get linux account views*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/api::LinuxGetLinuxAccountViewCall)
+* [users](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/api::User)
+ * [*add public key*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/api::UserAddPublicKeyCall), [*delete*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/api::UserDeleteCall), [*get*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/api::UserGetCall), [*insert*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/api::UserInsertCall), [*list*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/api::UserListCall) and [*remove public key*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/api::UserRemovePublicKeyCall)
 
 
 
@@ -29,17 +29,17 @@ Handle the following *Resources* with ease from the central [hub](https://docs.r
 
 The API is structured into the following primary items:
 
-* **[Hub](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/struct.CloudUserAccounts.html)**
+* **[Hub](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/CloudUserAccounts)**
     * a central object to maintain state and allow accessing all *Activities*
-    * creates [*Method Builders*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/trait.MethodsBuilder.html) which in turn
-      allow access to individual [*Call Builders*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/trait.CallBuilder.html)
-* **[Resources](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/trait.Resource.html)**
+    * creates [*Method Builders*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/client::MethodsBuilder) which in turn
+      allow access to individual [*Call Builders*](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/client::CallBuilder)
+* **[Resources](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/client::Resource)**
     * primary types that you can apply *Activities* to
     * a collection of properties and *Parts*
-    * **[Parts](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/trait.Part.html)**
+    * **[Parts](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/client::Part)**
         * a collection of properties
         * never directly used in *Activities*
-* **[Activities](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/trait.CallBuilder.html)**
+* **[Activities](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/client::CallBuilder)**
     * operations to apply to *Resources*
 
 All *structures* are marked with applicable traits to further categorize them and ease browsing.
@@ -53,15 +53,15 @@ let r = hub.resource().activity(...).doit()
 Or specifically ...
 
 ```ignore
-let r = hub.groups().delete(...).doit()
-let r = hub.users().add_public_key(...).doit()
-let r = hub.users().insert(...).doit()
-let r = hub.groups().add_member(...).doit()
-let r = hub.users().delete(...).doit()
-let r = hub.users().remove_public_key(...).doit()
-let r = hub.groups().insert(...).doit()
 let r = hub.global_accounts_operations().get(...).doit()
+let r = hub.groups().add_member(...).doit()
+let r = hub.groups().delete(...).doit()
+let r = hub.groups().insert(...).doit()
 let r = hub.groups().remove_member(...).doit()
+let r = hub.users().add_public_key(...).doit()
+let r = hub.users().delete(...).doit()
+let r = hub.users().insert(...).doit()
+let r = hub.users().remove_public_key(...).doit()
 ```
 
 The `resource()` and `activity(...)` calls create [builders][builder-pattern]. The second one dealing with `Activities` 
@@ -95,7 +95,7 @@ extern crate hyper;
 extern crate hyper_rustls;
 extern crate yup_oauth2 as oauth2;
 extern crate google_clouduseraccountsvm_beta as clouduseraccountsvm_beta;
-use clouduseraccountsvm_beta::PublicKey;
+use clouduseraccountsvm_beta::api::GroupsAddMemberRequest;
 use clouduseraccountsvm_beta::{Result, Error};
 use std::default::Default;
 use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
@@ -116,12 +116,12 @@ let mut hub = CloudUserAccounts::new(hyper::Client::with_connector(hyper::net::H
 // As the method needs a request, you would usually fill it with the desired information
 // into the respective structure. Some of the parts shown here might not be applicable !
 // Values shown here are possibly random and not representative !
-let mut req = PublicKey::default();
+let mut req = GroupsAddMemberRequest::default();
 
 // You can configure optional parameters by calling the respective setters at will, and
 // execute the final call using `doit()`.
 // Values shown here are possibly random and not representative !
-let result = hub.users().add_public_key(req, "project", "user")
+let result = hub.groups().add_member(req, "project", "groupName")
              .doit();
 
 match result {
@@ -144,17 +144,17 @@ match result {
 ```
 ## Handling Errors
 
-All errors produced by the system are provided either as [Result](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/enum.Result.html) enumeration as return value of 
+All errors produced by the system are provided either as [Result](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/client::Result) enumeration as return value of
 the doit() methods, or handed as possibly intermediate results to either the 
-[Hub Delegate](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/trait.Delegate.html), or the [Authenticator Delegate](https://docs.rs/yup-oauth2/*/yup_oauth2/trait.AuthenticatorDelegate.html).
+[Hub Delegate](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/client::Delegate), or the [Authenticator Delegate](https://docs.rs/yup-oauth2/*/yup_oauth2/trait.AuthenticatorDelegate.html).
 
 When delegates handle errors or intermediate values, they may have a chance to instruct the system to retry. This 
 makes the system potentially resilient to all kinds of errors.
 
 ## Uploads and Downloads
-If a method supports downloads, the response body, which is part of the [Result](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/enum.Result.html), should be
+If a method supports downloads, the response body, which is part of the [Result](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/client::Result), should be
 read by you to obtain the media.
-If such a method also supports a [Response Result](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/trait.ResponseResult.html), it will return that by default.
+If such a method also supports a [Response Result](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/client::ResponseResult), it will return that by default.
 You can see it as meta-data for the actual media. To trigger a media download, you will have to set up the builder by making
 this call: `.param("alt", "media")`.
 
@@ -164,29 +164,29 @@ Methods supporting uploads can do so using up to 2 different protocols:
 
 ## Customization and Callbacks
 
-You may alter the way an `doit()` method is called by providing a [delegate](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/trait.Delegate.html) to the 
-[Method Builder](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/trait.CallBuilder.html) before making the final `doit()` call. 
+You may alter the way an `doit()` method is called by providing a [delegate](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/client::Delegate) to the 
+[Method Builder](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/client::CallBuilder) before making the final `doit()` call. 
 Respective methods will be called to provide progress information, as well as determine whether the system should 
 retry on failure.
 
-The [delegate trait](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/trait.Delegate.html) is default-implemented, allowing you to customize it with minimal effort.
+The [delegate trait](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/client::Delegate) is default-implemented, allowing you to customize it with minimal effort.
 
 ## Optional Parts in Server-Requests
 
-All structures provided by this library are made to be [encodable](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/trait.RequestValue.html) and 
-[decodable](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/trait.ResponseResult.html) via *json*. Optionals are used to indicate that partial requests are responses 
+All structures provided by this library are made to be [encodable](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/client::RequestValue) and 
+[decodable](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/client::ResponseResult) via *json*. Optionals are used to indicate that partial requests are responses 
 are valid.
-Most optionals are are considered [Parts](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/trait.Part.html) which are identifiable by name, which will be sent to 
+Most optionals are are considered [Parts](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/client::Part) which are identifiable by name, which will be sent to 
 the server to indicate either the set parts of the request or the desired parts in the response.
 
 ## Builder Arguments
 
-Using [method builders](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/trait.CallBuilder.html), you are able to prepare an action call by repeatedly calling it's methods.
+Using [method builders](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/client::CallBuilder), you are able to prepare an action call by repeatedly calling it's methods.
 These will always take a single argument, for which the following statements are true.
 
 * [PODs][wiki-pod] are handed by copy
 * strings are passed as `&str`
-* [request values](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/trait.RequestValue.html) are moved
+* [request values](https://docs.rs/google-clouduseraccountsvm_beta/1.0.14+20160316/google_clouduseraccountsvm_beta/client::RequestValue) are moved
 
 Arguments will always be copied or cloned into the builder, to make them independent of their original life times.
 

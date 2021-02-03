@@ -74,7 +74,7 @@ storage1 [options]
                 delete <bucket> <object> [-p <v>]...
                 get <bucket> <object> [-p <v>]... [-o <out>]
                 get-iam-policy <bucket> <object> [-p <v>]... [-o <out>]
-                insert <bucket> (-r <kv>)... (-u (simple|resumable) -f <file> [-m <mime>]) [-p <v>]... [-o <out>]
+                insert <bucket> (-r <kv>)... (-u (resumable|simple) -f <file> [-m <mime>]) [-p <v>]... [-o <out>]
                 list <bucket> [-p <v>]... [-o <out>]
                 patch <bucket> <object> (-r <kv>)... [-p <v>]... [-o <out>]
                 rewrite <source-bucket> <source-object> <destination-bucket> <destination-object> (-r <kv>)... [-p <v>]... [-o <out>]

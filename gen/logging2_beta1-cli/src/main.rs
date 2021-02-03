@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_logging2_beta1 as api;
+extern crate google_logging2_beta1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_logging2_beta1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Logging<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::Logging<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -69,12 +71,12 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "order-by" => Some(("orderBy", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "resource-names" => Some(("resourceNames", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "page-size" => Some(("pageSize", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "filter" => Some(("filter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "order-by" => Some(("orderBy", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "page-size" => Some(("pageSize", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "page-token" => Some(("pageToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "project-ids" => Some(("projectIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "resource-names" => Some(("resourceNames", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["filter", "order-by", "page-size", "page-token", "project-ids", "resource-names"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -160,11 +162,11 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "dry-run" => Some(("dryRun", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "partial-success" => Some(("partialSuccess", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "log-name" => Some(("logName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "partial-success" => Some(("partialSuccess", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "resource.labels" => Some(("resource.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "resource.type" => Some(("resource.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "log-name" => Some(("logName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["dry-run", "labels", "log-name", "partial-success", "resource", "type"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -251,7 +253,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -308,31 +310,31 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metric-descriptor.display-name" => Some(("metricDescriptor.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metric-descriptor.description" => Some(("metricDescriptor.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metric-descriptor.metric-kind" => Some(("metricDescriptor.metricKind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metric-descriptor.value-type" => Some(("metricDescriptor.valueType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metric-descriptor.metadata.launch-stage" => Some(("metricDescriptor.metadata.launchStage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metric-descriptor.metadata.ingest-delay" => Some(("metricDescriptor.metadata.ingestDelay", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metric-descriptor.metadata.sample-period" => Some(("metricDescriptor.metadata.samplePeriod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metric-descriptor.type" => Some(("metricDescriptor.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metric-descriptor.unit" => Some(("metricDescriptor.unit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metric-descriptor.name" => Some(("metricDescriptor.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "bucket-options.exponential-buckets.scale" => Some(("bucketOptions.exponentialBuckets.scale", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "bucket-options.explicit-buckets.bounds" => Some(("bucketOptions.explicitBuckets.bounds", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Vec })),
                     "bucket-options.exponential-buckets.growth-factor" => Some(("bucketOptions.exponentialBuckets.growthFactor", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "bucket-options.exponential-buckets.num-finite-buckets" => Some(("bucketOptions.exponentialBuckets.numFiniteBuckets", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "bucket-options.linear-buckets.width" => Some(("bucketOptions.linearBuckets.width", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "bucket-options.exponential-buckets.scale" => Some(("bucketOptions.exponentialBuckets.scale", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "bucket-options.linear-buckets.num-finite-buckets" => Some(("bucketOptions.linearBuckets.numFiniteBuckets", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "bucket-options.linear-buckets.offset" => Some(("bucketOptions.linearBuckets.offset", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "bucket-options.explicit-buckets.bounds" => Some(("bucketOptions.explicitBuckets.bounds", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Vec })),
-                    "label-extractors" => Some(("labelExtractors", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "bucket-options.linear-buckets.width" => Some(("bucketOptions.linearBuckets.width", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "filter" => Some(("filter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "label-extractors" => Some(("labelExtractors", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metric-descriptor.description" => Some(("metricDescriptor.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metric-descriptor.display-name" => Some(("metricDescriptor.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metric-descriptor.metadata.ingest-delay" => Some(("metricDescriptor.metadata.ingestDelay", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metric-descriptor.metadata.launch-stage" => Some(("metricDescriptor.metadata.launchStage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metric-descriptor.metadata.sample-period" => Some(("metricDescriptor.metadata.samplePeriod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metric-descriptor.metric-kind" => Some(("metricDescriptor.metricKind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metric-descriptor.name" => Some(("metricDescriptor.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metric-descriptor.type" => Some(("metricDescriptor.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metric-descriptor.unit" => Some(("metricDescriptor.unit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metric-descriptor.value-type" => Some(("metricDescriptor.valueType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "value-extractor" => Some(("valueExtractor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "version" => Some(("version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["bounds", "bucket-options", "create-time", "description", "display-name", "explicit-buckets", "exponential-buckets", "filter", "growth-factor", "ingest-delay", "label-extractors", "launch-stage", "linear-buckets", "metadata", "metric-descriptor", "metric-kind", "name", "num-finite-buckets", "offset", "sample-period", "scale", "type", "unit", "update-time", "value-extractor", "value-type", "version", "width"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -523,7 +525,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -580,31 +582,31 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metric-descriptor.display-name" => Some(("metricDescriptor.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metric-descriptor.description" => Some(("metricDescriptor.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metric-descriptor.metric-kind" => Some(("metricDescriptor.metricKind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metric-descriptor.value-type" => Some(("metricDescriptor.valueType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metric-descriptor.metadata.launch-stage" => Some(("metricDescriptor.metadata.launchStage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metric-descriptor.metadata.ingest-delay" => Some(("metricDescriptor.metadata.ingestDelay", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metric-descriptor.metadata.sample-period" => Some(("metricDescriptor.metadata.samplePeriod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metric-descriptor.type" => Some(("metricDescriptor.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metric-descriptor.unit" => Some(("metricDescriptor.unit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metric-descriptor.name" => Some(("metricDescriptor.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "bucket-options.exponential-buckets.scale" => Some(("bucketOptions.exponentialBuckets.scale", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "bucket-options.explicit-buckets.bounds" => Some(("bucketOptions.explicitBuckets.bounds", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Vec })),
                     "bucket-options.exponential-buckets.growth-factor" => Some(("bucketOptions.exponentialBuckets.growthFactor", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "bucket-options.exponential-buckets.num-finite-buckets" => Some(("bucketOptions.exponentialBuckets.numFiniteBuckets", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "bucket-options.linear-buckets.width" => Some(("bucketOptions.linearBuckets.width", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "bucket-options.exponential-buckets.scale" => Some(("bucketOptions.exponentialBuckets.scale", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "bucket-options.linear-buckets.num-finite-buckets" => Some(("bucketOptions.linearBuckets.numFiniteBuckets", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "bucket-options.linear-buckets.offset" => Some(("bucketOptions.linearBuckets.offset", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "bucket-options.explicit-buckets.bounds" => Some(("bucketOptions.explicitBuckets.bounds", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Vec })),
-                    "label-extractors" => Some(("labelExtractors", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "bucket-options.linear-buckets.width" => Some(("bucketOptions.linearBuckets.width", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "filter" => Some(("filter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "label-extractors" => Some(("labelExtractors", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metric-descriptor.description" => Some(("metricDescriptor.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metric-descriptor.display-name" => Some(("metricDescriptor.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metric-descriptor.metadata.ingest-delay" => Some(("metricDescriptor.metadata.ingestDelay", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metric-descriptor.metadata.launch-stage" => Some(("metricDescriptor.metadata.launchStage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metric-descriptor.metadata.sample-period" => Some(("metricDescriptor.metadata.samplePeriod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metric-descriptor.metric-kind" => Some(("metricDescriptor.metricKind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metric-descriptor.name" => Some(("metricDescriptor.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metric-descriptor.type" => Some(("metricDescriptor.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metric-descriptor.unit" => Some(("metricDescriptor.unit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metric-descriptor.value-type" => Some(("metricDescriptor.valueType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "value-extractor" => Some(("valueExtractor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "version" => Some(("version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["bounds", "bucket-options", "create-time", "description", "display-name", "explicit-buckets", "exponential-buckets", "filter", "growth-factor", "ingest-delay", "label-extractors", "launch-stage", "linear-buckets", "metadata", "metric-descriptor", "metric-kind", "name", "num-finite-buckets", "offset", "sample-period", "scale", "type", "unit", "update-time", "value-extractor", "value-type", "version", "width"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -689,14 +691,14 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "destination" => Some(("destination", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "writer-identity" => Some(("writerIdentity", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "filter" => Some(("filter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "output-version-format" => Some(("outputVersionFormat", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "destination" => Some(("destination", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "filter" => Some(("filter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "include-children" => Some(("includeChildren", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "output-version-format" => Some(("outputVersionFormat", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "writer-identity" => Some(("writerIdentity", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["create-time", "destination", "filter", "include-children", "name", "output-version-format", "update-time", "writer-identity"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -891,7 +893,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -948,14 +950,14 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "destination" => Some(("destination", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "writer-identity" => Some(("writerIdentity", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "filter" => Some(("filter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "output-version-format" => Some(("outputVersionFormat", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "destination" => Some(("destination", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "filter" => Some(("filter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "include-children" => Some(("includeChildren", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "output-version-format" => Some(("outputVersionFormat", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "writer-identity" => Some(("writerIdentity", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["create-time", "destination", "filter", "include-children", "name", "output-version-format", "update-time", "writer-identity"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1111,12 +1113,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "logging2-beta1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "logging2-beta1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

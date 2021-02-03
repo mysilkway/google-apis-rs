@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_doubleclickbidmanager1 as api;
+extern crate google_doubleclickbidmanager1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_doubleclickbidmanager1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::DoubleClickBidManager<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::DoubleClickBidManager<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -70,8 +72,8 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "file-spec" => Some(("fileSpec", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "filter-type" => Some(("filterType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "filter-ids" => Some(("filterIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "filter-type" => Some(("filterType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "format" => Some(("format", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["file-spec", "filter-ids", "filter-type", "format"]);
@@ -157,9 +159,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "line-items" => Some(("lineItems", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "dry-run" => Some(("dryRun", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "format" => Some(("format", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "line-items" => Some(("lineItems", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["dry-run", "format", "line-items"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -245,29 +247,29 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "schedule.end-time-ms" => Some(("schedule.endTimeMs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "schedule.next-run-timezone-code" => Some(("schedule.nextRunTimezoneCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "schedule.frequency" => Some(("schedule.frequency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "schedule.next-run-minute-of-day" => Some(("schedule.nextRunMinuteOfDay", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "timezone-code" => Some(("timezoneCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "report-data-end-time-ms" => Some(("reportDataEndTimeMs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "query-id" => Some(("queryId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "params.metrics" => Some(("params.metrics", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "params.type" => Some(("params.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "params.group-bys" => Some(("params.groupBys", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "params.include-invite-data" => Some(("params.includeInviteData", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "report-data-start-time-ms" => Some(("reportDataStartTimeMs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.google-cloud-storage-path-for-latest-report" => Some(("metadata.googleCloudStoragePathForLatestReport", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.data-range" => Some(("metadata.dataRange", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.format" => Some(("metadata.format", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.locale" => Some(("metadata.locale", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.google-cloud-storage-path-for-latest-report" => Some(("metadata.googleCloudStoragePathForLatestReport", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.google-drive-path-for-latest-report" => Some(("metadata.googleDrivePathForLatestReport", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.send-notification" => Some(("metadata.sendNotification", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "metadata.share-email-address" => Some(("metadata.shareEmailAddress", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "metadata.latest-report-run-time-ms" => Some(("metadata.latestReportRunTimeMs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.locale" => Some(("metadata.locale", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.report-count" => Some(("metadata.reportCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "metadata.running" => Some(("metadata.running", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "metadata.latest-report-run-time-ms" => Some(("metadata.latestReportRunTimeMs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.send-notification" => Some(("metadata.sendNotification", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "metadata.share-email-address" => Some(("metadata.shareEmailAddress", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "metadata.title" => Some(("metadata.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "params.group-bys" => Some(("params.groupBys", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "params.include-invite-data" => Some(("params.includeInviteData", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "params.metrics" => Some(("params.metrics", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "params.type" => Some(("params.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query-id" => Some(("queryId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "report-data-end-time-ms" => Some(("reportDataEndTimeMs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "report-data-start-time-ms" => Some(("reportDataStartTimeMs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "schedule.end-time-ms" => Some(("schedule.endTimeMs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "schedule.frequency" => Some(("schedule.frequency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "schedule.next-run-minute-of-day" => Some(("schedule.nextRunMinuteOfDay", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "schedule.next-run-timezone-code" => Some(("schedule.nextRunTimezoneCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "timezone-code" => Some(("timezoneCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["data-range", "end-time-ms", "format", "frequency", "google-cloud-storage-path-for-latest-report", "google-drive-path-for-latest-report", "group-bys", "include-invite-data", "kind", "latest-report-run-time-ms", "locale", "metadata", "metrics", "next-run-minute-of-day", "next-run-timezone-code", "params", "query-id", "report-count", "report-data-end-time-ms", "report-data-start-time-ms", "running", "schedule", "send-notification", "share-email-address", "timezone-code", "title", "type"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -500,10 +502,10 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "report-data-end-time-ms" => Some(("reportDataEndTimeMs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "timezone-code" => Some(("timezoneCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "report-data-start-time-ms" => Some(("reportDataStartTimeMs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "data-range" => Some(("dataRange", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "report-data-end-time-ms" => Some(("reportDataEndTimeMs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "report-data-start-time-ms" => Some(("reportDataStartTimeMs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "timezone-code" => Some(("timezoneCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["data-range", "report-data-end-time-ms", "report-data-start-time-ms", "timezone-code"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -632,10 +634,10 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "filter-type" => Some(("filterType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version" => Some(("version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "file-types" => Some(("fileTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "filter-ids" => Some(("filterIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "filter-type" => Some(("filterType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version" => Some(("version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["file-types", "filter-ids", "filter-type", "version"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -780,12 +782,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "doubleclickbidmanager1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "doubleclickbidmanager1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

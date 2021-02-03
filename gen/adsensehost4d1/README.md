@@ -11,20 +11,20 @@ Everything else about the *AdSense Host* *v4d1* API can be found at the
 [official documentation site](https://developers.google.com/adsense/host/).
 # Features
 
-Handle the following *Resources* with ease from the central [hub](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.AdSenseHost.html) ... 
+Handle the following *Resources* with ease from the central [hub](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/AdSenseHost) ... 
 
-* [accounts](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.Account.html)
- * [*adclients get*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.AccountAdclientGetCall.html), [*adclients list*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.AccountAdclientListCall.html), [*adunits delete*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.AccountAdunitDeleteCall.html), [*adunits get*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.AccountAdunitGetCall.html), [*adunits get ad code*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.AccountAdunitGetAdCodeCall.html), [*adunits insert*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.AccountAdunitInsertCall.html), [*adunits list*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.AccountAdunitListCall.html), [*adunits patch*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.AccountAdunitPatchCall.html), [*adunits update*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.AccountAdunitUpdateCall.html), [*get*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.AccountGetCall.html), [*list*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.AccountListCall.html) and [*reports generate*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.AccountReportGenerateCall.html)
+* [accounts](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::Account)
+ * [*adclients get*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::AccountAdclientGetCall), [*adclients list*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::AccountAdclientListCall), [*adunits delete*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::AccountAdunitDeleteCall), [*adunits get*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::AccountAdunitGetCall), [*adunits get ad code*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::AccountAdunitGetAdCodeCall), [*adunits insert*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::AccountAdunitInsertCall), [*adunits list*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::AccountAdunitListCall), [*adunits patch*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::AccountAdunitPatchCall), [*adunits update*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::AccountAdunitUpdateCall), [*get*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::AccountGetCall), [*list*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::AccountListCall) and [*reports generate*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::AccountReportGenerateCall)
 * adclients
- * [*get*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.AdclientGetCall.html) and [*list*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.AdclientListCall.html)
+ * [*get*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::AdclientGetCall) and [*list*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::AdclientListCall)
 * associationsessions
- * [*start*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.AssociationsessionStartCall.html) and [*verify*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.AssociationsessionVerifyCall.html)
+ * [*start*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::AssociationsessionStartCall) and [*verify*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::AssociationsessionVerifyCall)
 * customchannels
- * [*delete*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.CustomchannelDeleteCall.html), [*get*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.CustomchannelGetCall.html), [*insert*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.CustomchannelInsertCall.html), [*list*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.CustomchannelListCall.html), [*patch*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.CustomchannelPatchCall.html) and [*update*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.CustomchannelUpdateCall.html)
-* [reports](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.Report.html)
- * [*generate*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.ReportGenerateCall.html)
+ * [*delete*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::CustomchannelDeleteCall), [*get*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::CustomchannelGetCall), [*insert*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::CustomchannelInsertCall), [*list*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::CustomchannelListCall), [*patch*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::CustomchannelPatchCall) and [*update*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::CustomchannelUpdateCall)
+* [reports](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::Report)
+ * [*generate*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::ReportGenerateCall)
 * urlchannels
- * [*delete*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.UrlchannelDeleteCall.html), [*insert*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.UrlchannelInsertCall.html) and [*list*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.UrlchannelListCall.html)
+ * [*delete*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::UrlchannelDeleteCall), [*insert*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::UrlchannelInsertCall) and [*list*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/api::UrlchannelListCall)
 
 
 
@@ -33,17 +33,17 @@ Handle the following *Resources* with ease from the central [hub](https://docs.r
 
 The API is structured into the following primary items:
 
-* **[Hub](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/struct.AdSenseHost.html)**
+* **[Hub](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/AdSenseHost)**
     * a central object to maintain state and allow accessing all *Activities*
-    * creates [*Method Builders*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/trait.MethodsBuilder.html) which in turn
-      allow access to individual [*Call Builders*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/trait.CallBuilder.html)
-* **[Resources](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/trait.Resource.html)**
+    * creates [*Method Builders*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/client::MethodsBuilder) which in turn
+      allow access to individual [*Call Builders*](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/client::CallBuilder)
+* **[Resources](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/client::Resource)**
     * primary types that you can apply *Activities* to
     * a collection of properties and *Parts*
-    * **[Parts](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/trait.Part.html)**
+    * **[Parts](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/client::Part)**
         * a collection of properties
         * never directly used in *Activities*
-* **[Activities](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/trait.CallBuilder.html)**
+* **[Activities](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/client::CallBuilder)**
     * operations to apply to *Resources*
 
 All *structures* are marked with applicable traits to further categorize them and ease browsing.
@@ -57,18 +57,18 @@ let r = hub.resource().activity(...).doit()
 Or specifically ...
 
 ```ignore
-let r = hub.accounts().adunits_get(...).doit()
-let r = hub.accounts().get(...).doit()
-let r = hub.accounts().adunits_list(...).doit()
-let r = hub.accounts().adunits_get_ad_code(...).doit()
-let r = hub.accounts().reports_generate(...).doit()
-let r = hub.accounts().adunits_delete(...).doit()
-let r = hub.accounts().adunits_update(...).doit()
-let r = hub.accounts().adunits_patch(...).doit()
-let r = hub.accounts().adunits_insert(...).doit()
-let r = hub.accounts().list(...).doit()
-let r = hub.accounts().adclients_list(...).doit()
 let r = hub.accounts().adclients_get(...).doit()
+let r = hub.accounts().adclients_list(...).doit()
+let r = hub.accounts().adunits_delete(...).doit()
+let r = hub.accounts().adunits_get(...).doit()
+let r = hub.accounts().adunits_get_ad_code(...).doit()
+let r = hub.accounts().adunits_insert(...).doit()
+let r = hub.accounts().adunits_list(...).doit()
+let r = hub.accounts().adunits_patch(...).doit()
+let r = hub.accounts().adunits_update(...).doit()
+let r = hub.accounts().reports_generate(...).doit()
+let r = hub.accounts().get(...).doit()
+let r = hub.accounts().list(...).doit()
 ```
 
 The `resource()` and `activity(...)` calls create [builders][builder-pattern]. The second one dealing with `Activities` 
@@ -123,13 +123,13 @@ let mut hub = AdSenseHost::new(hyper::Client::with_connector(hyper::net::HttpsCo
 // execute the final call using `doit()`.
 // Values shown here are possibly random and not representative !
 let result = hub.accounts().reports_generate("accountId", "startDate", "endDate")
-             .start_index(59)
-             .add_sort("et")
-             .add_metric("dolores")
-             .max_results(38)
-             .locale("accusam")
-             .add_filter("takimata")
-             .add_dimension("justo")
+             .start_index(46)
+             .add_sort("voluptua.")
+             .add_metric("At")
+             .max_results(93)
+             .locale("sed")
+             .add_filter("amet.")
+             .add_dimension("takimata")
              .doit();
 
 match result {
@@ -152,17 +152,17 @@ match result {
 ```
 ## Handling Errors
 
-All errors produced by the system are provided either as [Result](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/enum.Result.html) enumeration as return value of 
+All errors produced by the system are provided either as [Result](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/client::Result) enumeration as return value of
 the doit() methods, or handed as possibly intermediate results to either the 
-[Hub Delegate](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/trait.Delegate.html), or the [Authenticator Delegate](https://docs.rs/yup-oauth2/*/yup_oauth2/trait.AuthenticatorDelegate.html).
+[Hub Delegate](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/client::Delegate), or the [Authenticator Delegate](https://docs.rs/yup-oauth2/*/yup_oauth2/trait.AuthenticatorDelegate.html).
 
 When delegates handle errors or intermediate values, they may have a chance to instruct the system to retry. This 
 makes the system potentially resilient to all kinds of errors.
 
 ## Uploads and Downloads
-If a method supports downloads, the response body, which is part of the [Result](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/enum.Result.html), should be
+If a method supports downloads, the response body, which is part of the [Result](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/client::Result), should be
 read by you to obtain the media.
-If such a method also supports a [Response Result](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/trait.ResponseResult.html), it will return that by default.
+If such a method also supports a [Response Result](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/client::ResponseResult), it will return that by default.
 You can see it as meta-data for the actual media. To trigger a media download, you will have to set up the builder by making
 this call: `.param("alt", "media")`.
 
@@ -172,29 +172,29 @@ Methods supporting uploads can do so using up to 2 different protocols:
 
 ## Customization and Callbacks
 
-You may alter the way an `doit()` method is called by providing a [delegate](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/trait.Delegate.html) to the 
-[Method Builder](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/trait.CallBuilder.html) before making the final `doit()` call. 
+You may alter the way an `doit()` method is called by providing a [delegate](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/client::Delegate) to the 
+[Method Builder](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/client::CallBuilder) before making the final `doit()` call. 
 Respective methods will be called to provide progress information, as well as determine whether the system should 
 retry on failure.
 
-The [delegate trait](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/trait.Delegate.html) is default-implemented, allowing you to customize it with minimal effort.
+The [delegate trait](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/client::Delegate) is default-implemented, allowing you to customize it with minimal effort.
 
 ## Optional Parts in Server-Requests
 
-All structures provided by this library are made to be [encodable](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/trait.RequestValue.html) and 
-[decodable](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/trait.ResponseResult.html) via *json*. Optionals are used to indicate that partial requests are responses 
+All structures provided by this library are made to be [encodable](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/client::RequestValue) and 
+[decodable](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/client::ResponseResult) via *json*. Optionals are used to indicate that partial requests are responses 
 are valid.
-Most optionals are are considered [Parts](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/trait.Part.html) which are identifiable by name, which will be sent to 
+Most optionals are are considered [Parts](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/client::Part) which are identifiable by name, which will be sent to 
 the server to indicate either the set parts of the request or the desired parts in the response.
 
 ## Builder Arguments
 
-Using [method builders](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/trait.CallBuilder.html), you are able to prepare an action call by repeatedly calling it's methods.
+Using [method builders](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/client::CallBuilder), you are able to prepare an action call by repeatedly calling it's methods.
 These will always take a single argument, for which the following statements are true.
 
 * [PODs][wiki-pod] are handed by copy
 * strings are passed as `&str`
-* [request values](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/trait.RequestValue.html) are moved
+* [request values](https://docs.rs/google-adsensehost4d1/1.0.14+20200709/google_adsensehost4d1/client::RequestValue) are moved
 
 Arguments will always be copied or cloned into the builder, to make them independent of their original life times.
 

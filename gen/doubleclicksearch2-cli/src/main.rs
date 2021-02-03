@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_doubleclicksearch2 as api;
+extern crate google_doubleclicksearch2;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_doubleclicksearch2::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Doubleclicksearch<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::Doubleclicksearch<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -81,7 +83,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["ad-group-id", "ad-id", "criterion-id", "campaign-id"].iter().map(|v|*v));
+                                                                           v.extend(["criterion-id", "ad-id", "campaign-id", "ad-group-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -392,26 +394,26 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "report-scope.ad-group-id" => Some(("reportScope.adGroupId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "report-scope.agency-id" => Some(("reportScope.agencyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "report-scope.engine-account-id" => Some(("reportScope.engineAccountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "report-scope.campaign-id" => Some(("reportScope.campaignId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "report-scope.advertiser-id" => Some(("reportScope.advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "report-scope.keyword-id" => Some(("reportScope.keywordId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "report-scope.ad-id" => Some(("reportScope.adId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "max-rows-per-file" => Some(("maxRowsPerFile", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "statistics-currency" => Some(("statisticsCurrency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "time-range.changed-metrics-since-timestamp" => Some(("timeRange.changedMetricsSinceTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "time-range.end-date" => Some(("timeRange.endDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "time-range.changed-attributes-since-timestamp" => Some(("timeRange.changedAttributesSinceTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "time-range.start-date" => Some(("timeRange.startDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "start-row" => Some(("startRow", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "row-count" => Some(("rowCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "report-type" => Some(("reportType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "download-format" => Some(("downloadFormat", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "include-deleted-entities" => Some(("includeDeletedEntities", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "verify-single-time-zone" => Some(("verifySingleTimeZone", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "include-removed-entities" => Some(("includeRemovedEntities", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "max-rows-per-file" => Some(("maxRowsPerFile", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "report-scope.ad-group-id" => Some(("reportScope.adGroupId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "report-scope.ad-id" => Some(("reportScope.adId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "report-scope.advertiser-id" => Some(("reportScope.advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "report-scope.agency-id" => Some(("reportScope.agencyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "report-scope.campaign-id" => Some(("reportScope.campaignId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "report-scope.engine-account-id" => Some(("reportScope.engineAccountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "report-scope.keyword-id" => Some(("reportScope.keywordId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "report-type" => Some(("reportType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "row-count" => Some(("rowCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "start-row" => Some(("startRow", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "statistics-currency" => Some(("statisticsCurrency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "time-range.changed-attributes-since-timestamp" => Some(("timeRange.changedAttributesSinceTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "time-range.changed-metrics-since-timestamp" => Some(("timeRange.changedMetricsSinceTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "time-range.end-date" => Some(("timeRange.endDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "time-range.start-date" => Some(("timeRange.startDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "verify-single-time-zone" => Some(("verifySingleTimeZone", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["ad-group-id", "ad-id", "advertiser-id", "agency-id", "campaign-id", "changed-attributes-since-timestamp", "changed-metrics-since-timestamp", "download-format", "end-date", "engine-account-id", "include-deleted-entities", "include-removed-entities", "keyword-id", "max-rows-per-file", "report-scope", "report-type", "row-count", "start-date", "start-row", "statistics-currency", "time-range", "verify-single-time-zone"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -606,26 +608,26 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "report-scope.ad-group-id" => Some(("reportScope.adGroupId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "report-scope.agency-id" => Some(("reportScope.agencyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "report-scope.engine-account-id" => Some(("reportScope.engineAccountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "report-scope.campaign-id" => Some(("reportScope.campaignId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "report-scope.advertiser-id" => Some(("reportScope.advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "report-scope.keyword-id" => Some(("reportScope.keywordId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "report-scope.ad-id" => Some(("reportScope.adId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "max-rows-per-file" => Some(("maxRowsPerFile", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "statistics-currency" => Some(("statisticsCurrency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "time-range.changed-metrics-since-timestamp" => Some(("timeRange.changedMetricsSinceTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "time-range.end-date" => Some(("timeRange.endDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "time-range.changed-attributes-since-timestamp" => Some(("timeRange.changedAttributesSinceTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "time-range.start-date" => Some(("timeRange.startDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "start-row" => Some(("startRow", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "row-count" => Some(("rowCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "report-type" => Some(("reportType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "download-format" => Some(("downloadFormat", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "include-deleted-entities" => Some(("includeDeletedEntities", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "verify-single-time-zone" => Some(("verifySingleTimeZone", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "include-removed-entities" => Some(("includeRemovedEntities", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "max-rows-per-file" => Some(("maxRowsPerFile", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "report-scope.ad-group-id" => Some(("reportScope.adGroupId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "report-scope.ad-id" => Some(("reportScope.adId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "report-scope.advertiser-id" => Some(("reportScope.advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "report-scope.agency-id" => Some(("reportScope.agencyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "report-scope.campaign-id" => Some(("reportScope.campaignId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "report-scope.engine-account-id" => Some(("reportScope.engineAccountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "report-scope.keyword-id" => Some(("reportScope.keywordId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "report-type" => Some(("reportType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "row-count" => Some(("rowCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "start-row" => Some(("startRow", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "statistics-currency" => Some(("statisticsCurrency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "time-range.changed-attributes-since-timestamp" => Some(("timeRange.changedAttributesSinceTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "time-range.changed-metrics-since-timestamp" => Some(("timeRange.changedMetricsSinceTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "time-range.end-date" => Some(("timeRange.endDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "time-range.start-date" => Some(("timeRange.startDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "verify-single-time-zone" => Some(("verifySingleTimeZone", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["ad-group-id", "ad-id", "advertiser-id", "agency-id", "campaign-id", "changed-attributes-since-timestamp", "changed-metrics-since-timestamp", "download-format", "end-date", "engine-account-id", "include-deleted-entities", "include-removed-entities", "keyword-id", "max-rows-per-file", "report-scope", "report-type", "row-count", "start-date", "start-row", "statistics-currency", "time-range", "verify-single-time-zone"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -814,12 +816,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "doubleclicksearch2-secret.json",
+            match client::application_secret_from_directory(&config_dir, "doubleclicksearch2-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

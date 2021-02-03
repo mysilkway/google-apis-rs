@@ -11,12 +11,12 @@ Everything else about the *Service Registry* *alpha* API can be found at the
 [official documentation site](https://developers.google.com/cloud-serviceregistry/).
 # Features
 
-Handle the following *Resources* with ease from the central [hub](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/struct.ServiceRegistry.html) ... 
+Handle the following *Resources* with ease from the central [hub](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/ServiceRegistry) ... 
 
-* [endpoints](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/struct.Endpoint.html)
- * [*delete*](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/struct.EndpointDeleteCall.html), [*get*](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/struct.EndpointGetCall.html), [*insert*](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/struct.EndpointInsertCall.html), [*list*](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/struct.EndpointListCall.html), [*patch*](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/struct.EndpointPatchCall.html) and [*update*](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/struct.EndpointUpdateCall.html)
-* [operations](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/struct.Operation.html)
- * [*get*](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/struct.OperationGetCall.html) and [*list*](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/struct.OperationListCall.html)
+* [endpoints](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/api::Endpoint)
+ * [*delete*](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/api::EndpointDeleteCall), [*get*](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/api::EndpointGetCall), [*insert*](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/api::EndpointInsertCall), [*list*](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/api::EndpointListCall), [*patch*](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/api::EndpointPatchCall) and [*update*](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/api::EndpointUpdateCall)
+* [operations](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/api::Operation)
+ * [*get*](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/api::OperationGetCall) and [*list*](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/api::OperationListCall)
 
 
 
@@ -25,17 +25,17 @@ Handle the following *Resources* with ease from the central [hub](https://docs.r
 
 The API is structured into the following primary items:
 
-* **[Hub](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/struct.ServiceRegistry.html)**
+* **[Hub](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/ServiceRegistry)**
     * a central object to maintain state and allow accessing all *Activities*
-    * creates [*Method Builders*](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/trait.MethodsBuilder.html) which in turn
-      allow access to individual [*Call Builders*](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/trait.CallBuilder.html)
-* **[Resources](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/trait.Resource.html)**
+    * creates [*Method Builders*](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/client::MethodsBuilder) which in turn
+      allow access to individual [*Call Builders*](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/client::CallBuilder)
+* **[Resources](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/client::Resource)**
     * primary types that you can apply *Activities* to
     * a collection of properties and *Parts*
-    * **[Parts](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/trait.Part.html)**
+    * **[Parts](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/client::Part)**
         * a collection of properties
         * never directly used in *Activities*
-* **[Activities](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/trait.CallBuilder.html)**
+* **[Activities](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/client::CallBuilder)**
     * operations to apply to *Resources*
 
 All *structures* are marked with applicable traits to further categorize them and ease browsing.
@@ -49,12 +49,12 @@ let r = hub.resource().activity(...).doit()
 Or specifically ...
 
 ```ignore
-let r = hub.endpoints().insert(...).doit()
 let r = hub.endpoints().delete(...).doit()
+let r = hub.endpoints().insert(...).doit()
+let r = hub.endpoints().patch(...).doit()
 let r = hub.endpoints().update(...).doit()
 let r = hub.operations().get(...).doit()
 let r = hub.operations().list(...).doit()
-let r = hub.endpoints().patch(...).doit()
 ```
 
 The `resource()` and `activity(...)` calls create [builders][builder-pattern]. The second one dealing with `Activities` 
@@ -109,10 +109,10 @@ let mut hub = ServiceRegistry::new(hyper::Client::with_connector(hyper::net::Htt
 // execute the final call using `doit()`.
 // Values shown here are possibly random and not representative !
 let result = hub.operations().list("project")
-             .page_token("sit")
-             .order_by("Stet")
-             .max_results(59)
-             .filter("et")
+             .page_token("magna")
+             .order_by("no")
+             .max_results(46)
+             .filter("voluptua.")
              .doit();
 
 match result {
@@ -135,17 +135,17 @@ match result {
 ```
 ## Handling Errors
 
-All errors produced by the system are provided either as [Result](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/enum.Result.html) enumeration as return value of 
+All errors produced by the system are provided either as [Result](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/client::Result) enumeration as return value of
 the doit() methods, or handed as possibly intermediate results to either the 
-[Hub Delegate](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/trait.Delegate.html), or the [Authenticator Delegate](https://docs.rs/yup-oauth2/*/yup_oauth2/trait.AuthenticatorDelegate.html).
+[Hub Delegate](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/client::Delegate), or the [Authenticator Delegate](https://docs.rs/yup-oauth2/*/yup_oauth2/trait.AuthenticatorDelegate.html).
 
 When delegates handle errors or intermediate values, they may have a chance to instruct the system to retry. This 
 makes the system potentially resilient to all kinds of errors.
 
 ## Uploads and Downloads
-If a method supports downloads, the response body, which is part of the [Result](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/enum.Result.html), should be
+If a method supports downloads, the response body, which is part of the [Result](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/client::Result), should be
 read by you to obtain the media.
-If such a method also supports a [Response Result](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/trait.ResponseResult.html), it will return that by default.
+If such a method also supports a [Response Result](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/client::ResponseResult), it will return that by default.
 You can see it as meta-data for the actual media. To trigger a media download, you will have to set up the builder by making
 this call: `.param("alt", "media")`.
 
@@ -155,29 +155,29 @@ Methods supporting uploads can do so using up to 2 different protocols:
 
 ## Customization and Callbacks
 
-You may alter the way an `doit()` method is called by providing a [delegate](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/trait.Delegate.html) to the 
-[Method Builder](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/trait.CallBuilder.html) before making the final `doit()` call. 
+You may alter the way an `doit()` method is called by providing a [delegate](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/client::Delegate) to the 
+[Method Builder](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/client::CallBuilder) before making the final `doit()` call. 
 Respective methods will be called to provide progress information, as well as determine whether the system should 
 retry on failure.
 
-The [delegate trait](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/trait.Delegate.html) is default-implemented, allowing you to customize it with minimal effort.
+The [delegate trait](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/client::Delegate) is default-implemented, allowing you to customize it with minimal effort.
 
 ## Optional Parts in Server-Requests
 
-All structures provided by this library are made to be [encodable](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/trait.RequestValue.html) and 
-[decodable](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/trait.ResponseResult.html) via *json*. Optionals are used to indicate that partial requests are responses 
+All structures provided by this library are made to be [encodable](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/client::RequestValue) and 
+[decodable](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/client::ResponseResult) via *json*. Optionals are used to indicate that partial requests are responses 
 are valid.
-Most optionals are are considered [Parts](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/trait.Part.html) which are identifiable by name, which will be sent to 
+Most optionals are are considered [Parts](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/client::Part) which are identifiable by name, which will be sent to 
 the server to indicate either the set parts of the request or the desired parts in the response.
 
 ## Builder Arguments
 
-Using [method builders](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/trait.CallBuilder.html), you are able to prepare an action call by repeatedly calling it's methods.
+Using [method builders](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/client::CallBuilder), you are able to prepare an action call by repeatedly calling it's methods.
 These will always take a single argument, for which the following statements are true.
 
 * [PODs][wiki-pod] are handed by copy
 * strings are passed as `&str`
-* [request values](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/trait.RequestValue.html) are moved
+* [request values](https://docs.rs/google-serviceregistryalpha/1.0.14+20160401/google_serviceregistryalpha/client::RequestValue) are moved
 
 Arguments will always be copied or cloned into the builder, to make them independent of their original life times.
 

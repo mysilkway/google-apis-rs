@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_videointelligence1 as api;
+extern crate google_videointelligence1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_videointelligence1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::CloudVideoIntelligence<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::CloudVideoIntelligence<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -470,7 +472,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "filter", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -527,29 +529,29 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "video-context.shot-change-detection-config.model" => Some(("videoContext.shotChangeDetectionConfig.model", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "video-context.text-detection-config.language-hints" => Some(("videoContext.textDetectionConfig.languageHints", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "video-context.text-detection-config.model" => Some(("videoContext.textDetectionConfig.model", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "video-context.speech-transcription-config.language-code" => Some(("videoContext.speechTranscriptionConfig.languageCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "video-context.speech-transcription-config.filter-profanity" => Some(("videoContext.speechTranscriptionConfig.filterProfanity", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "video-context.speech-transcription-config.enable-automatic-punctuation" => Some(("videoContext.speechTranscriptionConfig.enableAutomaticPunctuation", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "video-context.speech-transcription-config.enable-speaker-diarization" => Some(("videoContext.speechTranscriptionConfig.enableSpeakerDiarization", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "video-context.speech-transcription-config.max-alternatives" => Some(("videoContext.speechTranscriptionConfig.maxAlternatives", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "video-context.speech-transcription-config.audio-tracks" => Some(("videoContext.speechTranscriptionConfig.audioTracks", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
-                    "video-context.speech-transcription-config.diarization-speaker-count" => Some(("videoContext.speechTranscriptionConfig.diarizationSpeakerCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "video-context.speech-transcription-config.enable-word-confidence" => Some(("videoContext.speechTranscriptionConfig.enableWordConfidence", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "video-context.label-detection-config.label-detection-mode" => Some(("videoContext.labelDetectionConfig.labelDetectionMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "video-context.label-detection-config.model" => Some(("videoContext.labelDetectionConfig.model", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "video-context.label-detection-config.stationary-camera" => Some(("videoContext.labelDetectionConfig.stationaryCamera", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "video-context.label-detection-config.frame-confidence-threshold" => Some(("videoContext.labelDetectionConfig.frameConfidenceThreshold", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "video-context.label-detection-config.video-confidence-threshold" => Some(("videoContext.labelDetectionConfig.videoConfidenceThreshold", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "video-context.explicit-content-detection-config.model" => Some(("videoContext.explicitContentDetectionConfig.model", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "video-context.object-tracking-config.model" => Some(("videoContext.objectTrackingConfig.model", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "features" => Some(("features", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "input-content" => Some(("inputContent", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "input-uri" => Some(("inputUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "output-uri" => Some(("outputUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "video-context.explicit-content-detection-config.model" => Some(("videoContext.explicitContentDetectionConfig.model", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "video-context.label-detection-config.frame-confidence-threshold" => Some(("videoContext.labelDetectionConfig.frameConfidenceThreshold", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "video-context.label-detection-config.label-detection-mode" => Some(("videoContext.labelDetectionConfig.labelDetectionMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "video-context.label-detection-config.model" => Some(("videoContext.labelDetectionConfig.model", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "video-context.label-detection-config.stationary-camera" => Some(("videoContext.labelDetectionConfig.stationaryCamera", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "video-context.label-detection-config.video-confidence-threshold" => Some(("videoContext.labelDetectionConfig.videoConfidenceThreshold", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "video-context.object-tracking-config.model" => Some(("videoContext.objectTrackingConfig.model", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "video-context.shot-change-detection-config.model" => Some(("videoContext.shotChangeDetectionConfig.model", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "video-context.speech-transcription-config.audio-tracks" => Some(("videoContext.speechTranscriptionConfig.audioTracks", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
+                    "video-context.speech-transcription-config.diarization-speaker-count" => Some(("videoContext.speechTranscriptionConfig.diarizationSpeakerCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "video-context.speech-transcription-config.enable-automatic-punctuation" => Some(("videoContext.speechTranscriptionConfig.enableAutomaticPunctuation", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "video-context.speech-transcription-config.enable-speaker-diarization" => Some(("videoContext.speechTranscriptionConfig.enableSpeakerDiarization", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "video-context.speech-transcription-config.enable-word-confidence" => Some(("videoContext.speechTranscriptionConfig.enableWordConfidence", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "video-context.speech-transcription-config.filter-profanity" => Some(("videoContext.speechTranscriptionConfig.filterProfanity", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "video-context.speech-transcription-config.language-code" => Some(("videoContext.speechTranscriptionConfig.languageCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "video-context.speech-transcription-config.max-alternatives" => Some(("videoContext.speechTranscriptionConfig.maxAlternatives", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "video-context.text-detection-config.language-hints" => Some(("videoContext.textDetectionConfig.languageHints", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "video-context.text-detection-config.model" => Some(("videoContext.textDetectionConfig.model", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["audio-tracks", "diarization-speaker-count", "enable-automatic-punctuation", "enable-speaker-diarization", "enable-word-confidence", "explicit-content-detection-config", "features", "filter-profanity", "frame-confidence-threshold", "input-content", "input-uri", "label-detection-config", "label-detection-mode", "language-code", "language-hints", "location-id", "max-alternatives", "model", "object-tracking-config", "output-uri", "shot-change-detection-config", "speech-transcription-config", "stationary-camera", "text-detection-config", "video-confidence-threshold", "video-context"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -686,12 +688,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "videointelligence1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "videointelligence1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_run1 as api;
+extern crate google_run1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_run1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::CloudRun<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::CloudRun<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -121,22 +123,22 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status.phase" => Some(("status.phase", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.finalizers" => Some(("spec.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "metadata.name" => Some(("metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.deletion-timestamp" => Some(("metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.cluster-name" => Some(("metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.deletion-grace-period-seconds" => Some(("metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "metadata.labels" => Some(("metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "metadata.namespace" => Some(("metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.generation" => Some(("metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "metadata.finalizers" => Some(("metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "metadata.resource-version" => Some(("metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.generate-name" => Some(("metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.creation-timestamp" => Some(("metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.annotations" => Some(("metadata.annotations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metadata.cluster-name" => Some(("metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.creation-timestamp" => Some(("metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.deletion-grace-period-seconds" => Some(("metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "metadata.deletion-timestamp" => Some(("metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.finalizers" => Some(("metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "metadata.generate-name" => Some(("metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.generation" => Some(("metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "metadata.labels" => Some(("metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metadata.name" => Some(("metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.namespace" => Some(("metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.resource-version" => Some(("metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.self-link" => Some(("metadata.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.uid" => Some(("metadata.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.finalizers" => Some(("spec.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "status.phase" => Some(("status.phase", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["annotations", "cluster-name", "creation-timestamp", "deletion-grace-period-seconds", "deletion-timestamp", "finalizers", "generate-name", "generation", "labels", "metadata", "name", "namespace", "phase", "resource-version", "self-link", "spec", "status", "uid"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -225,23 +227,23 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "string-data" => Some(("stringData", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "metadata.name" => Some(("metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.deletion-timestamp" => Some(("metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.cluster-name" => Some(("metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.deletion-grace-period-seconds" => Some(("metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "metadata.labels" => Some(("metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "metadata.namespace" => Some(("metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.generation" => Some(("metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "metadata.finalizers" => Some(("metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "metadata.resource-version" => Some(("metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.generate-name" => Some(("metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.creation-timestamp" => Some(("metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.annotations" => Some(("metadata.annotations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metadata.cluster-name" => Some(("metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.creation-timestamp" => Some(("metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.deletion-grace-period-seconds" => Some(("metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "metadata.deletion-timestamp" => Some(("metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.finalizers" => Some(("metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "metadata.generate-name" => Some(("metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.generation" => Some(("metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "metadata.labels" => Some(("metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metadata.name" => Some(("metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.namespace" => Some(("metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.resource-version" => Some(("metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.self-link" => Some(("metadata.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.uid" => Some(("metadata.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "string-data" => Some(("stringData", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["annotations", "cluster-name", "creation-timestamp", "data", "deletion-grace-period-seconds", "deletion-timestamp", "finalizers", "generate-name", "generation", "labels", "metadata", "name", "namespace", "resource-version", "self-link", "string-data", "type", "uid"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -378,23 +380,23 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "string-data" => Some(("stringData", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "metadata.name" => Some(("metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.deletion-timestamp" => Some(("metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.cluster-name" => Some(("metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.deletion-grace-period-seconds" => Some(("metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "metadata.labels" => Some(("metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "metadata.namespace" => Some(("metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.generation" => Some(("metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "metadata.finalizers" => Some(("metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "metadata.resource-version" => Some(("metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.generate-name" => Some(("metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.creation-timestamp" => Some(("metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.annotations" => Some(("metadata.annotations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metadata.cluster-name" => Some(("metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.creation-timestamp" => Some(("metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.deletion-grace-period-seconds" => Some(("metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "metadata.deletion-timestamp" => Some(("metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.finalizers" => Some(("metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "metadata.generate-name" => Some(("metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.generation" => Some(("metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "metadata.labels" => Some(("metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metadata.name" => Some(("metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.namespace" => Some(("metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.resource-version" => Some(("metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.self-link" => Some(("metadata.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.uid" => Some(("metadata.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "string-data" => Some(("stringData", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["annotations", "cluster-name", "creation-timestamp", "data", "deletion-grace-period-seconds", "deletion-timestamp", "finalizers", "generate-name", "generation", "labels", "metadata", "name", "namespace", "resource-version", "self-link", "string-data", "type", "uid"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -607,7 +609,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["label-selector", "watch", "include-uninitialized", "continue", "limit", "resource-version", "field-selector"].iter().map(|v|*v));
+                                                                           v.extend(["continue", "resource-version", "label-selector", "field-selector", "watch", "include-uninitialized", "limit"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -664,28 +666,28 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status.observed-generation" => Some(("status.observedGeneration", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "status.url" => Some(("status.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "status.mapped-route-name" => Some(("status.mappedRouteName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.route-name" => Some(("spec.routeName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.force-override" => Some(("spec.forceOverride", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "spec.certificate-mode" => Some(("spec.certificateMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "api-version" => Some(("apiVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.name" => Some(("metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.deletion-timestamp" => Some(("metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.cluster-name" => Some(("metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.deletion-grace-period-seconds" => Some(("metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "metadata.labels" => Some(("metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "metadata.namespace" => Some(("metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.generation" => Some(("metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "metadata.finalizers" => Some(("metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "metadata.resource-version" => Some(("metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.generate-name" => Some(("metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.creation-timestamp" => Some(("metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.annotations" => Some(("metadata.annotations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metadata.cluster-name" => Some(("metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.creation-timestamp" => Some(("metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.deletion-grace-period-seconds" => Some(("metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "metadata.deletion-timestamp" => Some(("metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.finalizers" => Some(("metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "metadata.generate-name" => Some(("metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.generation" => Some(("metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "metadata.labels" => Some(("metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metadata.name" => Some(("metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.namespace" => Some(("metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.resource-version" => Some(("metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.self-link" => Some(("metadata.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.uid" => Some(("metadata.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.certificate-mode" => Some(("spec.certificateMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.force-override" => Some(("spec.forceOverride", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "spec.route-name" => Some(("spec.routeName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status.mapped-route-name" => Some(("status.mappedRouteName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status.observed-generation" => Some(("status.observedGeneration", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "status.url" => Some(("status.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["annotations", "api-version", "certificate-mode", "cluster-name", "creation-timestamp", "deletion-grace-period-seconds", "deletion-timestamp", "finalizers", "force-override", "generate-name", "generation", "kind", "labels", "mapped-route-name", "metadata", "name", "namespace", "observed-generation", "resource-version", "route-name", "self-link", "spec", "status", "uid", "url"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -775,7 +777,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["propagation-policy", "kind", "api-version"].iter().map(|v|*v));
+                                                                           v.extend(["propagation-policy", "api-version", "kind"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -901,7 +903,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["label-selector", "watch", "include-uninitialized", "continue", "limit", "resource-version", "field-selector"].iter().map(|v|*v));
+                                                                           v.extend(["continue", "resource-version", "label-selector", "field-selector", "watch", "include-uninitialized", "limit"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -963,7 +965,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["propagation-policy", "kind", "api-version"].iter().map(|v|*v));
+                                                                           v.extend(["propagation-policy", "api-version", "kind"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1089,7 +1091,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["label-selector", "watch", "include-uninitialized", "continue", "limit", "resource-version", "field-selector"].iter().map(|v|*v));
+                                                                           v.extend(["continue", "resource-version", "label-selector", "field-selector", "watch", "include-uninitialized", "limit"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1215,7 +1217,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["label-selector", "watch", "include-uninitialized", "continue", "limit", "resource-version", "field-selector"].iter().map(|v|*v));
+                                                                           v.extend(["continue", "resource-version", "label-selector", "field-selector", "watch", "include-uninitialized", "limit"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1272,44 +1274,44 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status.observed-generation" => Some(("status.observedGeneration", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "status.url" => Some(("status.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "api-version" => Some(("apiVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.annotations" => Some(("metadata.annotations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metadata.cluster-name" => Some(("metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.creation-timestamp" => Some(("metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.deletion-grace-period-seconds" => Some(("metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "metadata.deletion-timestamp" => Some(("metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.finalizers" => Some(("metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "metadata.generate-name" => Some(("metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.generation" => Some(("metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "metadata.labels" => Some(("metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metadata.name" => Some(("metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.namespace" => Some(("metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.resource-version" => Some(("metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.self-link" => Some(("metadata.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.uid" => Some(("metadata.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.annotations" => Some(("spec.template.metadata.annotations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "spec.template.metadata.cluster-name" => Some(("spec.template.metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.creation-timestamp" => Some(("spec.template.metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.deletion-grace-period-seconds" => Some(("spec.template.metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.deletion-timestamp" => Some(("spec.template.metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.finalizers" => Some(("spec.template.metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "spec.template.metadata.generate-name" => Some(("spec.template.metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.generation" => Some(("spec.template.metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.labels" => Some(("spec.template.metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "spec.template.metadata.name" => Some(("spec.template.metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.namespace" => Some(("spec.template.metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.resource-version" => Some(("spec.template.metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.self-link" => Some(("spec.template.metadata.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.uid" => Some(("spec.template.metadata.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.spec.container-concurrency" => Some(("spec.template.spec.containerConcurrency", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "spec.template.spec.service-account-name" => Some(("spec.template.spec.serviceAccountName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.spec.timeout-seconds" => Some(("spec.template.spec.timeoutSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "status.address.url" => Some(("status.address.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "status.latest-created-revision-name" => Some(("status.latestCreatedRevisionName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "status.latest-ready-revision-name" => Some(("status.latestReadyRevisionName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.spec.timeout-seconds" => Some(("spec.template.spec.timeoutSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "spec.template.spec.container-concurrency" => Some(("spec.template.spec.containerConcurrency", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "spec.template.spec.service-account-name" => Some(("spec.template.spec.serviceAccountName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.name" => Some(("spec.template.metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.deletion-timestamp" => Some(("spec.template.metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.cluster-name" => Some(("spec.template.metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.deletion-grace-period-seconds" => Some(("spec.template.metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.labels" => Some(("spec.template.metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "spec.template.metadata.namespace" => Some(("spec.template.metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.generation" => Some(("spec.template.metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.finalizers" => Some(("spec.template.metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "spec.template.metadata.resource-version" => Some(("spec.template.metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.generate-name" => Some(("spec.template.metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.creation-timestamp" => Some(("spec.template.metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.annotations" => Some(("spec.template.metadata.annotations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "spec.template.metadata.self-link" => Some(("spec.template.metadata.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.uid" => Some(("spec.template.metadata.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "api-version" => Some(("apiVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.name" => Some(("metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.deletion-timestamp" => Some(("metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.cluster-name" => Some(("metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.deletion-grace-period-seconds" => Some(("metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "metadata.labels" => Some(("metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "metadata.namespace" => Some(("metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.generation" => Some(("metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "metadata.finalizers" => Some(("metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "metadata.resource-version" => Some(("metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.generate-name" => Some(("metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.creation-timestamp" => Some(("metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.annotations" => Some(("metadata.annotations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "metadata.self-link" => Some(("metadata.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.uid" => Some(("metadata.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status.observed-generation" => Some(("status.observedGeneration", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "status.url" => Some(("status.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["address", "annotations", "api-version", "cluster-name", "container-concurrency", "creation-timestamp", "deletion-grace-period-seconds", "deletion-timestamp", "finalizers", "generate-name", "generation", "kind", "labels", "latest-created-revision-name", "latest-ready-revision-name", "metadata", "name", "namespace", "observed-generation", "resource-version", "self-link", "service-account-name", "spec", "status", "template", "timeout-seconds", "uid", "url"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1399,7 +1401,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["propagation-policy", "kind", "api-version"].iter().map(|v|*v));
+                                                                           v.extend(["propagation-policy", "api-version", "kind"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1525,7 +1527,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["label-selector", "watch", "include-uninitialized", "continue", "limit", "resource-version", "field-selector"].iter().map(|v|*v));
+                                                                           v.extend(["continue", "resource-version", "label-selector", "field-selector", "watch", "include-uninitialized", "limit"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1582,44 +1584,44 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status.observed-generation" => Some(("status.observedGeneration", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "status.url" => Some(("status.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "api-version" => Some(("apiVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.annotations" => Some(("metadata.annotations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metadata.cluster-name" => Some(("metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.creation-timestamp" => Some(("metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.deletion-grace-period-seconds" => Some(("metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "metadata.deletion-timestamp" => Some(("metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.finalizers" => Some(("metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "metadata.generate-name" => Some(("metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.generation" => Some(("metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "metadata.labels" => Some(("metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metadata.name" => Some(("metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.namespace" => Some(("metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.resource-version" => Some(("metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.self-link" => Some(("metadata.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.uid" => Some(("metadata.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.annotations" => Some(("spec.template.metadata.annotations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "spec.template.metadata.cluster-name" => Some(("spec.template.metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.creation-timestamp" => Some(("spec.template.metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.deletion-grace-period-seconds" => Some(("spec.template.metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.deletion-timestamp" => Some(("spec.template.metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.finalizers" => Some(("spec.template.metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "spec.template.metadata.generate-name" => Some(("spec.template.metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.generation" => Some(("spec.template.metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.labels" => Some(("spec.template.metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "spec.template.metadata.name" => Some(("spec.template.metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.namespace" => Some(("spec.template.metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.resource-version" => Some(("spec.template.metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.self-link" => Some(("spec.template.metadata.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.uid" => Some(("spec.template.metadata.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.spec.container-concurrency" => Some(("spec.template.spec.containerConcurrency", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "spec.template.spec.service-account-name" => Some(("spec.template.spec.serviceAccountName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.spec.timeout-seconds" => Some(("spec.template.spec.timeoutSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "status.address.url" => Some(("status.address.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "status.latest-created-revision-name" => Some(("status.latestCreatedRevisionName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "status.latest-ready-revision-name" => Some(("status.latestReadyRevisionName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.spec.timeout-seconds" => Some(("spec.template.spec.timeoutSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "spec.template.spec.container-concurrency" => Some(("spec.template.spec.containerConcurrency", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "spec.template.spec.service-account-name" => Some(("spec.template.spec.serviceAccountName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.name" => Some(("spec.template.metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.deletion-timestamp" => Some(("spec.template.metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.cluster-name" => Some(("spec.template.metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.deletion-grace-period-seconds" => Some(("spec.template.metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.labels" => Some(("spec.template.metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "spec.template.metadata.namespace" => Some(("spec.template.metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.generation" => Some(("spec.template.metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.finalizers" => Some(("spec.template.metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "spec.template.metadata.resource-version" => Some(("spec.template.metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.generate-name" => Some(("spec.template.metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.creation-timestamp" => Some(("spec.template.metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.annotations" => Some(("spec.template.metadata.annotations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "spec.template.metadata.self-link" => Some(("spec.template.metadata.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.uid" => Some(("spec.template.metadata.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "api-version" => Some(("apiVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.name" => Some(("metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.deletion-timestamp" => Some(("metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.cluster-name" => Some(("metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.deletion-grace-period-seconds" => Some(("metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "metadata.labels" => Some(("metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "metadata.namespace" => Some(("metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.generation" => Some(("metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "metadata.finalizers" => Some(("metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "metadata.resource-version" => Some(("metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.generate-name" => Some(("metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.creation-timestamp" => Some(("metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.annotations" => Some(("metadata.annotations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "metadata.self-link" => Some(("metadata.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.uid" => Some(("metadata.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status.observed-generation" => Some(("status.observedGeneration", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "status.url" => Some(("status.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["address", "annotations", "api-version", "cluster-name", "container-concurrency", "creation-timestamp", "deletion-grace-period-seconds", "deletion-timestamp", "finalizers", "generate-name", "generation", "kind", "labels", "latest-created-revision-name", "latest-ready-revision-name", "metadata", "name", "namespace", "observed-generation", "resource-version", "self-link", "service-account-name", "spec", "status", "template", "timeout-seconds", "uid", "url"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1832,7 +1834,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["label-selector", "watch", "include-uninitialized", "continue", "limit", "resource-version", "field-selector"].iter().map(|v|*v));
+                                                                           v.extend(["continue", "resource-version", "label-selector", "field-selector", "watch", "include-uninitialized", "limit"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1889,28 +1891,28 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status.observed-generation" => Some(("status.observedGeneration", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "status.url" => Some(("status.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "status.mapped-route-name" => Some(("status.mappedRouteName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.route-name" => Some(("spec.routeName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.force-override" => Some(("spec.forceOverride", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "spec.certificate-mode" => Some(("spec.certificateMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "api-version" => Some(("apiVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.name" => Some(("metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.deletion-timestamp" => Some(("metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.cluster-name" => Some(("metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.deletion-grace-period-seconds" => Some(("metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "metadata.labels" => Some(("metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "metadata.namespace" => Some(("metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.generation" => Some(("metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "metadata.finalizers" => Some(("metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "metadata.resource-version" => Some(("metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.generate-name" => Some(("metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.creation-timestamp" => Some(("metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.annotations" => Some(("metadata.annotations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metadata.cluster-name" => Some(("metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.creation-timestamp" => Some(("metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.deletion-grace-period-seconds" => Some(("metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "metadata.deletion-timestamp" => Some(("metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.finalizers" => Some(("metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "metadata.generate-name" => Some(("metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.generation" => Some(("metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "metadata.labels" => Some(("metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metadata.name" => Some(("metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.namespace" => Some(("metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.resource-version" => Some(("metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.self-link" => Some(("metadata.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.uid" => Some(("metadata.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.certificate-mode" => Some(("spec.certificateMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.force-override" => Some(("spec.forceOverride", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "spec.route-name" => Some(("spec.routeName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status.mapped-route-name" => Some(("status.mappedRouteName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status.observed-generation" => Some(("status.observedGeneration", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "status.url" => Some(("status.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["annotations", "api-version", "certificate-mode", "cluster-name", "creation-timestamp", "deletion-grace-period-seconds", "deletion-timestamp", "finalizers", "force-override", "generate-name", "generation", "kind", "labels", "mapped-route-name", "metadata", "name", "namespace", "observed-generation", "resource-version", "route-name", "self-link", "spec", "status", "uid", "url"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2000,7 +2002,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["propagation-policy", "kind", "api-version"].iter().map(|v|*v));
+                                                                           v.extend(["propagation-policy", "api-version", "kind"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2126,7 +2128,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["label-selector", "watch", "include-uninitialized", "continue", "limit", "resource-version", "field-selector"].iter().map(|v|*v));
+                                                                           v.extend(["continue", "resource-version", "label-selector", "field-selector", "watch", "include-uninitialized", "limit"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2188,7 +2190,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "page-size", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2297,22 +2299,22 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status.phase" => Some(("status.phase", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.finalizers" => Some(("spec.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "metadata.name" => Some(("metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.deletion-timestamp" => Some(("metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.cluster-name" => Some(("metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.deletion-grace-period-seconds" => Some(("metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "metadata.labels" => Some(("metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "metadata.namespace" => Some(("metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.generation" => Some(("metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "metadata.finalizers" => Some(("metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "metadata.resource-version" => Some(("metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.generate-name" => Some(("metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.creation-timestamp" => Some(("metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.annotations" => Some(("metadata.annotations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metadata.cluster-name" => Some(("metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.creation-timestamp" => Some(("metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.deletion-grace-period-seconds" => Some(("metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "metadata.deletion-timestamp" => Some(("metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.finalizers" => Some(("metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "metadata.generate-name" => Some(("metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.generation" => Some(("metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "metadata.labels" => Some(("metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metadata.name" => Some(("metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.namespace" => Some(("metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.resource-version" => Some(("metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.self-link" => Some(("metadata.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.uid" => Some(("metadata.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.finalizers" => Some(("spec.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "status.phase" => Some(("status.phase", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["annotations", "cluster-name", "creation-timestamp", "deletion-grace-period-seconds", "deletion-timestamp", "finalizers", "generate-name", "generation", "labels", "metadata", "name", "namespace", "phase", "resource-version", "self-link", "spec", "status", "uid"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2406,7 +2408,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["propagation-policy", "kind", "api-version"].iter().map(|v|*v));
+                                                                           v.extend(["propagation-policy", "api-version", "kind"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2532,7 +2534,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["label-selector", "watch", "include-uninitialized", "continue", "limit", "resource-version", "field-selector"].iter().map(|v|*v));
+                                                                           v.extend(["continue", "resource-version", "label-selector", "field-selector", "watch", "include-uninitialized", "limit"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2658,7 +2660,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["label-selector", "watch", "include-uninitialized", "continue", "limit", "resource-version", "field-selector"].iter().map(|v|*v));
+                                                                           v.extend(["continue", "resource-version", "label-selector", "field-selector", "watch", "include-uninitialized", "limit"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2715,23 +2717,23 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "string-data" => Some(("stringData", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "metadata.name" => Some(("metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.deletion-timestamp" => Some(("metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.cluster-name" => Some(("metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.deletion-grace-period-seconds" => Some(("metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "metadata.labels" => Some(("metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "metadata.namespace" => Some(("metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.generation" => Some(("metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "metadata.finalizers" => Some(("metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "metadata.resource-version" => Some(("metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.generate-name" => Some(("metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.creation-timestamp" => Some(("metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.annotations" => Some(("metadata.annotations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metadata.cluster-name" => Some(("metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.creation-timestamp" => Some(("metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.deletion-grace-period-seconds" => Some(("metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "metadata.deletion-timestamp" => Some(("metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.finalizers" => Some(("metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "metadata.generate-name" => Some(("metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.generation" => Some(("metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "metadata.labels" => Some(("metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metadata.name" => Some(("metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.namespace" => Some(("metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.resource-version" => Some(("metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.self-link" => Some(("metadata.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.uid" => Some(("metadata.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "string-data" => Some(("stringData", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["annotations", "cluster-name", "creation-timestamp", "data", "deletion-grace-period-seconds", "deletion-timestamp", "finalizers", "generate-name", "generation", "labels", "metadata", "name", "namespace", "resource-version", "self-link", "string-data", "type", "uid"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2868,23 +2870,23 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "string-data" => Some(("stringData", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "metadata.name" => Some(("metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.deletion-timestamp" => Some(("metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.cluster-name" => Some(("metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.deletion-grace-period-seconds" => Some(("metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "metadata.labels" => Some(("metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "metadata.namespace" => Some(("metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.generation" => Some(("metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "metadata.finalizers" => Some(("metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "metadata.resource-version" => Some(("metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.generate-name" => Some(("metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.creation-timestamp" => Some(("metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.annotations" => Some(("metadata.annotations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metadata.cluster-name" => Some(("metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.creation-timestamp" => Some(("metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.deletion-grace-period-seconds" => Some(("metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "metadata.deletion-timestamp" => Some(("metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.finalizers" => Some(("metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "metadata.generate-name" => Some(("metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.generation" => Some(("metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "metadata.labels" => Some(("metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metadata.name" => Some(("metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.namespace" => Some(("metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.resource-version" => Some(("metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.self-link" => Some(("metadata.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.uid" => Some(("metadata.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "string-data" => Some(("stringData", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["annotations", "cluster-name", "creation-timestamp", "data", "deletion-grace-period-seconds", "deletion-timestamp", "finalizers", "generate-name", "generation", "labels", "metadata", "name", "namespace", "resource-version", "self-link", "string-data", "type", "uid"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2969,44 +2971,44 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status.observed-generation" => Some(("status.observedGeneration", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "status.url" => Some(("status.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "api-version" => Some(("apiVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.annotations" => Some(("metadata.annotations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metadata.cluster-name" => Some(("metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.creation-timestamp" => Some(("metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.deletion-grace-period-seconds" => Some(("metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "metadata.deletion-timestamp" => Some(("metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.finalizers" => Some(("metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "metadata.generate-name" => Some(("metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.generation" => Some(("metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "metadata.labels" => Some(("metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metadata.name" => Some(("metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.namespace" => Some(("metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.resource-version" => Some(("metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.self-link" => Some(("metadata.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.uid" => Some(("metadata.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.annotations" => Some(("spec.template.metadata.annotations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "spec.template.metadata.cluster-name" => Some(("spec.template.metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.creation-timestamp" => Some(("spec.template.metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.deletion-grace-period-seconds" => Some(("spec.template.metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.deletion-timestamp" => Some(("spec.template.metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.finalizers" => Some(("spec.template.metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "spec.template.metadata.generate-name" => Some(("spec.template.metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.generation" => Some(("spec.template.metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.labels" => Some(("spec.template.metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "spec.template.metadata.name" => Some(("spec.template.metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.namespace" => Some(("spec.template.metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.resource-version" => Some(("spec.template.metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.self-link" => Some(("spec.template.metadata.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.uid" => Some(("spec.template.metadata.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.spec.container-concurrency" => Some(("spec.template.spec.containerConcurrency", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "spec.template.spec.service-account-name" => Some(("spec.template.spec.serviceAccountName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.spec.timeout-seconds" => Some(("spec.template.spec.timeoutSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "status.address.url" => Some(("status.address.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "status.latest-created-revision-name" => Some(("status.latestCreatedRevisionName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "status.latest-ready-revision-name" => Some(("status.latestReadyRevisionName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.spec.timeout-seconds" => Some(("spec.template.spec.timeoutSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "spec.template.spec.container-concurrency" => Some(("spec.template.spec.containerConcurrency", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "spec.template.spec.service-account-name" => Some(("spec.template.spec.serviceAccountName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.name" => Some(("spec.template.metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.deletion-timestamp" => Some(("spec.template.metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.cluster-name" => Some(("spec.template.metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.deletion-grace-period-seconds" => Some(("spec.template.metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.labels" => Some(("spec.template.metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "spec.template.metadata.namespace" => Some(("spec.template.metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.generation" => Some(("spec.template.metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.finalizers" => Some(("spec.template.metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "spec.template.metadata.resource-version" => Some(("spec.template.metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.generate-name" => Some(("spec.template.metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.creation-timestamp" => Some(("spec.template.metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.annotations" => Some(("spec.template.metadata.annotations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "spec.template.metadata.self-link" => Some(("spec.template.metadata.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.uid" => Some(("spec.template.metadata.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "api-version" => Some(("apiVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.name" => Some(("metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.deletion-timestamp" => Some(("metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.cluster-name" => Some(("metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.deletion-grace-period-seconds" => Some(("metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "metadata.labels" => Some(("metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "metadata.namespace" => Some(("metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.generation" => Some(("metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "metadata.finalizers" => Some(("metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "metadata.resource-version" => Some(("metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.generate-name" => Some(("metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.creation-timestamp" => Some(("metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.annotations" => Some(("metadata.annotations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "metadata.self-link" => Some(("metadata.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.uid" => Some(("metadata.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status.observed-generation" => Some(("status.observedGeneration", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "status.url" => Some(("status.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["address", "annotations", "api-version", "cluster-name", "container-concurrency", "creation-timestamp", "deletion-grace-period-seconds", "deletion-timestamp", "finalizers", "generate-name", "generation", "kind", "labels", "latest-created-revision-name", "latest-ready-revision-name", "metadata", "name", "namespace", "observed-generation", "resource-version", "self-link", "service-account-name", "spec", "status", "template", "timeout-seconds", "uid", "url"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3096,7 +3098,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["propagation-policy", "kind", "api-version"].iter().map(|v|*v));
+                                                                           v.extend(["propagation-policy", "api-version", "kind"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3278,7 +3280,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["label-selector", "watch", "include-uninitialized", "continue", "limit", "resource-version", "field-selector"].iter().map(|v|*v));
+                                                                           v.extend(["continue", "resource-version", "label-selector", "field-selector", "watch", "include-uninitialized", "limit"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3335,44 +3337,44 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status.observed-generation" => Some(("status.observedGeneration", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "status.url" => Some(("status.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "api-version" => Some(("apiVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.annotations" => Some(("metadata.annotations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metadata.cluster-name" => Some(("metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.creation-timestamp" => Some(("metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.deletion-grace-period-seconds" => Some(("metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "metadata.deletion-timestamp" => Some(("metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.finalizers" => Some(("metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "metadata.generate-name" => Some(("metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.generation" => Some(("metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "metadata.labels" => Some(("metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "metadata.name" => Some(("metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.namespace" => Some(("metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.resource-version" => Some(("metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.self-link" => Some(("metadata.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.uid" => Some(("metadata.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.annotations" => Some(("spec.template.metadata.annotations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "spec.template.metadata.cluster-name" => Some(("spec.template.metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.creation-timestamp" => Some(("spec.template.metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.deletion-grace-period-seconds" => Some(("spec.template.metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.deletion-timestamp" => Some(("spec.template.metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.finalizers" => Some(("spec.template.metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "spec.template.metadata.generate-name" => Some(("spec.template.metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.generation" => Some(("spec.template.metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.labels" => Some(("spec.template.metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "spec.template.metadata.name" => Some(("spec.template.metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.namespace" => Some(("spec.template.metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.resource-version" => Some(("spec.template.metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.self-link" => Some(("spec.template.metadata.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.metadata.uid" => Some(("spec.template.metadata.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.spec.container-concurrency" => Some(("spec.template.spec.containerConcurrency", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "spec.template.spec.service-account-name" => Some(("spec.template.spec.serviceAccountName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spec.template.spec.timeout-seconds" => Some(("spec.template.spec.timeoutSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "status.address.url" => Some(("status.address.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "status.latest-created-revision-name" => Some(("status.latestCreatedRevisionName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "status.latest-ready-revision-name" => Some(("status.latestReadyRevisionName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.spec.timeout-seconds" => Some(("spec.template.spec.timeoutSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "spec.template.spec.container-concurrency" => Some(("spec.template.spec.containerConcurrency", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "spec.template.spec.service-account-name" => Some(("spec.template.spec.serviceAccountName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.name" => Some(("spec.template.metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.deletion-timestamp" => Some(("spec.template.metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.cluster-name" => Some(("spec.template.metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.deletion-grace-period-seconds" => Some(("spec.template.metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.labels" => Some(("spec.template.metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "spec.template.metadata.namespace" => Some(("spec.template.metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.generation" => Some(("spec.template.metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.finalizers" => Some(("spec.template.metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "spec.template.metadata.resource-version" => Some(("spec.template.metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.generate-name" => Some(("spec.template.metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.creation-timestamp" => Some(("spec.template.metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.annotations" => Some(("spec.template.metadata.annotations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "spec.template.metadata.self-link" => Some(("spec.template.metadata.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "spec.template.metadata.uid" => Some(("spec.template.metadata.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "api-version" => Some(("apiVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.name" => Some(("metadata.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.deletion-timestamp" => Some(("metadata.deletionTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.cluster-name" => Some(("metadata.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.deletion-grace-period-seconds" => Some(("metadata.deletionGracePeriodSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "metadata.labels" => Some(("metadata.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "metadata.namespace" => Some(("metadata.namespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.generation" => Some(("metadata.generation", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "metadata.finalizers" => Some(("metadata.finalizers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "metadata.resource-version" => Some(("metadata.resourceVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.generate-name" => Some(("metadata.generateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.creation-timestamp" => Some(("metadata.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.annotations" => Some(("metadata.annotations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "metadata.self-link" => Some(("metadata.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata.uid" => Some(("metadata.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status.observed-generation" => Some(("status.observedGeneration", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "status.url" => Some(("status.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["address", "annotations", "api-version", "cluster-name", "container-concurrency", "creation-timestamp", "deletion-grace-period-seconds", "deletion-timestamp", "finalizers", "generate-name", "generation", "kind", "labels", "latest-created-revision-name", "latest-ready-revision-name", "metadata", "name", "namespace", "observed-generation", "resource-version", "self-link", "service-account-name", "spec", "status", "template", "timeout-seconds", "uid", "url"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3798,12 +3800,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "run1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "run1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

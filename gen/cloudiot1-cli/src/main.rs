@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_cloudiot1 as api;
+extern crate google_cloudiot1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_cloudiot1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::CloudIot<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::CloudIot<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -69,8 +71,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "gateway-id" => Some(("gatewayId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device-id" => Some(("deviceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gateway-id" => Some(("gatewayId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["device-id", "gateway-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -155,12 +157,12 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state-notification-config.pubsub-topic-name" => Some(("stateNotificationConfig.pubsubTopicName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "log-level" => Some(("logLevel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "mqtt-config.mqtt-enabled-state" => Some(("mqttConfig.mqttEnabledState", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "http-config.http-enabled-state" => Some(("httpConfig.httpEnabledState", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "log-level" => Some(("logLevel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mqtt-config.mqtt-enabled-state" => Some(("mqttConfig.mqttEnabledState", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state-notification-config.pubsub-topic-name" => Some(("stateNotificationConfig.pubsubTopicName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["http-config", "http-enabled-state", "id", "log-level", "mqtt-config", "mqtt-enabled-state", "name", "pubsub-topic-name", "state-notification-config"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -353,30 +355,30 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "last-state-time" => Some(("lastStateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gateway-config.gateway-type" => Some(("gatewayConfig.gatewayType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gateway-config.last-accessed-gateway-time" => Some(("gatewayConfig.lastAccessedGatewayTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gateway-config.gateway-auth-method" => Some(("gatewayConfig.gatewayAuthMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gateway-config.last-accessed-gateway-id" => Some(("gatewayConfig.lastAccessedGatewayId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "last-event-time" => Some(("lastEventTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "last-error-time" => Some(("lastErrorTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "num-id" => Some(("numId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.update-time" => Some(("state.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.binary-data" => Some(("state.binaryData", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata" => Some(("metadata", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "log-level" => Some(("logLevel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "last-heartbeat-time" => Some(("lastHeartbeatTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "last-error-status.message" => Some(("lastErrorStatus.message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "last-error-status.code" => Some(("lastErrorStatus.code", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "last-config-ack-time" => Some(("lastConfigAckTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "blocked" => Some(("blocked", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "config.version" => Some(("config.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.cloud-update-time" => Some(("config.cloudUpdateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.binary-data" => Some(("config.binaryData", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.cloud-update-time" => Some(("config.cloudUpdateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.device-ack-time" => Some(("config.deviceAckTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.version" => Some(("config.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gateway-config.gateway-auth-method" => Some(("gatewayConfig.gatewayAuthMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gateway-config.gateway-type" => Some(("gatewayConfig.gatewayType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gateway-config.last-accessed-gateway-id" => Some(("gatewayConfig.lastAccessedGatewayId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gateway-config.last-accessed-gateway-time" => Some(("gatewayConfig.lastAccessedGatewayTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "last-config-ack-time" => Some(("lastConfigAckTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "last-config-send-time" => Some(("lastConfigSendTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "last-error-status.code" => Some(("lastErrorStatus.code", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "last-error-status.message" => Some(("lastErrorStatus.message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "last-error-time" => Some(("lastErrorTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "last-event-time" => Some(("lastEventTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "last-heartbeat-time" => Some(("lastHeartbeatTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "last-state-time" => Some(("lastStateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "log-level" => Some(("logLevel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata" => Some(("metadata", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "num-id" => Some(("numId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state.binary-data" => Some(("state.binaryData", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state.update-time" => Some(("state.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["binary-data", "blocked", "cloud-update-time", "code", "config", "device-ack-time", "gateway-auth-method", "gateway-config", "gateway-type", "id", "last-accessed-gateway-id", "last-accessed-gateway-time", "last-config-ack-time", "last-config-send-time", "last-error-status", "last-error-time", "last-event-time", "last-heartbeat-time", "last-state-time", "log-level", "message", "metadata", "name", "num-id", "state", "update-time", "version"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -589,7 +591,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-size", "gateway-list-options-associations-gateway-id", "field-mask", "device-ids", "device-num-ids", "page-token", "gateway-list-options-gateway-type", "gateway-list-options-associations-device-id"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "gateway-list-options-associations-gateway-id", "field-mask", "gateway-list-options-gateway-type", "device-ids", "device-num-ids", "page-size", "gateway-list-options-associations-device-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -646,8 +648,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "version-to-update" => Some(("versionToUpdate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "binary-data" => Some(("binaryData", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version-to-update" => Some(("versionToUpdate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["binary-data", "version-to-update"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -732,30 +734,30 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "last-state-time" => Some(("lastStateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gateway-config.gateway-type" => Some(("gatewayConfig.gatewayType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gateway-config.last-accessed-gateway-time" => Some(("gatewayConfig.lastAccessedGatewayTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gateway-config.gateway-auth-method" => Some(("gatewayConfig.gatewayAuthMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gateway-config.last-accessed-gateway-id" => Some(("gatewayConfig.lastAccessedGatewayId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "last-event-time" => Some(("lastEventTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "last-error-time" => Some(("lastErrorTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "num-id" => Some(("numId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.update-time" => Some(("state.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.binary-data" => Some(("state.binaryData", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metadata" => Some(("metadata", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "log-level" => Some(("logLevel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "last-heartbeat-time" => Some(("lastHeartbeatTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "last-error-status.message" => Some(("lastErrorStatus.message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "last-error-status.code" => Some(("lastErrorStatus.code", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "last-config-ack-time" => Some(("lastConfigAckTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "blocked" => Some(("blocked", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "config.version" => Some(("config.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.cloud-update-time" => Some(("config.cloudUpdateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.binary-data" => Some(("config.binaryData", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.cloud-update-time" => Some(("config.cloudUpdateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.device-ack-time" => Some(("config.deviceAckTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.version" => Some(("config.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gateway-config.gateway-auth-method" => Some(("gatewayConfig.gatewayAuthMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gateway-config.gateway-type" => Some(("gatewayConfig.gatewayType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gateway-config.last-accessed-gateway-id" => Some(("gatewayConfig.lastAccessedGatewayId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gateway-config.last-accessed-gateway-time" => Some(("gatewayConfig.lastAccessedGatewayTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "last-config-ack-time" => Some(("lastConfigAckTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "last-config-send-time" => Some(("lastConfigSendTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "last-error-status.code" => Some(("lastErrorStatus.code", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "last-error-status.message" => Some(("lastErrorStatus.message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "last-error-time" => Some(("lastErrorTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "last-event-time" => Some(("lastEventTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "last-heartbeat-time" => Some(("lastHeartbeatTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "last-state-time" => Some(("lastStateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "log-level" => Some(("logLevel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata" => Some(("metadata", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "num-id" => Some(("numId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state.binary-data" => Some(("state.binaryData", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state.update-time" => Some(("state.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["binary-data", "blocked", "cloud-update-time", "code", "config", "device-ack-time", "gateway-auth-method", "gateway-config", "gateway-type", "id", "last-accessed-gateway-id", "last-accessed-gateway-time", "last-config-ack-time", "last-config-send-time", "last-error-status", "last-error-time", "last-event-time", "last-heartbeat-time", "last-state-time", "log-level", "message", "metadata", "name", "num-id", "state", "update-time", "version"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1143,7 +1145,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-size", "gateway-list-options-associations-gateway-id", "field-mask", "device-ids", "device-num-ids", "page-token", "gateway-list-options-gateway-type", "gateway-list-options-associations-device-id"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "gateway-list-options-associations-gateway-id", "field-mask", "gateway-list-options-gateway-type", "device-ids", "device-num-ids", "page-size", "gateway-list-options-associations-device-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1515,12 +1517,12 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state-notification-config.pubsub-topic-name" => Some(("stateNotificationConfig.pubsubTopicName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "log-level" => Some(("logLevel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "mqtt-config.mqtt-enabled-state" => Some(("mqttConfig.mqttEnabledState", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "http-config.http-enabled-state" => Some(("httpConfig.httpEnabledState", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "log-level" => Some(("logLevel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mqtt-config.mqtt-enabled-state" => Some(("mqttConfig.mqttEnabledState", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state-notification-config.pubsub-topic-name" => Some(("stateNotificationConfig.pubsubTopicName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["http-config", "http-enabled-state", "id", "log-level", "mqtt-config", "mqtt-enabled-state", "name", "pubsub-topic-name", "state-notification-config"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1780,8 +1782,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "gateway-id" => Some(("gatewayId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device-id" => Some(("deviceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gateway-id" => Some(("gatewayId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["device-id", "gateway-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1944,12 +1946,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "cloudiot1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "cloudiot1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

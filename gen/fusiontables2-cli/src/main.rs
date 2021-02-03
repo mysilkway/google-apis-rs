@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_fusiontables2 as api;
+extern crate google_fusiontables2;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_fusiontables2::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Fusiontables<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::Fusiontables<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -165,19 +167,19 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "base-column.column-id" => Some(("baseColumn.columnId", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "base-column.table-index" => Some(("baseColumn.tableIndex", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "column-id" => Some(("columnId", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "column-json-schema" => Some(("columnJsonSchema", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "column-properties-json" => Some(("columnPropertiesJson", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "format-pattern" => Some(("formatPattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "graph-predicate" => Some(("graphPredicate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "valid-values" => Some(("validValues", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "base-column.table-index" => Some(("baseColumn.tableIndex", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "base-column.column-id" => Some(("baseColumn.columnId", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "column-properties-json" => Some(("columnPropertiesJson", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "format-pattern" => Some(("formatPattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "column-json-schema" => Some(("columnJsonSchema", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "valid-values" => Some(("validValues", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "validate-data" => Some(("validateData", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "column-id" => Some(("columnId", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["base-column", "column-id", "column-json-schema", "column-properties-json", "description", "format-pattern", "graph-predicate", "kind", "name", "table-index", "type", "valid-values", "validate-data"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -264,7 +266,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "max-results"].iter().map(|v|*v));
+                                                                           v.extend(["max-results", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -321,19 +323,19 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "base-column.column-id" => Some(("baseColumn.columnId", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "base-column.table-index" => Some(("baseColumn.tableIndex", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "column-id" => Some(("columnId", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "column-json-schema" => Some(("columnJsonSchema", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "column-properties-json" => Some(("columnPropertiesJson", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "format-pattern" => Some(("formatPattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "graph-predicate" => Some(("graphPredicate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "valid-values" => Some(("validValues", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "base-column.table-index" => Some(("baseColumn.tableIndex", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "base-column.column-id" => Some(("baseColumn.columnId", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "column-properties-json" => Some(("columnPropertiesJson", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "format-pattern" => Some(("formatPattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "column-json-schema" => Some(("columnJsonSchema", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "valid-values" => Some(("validValues", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "validate-data" => Some(("validateData", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "column-id" => Some(("columnId", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["base-column", "column-id", "column-json-schema", "column-properties-json", "description", "format-pattern", "graph-predicate", "kind", "name", "table-index", "type", "valid-values", "validate-data"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -418,19 +420,19 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "base-column.column-id" => Some(("baseColumn.columnId", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "base-column.table-index" => Some(("baseColumn.tableIndex", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "column-id" => Some(("columnId", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "column-json-schema" => Some(("columnJsonSchema", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "column-properties-json" => Some(("columnPropertiesJson", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "format-pattern" => Some(("formatPattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "graph-predicate" => Some(("graphPredicate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "valid-values" => Some(("validValues", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "base-column.table-index" => Some(("baseColumn.tableIndex", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "base-column.column-id" => Some(("baseColumn.columnId", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "column-properties-json" => Some(("columnPropertiesJson", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "format-pattern" => Some(("formatPattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "column-json-schema" => Some(("columnJsonSchema", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "valid-values" => Some(("validValues", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "validate-data" => Some(("validateData", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "column-id" => Some(("columnId", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["base-column", "column-id", "column-json-schema", "column-properties-json", "description", "format-pattern", "graph-predicate", "kind", "name", "table-index", "type", "valid-values", "validate-data"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -749,43 +751,43 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "marker-options.icon-name" => Some(("markerOptions.iconName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "marker-options.icon-styler.column-name" => Some(("markerOptions.iconStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "marker-options.icon-styler.gradient.max" => Some(("markerOptions.iconStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "marker-options.icon-styler.gradient.min" => Some(("markerOptions.iconStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "marker-options.icon-styler.column-name" => Some(("markerOptions.iconStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "marker-options.icon-styler.kind" => Some(("markerOptions.iconStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "marker-options.icon-name" => Some(("markerOptions.iconName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-color-styler.gradient.max" => Some(("polygonOptions.strokeColorStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-color-styler.gradient.min" => Some(("polygonOptions.strokeColorStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-color-styler.column-name" => Some(("polygonOptions.strokeColorStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-color-styler.kind" => Some(("polygonOptions.strokeColorStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-weight" => Some(("polygonOptions.strokeWeight", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-opacity" => Some(("polygonOptions.strokeOpacity", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-weight-styler.gradient.max" => Some(("polygonOptions.strokeWeightStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-weight-styler.gradient.min" => Some(("polygonOptions.strokeWeightStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-weight-styler.column-name" => Some(("polygonOptions.strokeWeightStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-weight-styler.kind" => Some(("polygonOptions.strokeWeightStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polygon-options.fill-color" => Some(("polygonOptions.fillColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polygon-options.fill-color-styler.column-name" => Some(("polygonOptions.fillColorStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "polygon-options.fill-color-styler.gradient.max" => Some(("polygonOptions.fillColorStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "polygon-options.fill-color-styler.gradient.min" => Some(("polygonOptions.fillColorStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polygon-options.fill-color-styler.column-name" => Some(("polygonOptions.fillColorStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "polygon-options.fill-color-styler.kind" => Some(("polygonOptions.fillColorStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "polygon-options.fill-color" => Some(("polygonOptions.fillColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-color" => Some(("polygonOptions.strokeColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "polygon-options.fill-opacity" => Some(("polygonOptions.fillOpacity", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polyline-options.stroke-weight" => Some(("polylineOptions.strokeWeight", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "polyline-options.stroke-weight-styler.gradient.max" => Some(("polylineOptions.strokeWeightStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polyline-options.stroke-weight-styler.gradient.min" => Some(("polylineOptions.strokeWeightStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polyline-options.stroke-weight-styler.column-name" => Some(("polylineOptions.strokeWeightStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "polyline-options.stroke-weight-styler.kind" => Some(("polylineOptions.strokeWeightStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-color" => Some(("polygonOptions.strokeColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-color-styler.column-name" => Some(("polygonOptions.strokeColorStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-color-styler.gradient.max" => Some(("polygonOptions.strokeColorStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-color-styler.gradient.min" => Some(("polygonOptions.strokeColorStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-color-styler.kind" => Some(("polygonOptions.strokeColorStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-opacity" => Some(("polygonOptions.strokeOpacity", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-weight" => Some(("polygonOptions.strokeWeight", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-weight-styler.column-name" => Some(("polygonOptions.strokeWeightStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-weight-styler.gradient.max" => Some(("polygonOptions.strokeWeightStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-weight-styler.gradient.min" => Some(("polygonOptions.strokeWeightStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-weight-styler.kind" => Some(("polygonOptions.strokeWeightStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "polyline-options.stroke-color" => Some(("polylineOptions.strokeColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "polyline-options.stroke-opacity" => Some(("polylineOptions.strokeOpacity", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polyline-options.stroke-color-styler.column-name" => Some(("polylineOptions.strokeColorStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "polyline-options.stroke-color-styler.gradient.max" => Some(("polylineOptions.strokeColorStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "polyline-options.stroke-color-styler.gradient.min" => Some(("polylineOptions.strokeColorStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polyline-options.stroke-color-styler.column-name" => Some(("polylineOptions.strokeColorStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "polyline-options.stroke-color-styler.kind" => Some(("polylineOptions.strokeColorStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "table-id" => Some(("tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polyline-options.stroke-opacity" => Some(("polylineOptions.strokeOpacity", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polyline-options.stroke-weight" => Some(("polylineOptions.strokeWeight", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "polyline-options.stroke-weight-styler.column-name" => Some(("polylineOptions.strokeWeightStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polyline-options.stroke-weight-styler.gradient.max" => Some(("polylineOptions.strokeWeightStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polyline-options.stroke-weight-styler.gradient.min" => Some(("polylineOptions.strokeWeightStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polyline-options.stroke-weight-styler.kind" => Some(("polylineOptions.strokeWeightStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "style-id" => Some(("styleId", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "table-id" => Some(("tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["column-name", "fill-color", "fill-color-styler", "fill-opacity", "gradient", "icon-name", "icon-styler", "kind", "marker-options", "max", "min", "name", "polygon-options", "polyline-options", "stroke-color", "stroke-color-styler", "stroke-opacity", "stroke-weight", "stroke-weight-styler", "style-id", "table-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -872,7 +874,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "max-results"].iter().map(|v|*v));
+                                                                           v.extend(["max-results", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -929,43 +931,43 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "marker-options.icon-name" => Some(("markerOptions.iconName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "marker-options.icon-styler.column-name" => Some(("markerOptions.iconStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "marker-options.icon-styler.gradient.max" => Some(("markerOptions.iconStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "marker-options.icon-styler.gradient.min" => Some(("markerOptions.iconStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "marker-options.icon-styler.column-name" => Some(("markerOptions.iconStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "marker-options.icon-styler.kind" => Some(("markerOptions.iconStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "marker-options.icon-name" => Some(("markerOptions.iconName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-color-styler.gradient.max" => Some(("polygonOptions.strokeColorStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-color-styler.gradient.min" => Some(("polygonOptions.strokeColorStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-color-styler.column-name" => Some(("polygonOptions.strokeColorStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-color-styler.kind" => Some(("polygonOptions.strokeColorStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-weight" => Some(("polygonOptions.strokeWeight", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-opacity" => Some(("polygonOptions.strokeOpacity", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-weight-styler.gradient.max" => Some(("polygonOptions.strokeWeightStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-weight-styler.gradient.min" => Some(("polygonOptions.strokeWeightStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-weight-styler.column-name" => Some(("polygonOptions.strokeWeightStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-weight-styler.kind" => Some(("polygonOptions.strokeWeightStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polygon-options.fill-color" => Some(("polygonOptions.fillColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polygon-options.fill-color-styler.column-name" => Some(("polygonOptions.fillColorStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "polygon-options.fill-color-styler.gradient.max" => Some(("polygonOptions.fillColorStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "polygon-options.fill-color-styler.gradient.min" => Some(("polygonOptions.fillColorStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polygon-options.fill-color-styler.column-name" => Some(("polygonOptions.fillColorStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "polygon-options.fill-color-styler.kind" => Some(("polygonOptions.fillColorStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "polygon-options.fill-color" => Some(("polygonOptions.fillColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-color" => Some(("polygonOptions.strokeColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "polygon-options.fill-opacity" => Some(("polygonOptions.fillOpacity", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polyline-options.stroke-weight" => Some(("polylineOptions.strokeWeight", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "polyline-options.stroke-weight-styler.gradient.max" => Some(("polylineOptions.strokeWeightStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polyline-options.stroke-weight-styler.gradient.min" => Some(("polylineOptions.strokeWeightStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polyline-options.stroke-weight-styler.column-name" => Some(("polylineOptions.strokeWeightStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "polyline-options.stroke-weight-styler.kind" => Some(("polylineOptions.strokeWeightStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-color" => Some(("polygonOptions.strokeColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-color-styler.column-name" => Some(("polygonOptions.strokeColorStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-color-styler.gradient.max" => Some(("polygonOptions.strokeColorStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-color-styler.gradient.min" => Some(("polygonOptions.strokeColorStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-color-styler.kind" => Some(("polygonOptions.strokeColorStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-opacity" => Some(("polygonOptions.strokeOpacity", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-weight" => Some(("polygonOptions.strokeWeight", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-weight-styler.column-name" => Some(("polygonOptions.strokeWeightStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-weight-styler.gradient.max" => Some(("polygonOptions.strokeWeightStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-weight-styler.gradient.min" => Some(("polygonOptions.strokeWeightStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-weight-styler.kind" => Some(("polygonOptions.strokeWeightStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "polyline-options.stroke-color" => Some(("polylineOptions.strokeColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "polyline-options.stroke-opacity" => Some(("polylineOptions.strokeOpacity", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polyline-options.stroke-color-styler.column-name" => Some(("polylineOptions.strokeColorStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "polyline-options.stroke-color-styler.gradient.max" => Some(("polylineOptions.strokeColorStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "polyline-options.stroke-color-styler.gradient.min" => Some(("polylineOptions.strokeColorStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polyline-options.stroke-color-styler.column-name" => Some(("polylineOptions.strokeColorStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "polyline-options.stroke-color-styler.kind" => Some(("polylineOptions.strokeColorStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "table-id" => Some(("tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polyline-options.stroke-opacity" => Some(("polylineOptions.strokeOpacity", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polyline-options.stroke-weight" => Some(("polylineOptions.strokeWeight", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "polyline-options.stroke-weight-styler.column-name" => Some(("polylineOptions.strokeWeightStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polyline-options.stroke-weight-styler.gradient.max" => Some(("polylineOptions.strokeWeightStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polyline-options.stroke-weight-styler.gradient.min" => Some(("polylineOptions.strokeWeightStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polyline-options.stroke-weight-styler.kind" => Some(("polylineOptions.strokeWeightStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "style-id" => Some(("styleId", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "table-id" => Some(("tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["column-name", "fill-color", "fill-color-styler", "fill-opacity", "gradient", "icon-name", "icon-styler", "kind", "marker-options", "max", "min", "name", "polygon-options", "polyline-options", "stroke-color", "stroke-color-styler", "stroke-opacity", "stroke-weight", "stroke-weight-styler", "style-id", "table-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1051,43 +1053,43 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "marker-options.icon-name" => Some(("markerOptions.iconName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "marker-options.icon-styler.column-name" => Some(("markerOptions.iconStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "marker-options.icon-styler.gradient.max" => Some(("markerOptions.iconStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "marker-options.icon-styler.gradient.min" => Some(("markerOptions.iconStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "marker-options.icon-styler.column-name" => Some(("markerOptions.iconStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "marker-options.icon-styler.kind" => Some(("markerOptions.iconStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "marker-options.icon-name" => Some(("markerOptions.iconName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-color-styler.gradient.max" => Some(("polygonOptions.strokeColorStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-color-styler.gradient.min" => Some(("polygonOptions.strokeColorStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-color-styler.column-name" => Some(("polygonOptions.strokeColorStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-color-styler.kind" => Some(("polygonOptions.strokeColorStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-weight" => Some(("polygonOptions.strokeWeight", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-opacity" => Some(("polygonOptions.strokeOpacity", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-weight-styler.gradient.max" => Some(("polygonOptions.strokeWeightStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-weight-styler.gradient.min" => Some(("polygonOptions.strokeWeightStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-weight-styler.column-name" => Some(("polygonOptions.strokeWeightStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-weight-styler.kind" => Some(("polygonOptions.strokeWeightStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polygon-options.fill-color" => Some(("polygonOptions.fillColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polygon-options.fill-color-styler.column-name" => Some(("polygonOptions.fillColorStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "polygon-options.fill-color-styler.gradient.max" => Some(("polygonOptions.fillColorStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "polygon-options.fill-color-styler.gradient.min" => Some(("polygonOptions.fillColorStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polygon-options.fill-color-styler.column-name" => Some(("polygonOptions.fillColorStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "polygon-options.fill-color-styler.kind" => Some(("polygonOptions.fillColorStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "polygon-options.fill-color" => Some(("polygonOptions.fillColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "polygon-options.stroke-color" => Some(("polygonOptions.strokeColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "polygon-options.fill-opacity" => Some(("polygonOptions.fillOpacity", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polyline-options.stroke-weight" => Some(("polylineOptions.strokeWeight", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "polyline-options.stroke-weight-styler.gradient.max" => Some(("polylineOptions.strokeWeightStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polyline-options.stroke-weight-styler.gradient.min" => Some(("polylineOptions.strokeWeightStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polyline-options.stroke-weight-styler.column-name" => Some(("polylineOptions.strokeWeightStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "polyline-options.stroke-weight-styler.kind" => Some(("polylineOptions.strokeWeightStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-color" => Some(("polygonOptions.strokeColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-color-styler.column-name" => Some(("polygonOptions.strokeColorStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-color-styler.gradient.max" => Some(("polygonOptions.strokeColorStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-color-styler.gradient.min" => Some(("polygonOptions.strokeColorStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-color-styler.kind" => Some(("polygonOptions.strokeColorStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-opacity" => Some(("polygonOptions.strokeOpacity", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-weight" => Some(("polygonOptions.strokeWeight", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-weight-styler.column-name" => Some(("polygonOptions.strokeWeightStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-weight-styler.gradient.max" => Some(("polygonOptions.strokeWeightStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-weight-styler.gradient.min" => Some(("polygonOptions.strokeWeightStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polygon-options.stroke-weight-styler.kind" => Some(("polygonOptions.strokeWeightStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "polyline-options.stroke-color" => Some(("polylineOptions.strokeColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "polyline-options.stroke-opacity" => Some(("polylineOptions.strokeOpacity", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polyline-options.stroke-color-styler.column-name" => Some(("polylineOptions.strokeColorStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "polyline-options.stroke-color-styler.gradient.max" => Some(("polylineOptions.strokeColorStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "polyline-options.stroke-color-styler.gradient.min" => Some(("polylineOptions.strokeColorStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "polyline-options.stroke-color-styler.column-name" => Some(("polylineOptions.strokeColorStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "polyline-options.stroke-color-styler.kind" => Some(("polylineOptions.strokeColorStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "table-id" => Some(("tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polyline-options.stroke-opacity" => Some(("polylineOptions.strokeOpacity", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polyline-options.stroke-weight" => Some(("polylineOptions.strokeWeight", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "polyline-options.stroke-weight-styler.column-name" => Some(("polylineOptions.strokeWeightStyler.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "polyline-options.stroke-weight-styler.gradient.max" => Some(("polylineOptions.strokeWeightStyler.gradient.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polyline-options.stroke-weight-styler.gradient.min" => Some(("polylineOptions.strokeWeightStyler.gradient.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "polyline-options.stroke-weight-styler.kind" => Some(("polylineOptions.strokeWeightStyler.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "style-id" => Some(("styleId", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "table-id" => Some(("tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["column-name", "fill-color", "fill-color-styler", "fill-opacity", "gradient", "icon-name", "icon-styler", "kind", "marker-options", "max", "min", "name", "polygon-options", "polyline-options", "stroke-color", "stroke-color-styler", "stroke-opacity", "stroke-weight", "stroke-weight-styler", "style-id", "table-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1336,14 +1338,14 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["encoding", "end-line", "start-line", "delimiter", "is-strict"].iter().map(|v|*v));
+                                                                           v.extend(["encoding", "delimiter", "start-line", "is-strict", "end-line"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
             }
         }
         let vals = opt.values_of("mode").unwrap().collect::<Vec<&str>>();
-        let protocol = calltype_from_str(vals[0], ["simple", "resumable"].iter().map(|&v| v.to_string()).collect(), err);
+        let protocol = calltype_from_str(vals[0], ["resumable", "simple"].iter().map(|&v| v.to_string()).collect(), err);
         let mut input_file = input_file_from_opts(vals[1], err);
         let mime_type = input_mime_from_opts(opt.value_of("mime").unwrap_or("application/octet-stream"), err);
         if dry_run {
@@ -1358,8 +1360,8 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Upload(UploadProtocol::Simple) => call.upload(input_file.unwrap(), mime_type.unwrap()),
                 CallType::Upload(UploadProtocol::Resumable) => call.upload_resumable(input_file.unwrap(), mime_type.unwrap()),
+                CallType::Upload(UploadProtocol::Simple) => call.upload(input_file.unwrap(), mime_type.unwrap()),
                 CallType::Standard => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1406,7 +1408,7 @@ impl<'n> Engine<'n> {
             }
         }
         let vals = opt.values_of("mode").unwrap().collect::<Vec<&str>>();
-        let protocol = calltype_from_str(vals[0], ["simple", "resumable"].iter().map(|&v| v.to_string()).collect(), err);
+        let protocol = calltype_from_str(vals[0], ["resumable", "simple"].iter().map(|&v| v.to_string()).collect(), err);
         let mut input_file = input_file_from_opts(vals[1], err);
         let mime_type = input_mime_from_opts(opt.value_of("mime").unwrap_or("application/octet-stream"), err);
         if dry_run {
@@ -1421,8 +1423,8 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Upload(UploadProtocol::Simple) => call.upload(input_file.unwrap(), mime_type.unwrap()),
                 CallType::Upload(UploadProtocol::Resumable) => call.upload_resumable(input_file.unwrap(), mime_type.unwrap()),
+                CallType::Upload(UploadProtocol::Simple) => call.upload(input_file.unwrap(), mime_type.unwrap()),
                 CallType::Standard => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1460,18 +1462,18 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "table-properties-json-schema" => Some(("tablePropertiesJsonSchema", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "attribution" => Some(("attribution", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "column-properties-json-schema" => Some(("columnPropertiesJsonSchema", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-exportable" => Some(("isExportable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "base-table-ids" => Some(("baseTableIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "table-properties-json" => Some(("tablePropertiesJson", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "attribution-link" => Some(("attributionLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "base-table-ids" => Some(("baseTableIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "column-properties-json-schema" => Some(("columnPropertiesJsonSchema", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "is-exportable" => Some(("isExportable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "sql" => Some(("sql", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "table-id" => Some(("tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "table-properties-json" => Some(("tablePropertiesJson", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "table-properties-json-schema" => Some(("tablePropertiesJsonSchema", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["attribution", "attribution-link", "base-table-ids", "column-properties-json-schema", "description", "is-exportable", "kind", "name", "sql", "table-id", "table-properties-json", "table-properties-json-schema"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1558,7 +1560,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "max-results"].iter().map(|v|*v));
+                                                                           v.extend(["max-results", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1615,18 +1617,18 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "table-properties-json-schema" => Some(("tablePropertiesJsonSchema", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "attribution" => Some(("attribution", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "column-properties-json-schema" => Some(("columnPropertiesJsonSchema", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-exportable" => Some(("isExportable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "base-table-ids" => Some(("baseTableIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "table-properties-json" => Some(("tablePropertiesJson", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "attribution-link" => Some(("attributionLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "base-table-ids" => Some(("baseTableIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "column-properties-json-schema" => Some(("columnPropertiesJsonSchema", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "is-exportable" => Some(("isExportable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "sql" => Some(("sql", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "table-id" => Some(("tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "table-properties-json" => Some(("tablePropertiesJson", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "table-properties-json-schema" => Some(("tablePropertiesJsonSchema", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["attribution", "attribution-link", "base-table-ids", "column-properties-json-schema", "description", "is-exportable", "kind", "name", "sql", "table-id", "table-properties-json", "table-properties-json-schema"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1778,14 +1780,14 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["encoding", "end-line", "start-line", "delimiter", "is-strict"].iter().map(|v|*v));
+                                                                           v.extend(["encoding", "delimiter", "start-line", "is-strict", "end-line"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
             }
         }
         let vals = opt.values_of("mode").unwrap().collect::<Vec<&str>>();
-        let protocol = calltype_from_str(vals[0], ["simple", "resumable"].iter().map(|&v| v.to_string()).collect(), err);
+        let protocol = calltype_from_str(vals[0], ["resumable", "simple"].iter().map(|&v| v.to_string()).collect(), err);
         let mut input_file = input_file_from_opts(vals[1], err);
         let mime_type = input_mime_from_opts(opt.value_of("mime").unwrap_or("application/octet-stream"), err);
         if dry_run {
@@ -1800,8 +1802,8 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Upload(UploadProtocol::Simple) => call.upload(input_file.unwrap(), mime_type.unwrap()),
                 CallType::Upload(UploadProtocol::Resumable) => call.upload_resumable(input_file.unwrap(), mime_type.unwrap()),
+                CallType::Upload(UploadProtocol::Simple) => call.upload(input_file.unwrap(), mime_type.unwrap()),
                 CallType::Standard => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1839,18 +1841,18 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "table-properties-json-schema" => Some(("tablePropertiesJsonSchema", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "attribution" => Some(("attribution", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "column-properties-json-schema" => Some(("columnPropertiesJsonSchema", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-exportable" => Some(("isExportable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "base-table-ids" => Some(("baseTableIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "table-properties-json" => Some(("tablePropertiesJson", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "attribution-link" => Some(("attributionLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "base-table-ids" => Some(("baseTableIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "column-properties-json-schema" => Some(("columnPropertiesJsonSchema", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "is-exportable" => Some(("isExportable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "sql" => Some(("sql", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "table-id" => Some(("tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "table-properties-json" => Some(("tablePropertiesJson", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "table-properties-json-schema" => Some(("tablePropertiesJsonSchema", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["attribution", "attribution-link", "base-table-ids", "column-properties-json-schema", "description", "is-exportable", "kind", "name", "sql", "table-id", "table-properties-json", "table-properties-json-schema"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2040,7 +2042,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "start-index", "max-results"].iter().map(|v|*v));
+                                                                           v.extend(["max-results", "page-token", "start-index"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2195,10 +2197,10 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "automatic-column-names" => Some(("automaticColumnNames", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "body" => Some(("body", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "automatic-column-names" => Some(("automaticColumnNames", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "table-id" => Some(("tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "template-id" => Some(("templateId", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     _ => {
@@ -2287,7 +2289,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "max-results"].iter().map(|v|*v));
+                                                                           v.extend(["max-results", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2344,10 +2346,10 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "automatic-column-names" => Some(("automaticColumnNames", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "body" => Some(("body", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "automatic-column-names" => Some(("automaticColumnNames", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "table-id" => Some(("tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "template-id" => Some(("templateId", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     _ => {
@@ -2435,10 +2437,10 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "automatic-column-names" => Some(("automaticColumnNames", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "body" => Some(("body", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "automatic-column-names" => Some(("automaticColumnNames", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "table-id" => Some(("tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "template-id" => Some(("templateId", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     _ => {
@@ -2677,12 +2679,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "fusiontables2-secret.json",
+            match client::application_secret_from_directory(&config_dir, "fusiontables2-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))
@@ -3223,7 +3225,7 @@ fn main() {
         
                     (Some(r##"mode"##),
                      Some(r##"u"##),
-                     Some(r##"Specify the upload protocol (simple|resumable) and the file to upload"##),
+                     Some(r##"Specify the upload protocol (resumable|simple) and the file to upload"##),
                      Some(true),
                      Some(true)),
         
@@ -3251,7 +3253,7 @@ fn main() {
         
                     (Some(r##"mode"##),
                      Some(r##"u"##),
-                     Some(r##"Specify the upload protocol (simple|resumable) and the file to upload"##),
+                     Some(r##"Specify the upload protocol (resumable|simple) and the file to upload"##),
                      Some(true),
                      Some(true)),
         
@@ -3367,7 +3369,7 @@ fn main() {
         
                     (Some(r##"mode"##),
                      Some(r##"u"##),
-                     Some(r##"Specify the upload protocol (simple|resumable) and the file to upload"##),
+                     Some(r##"Specify the upload protocol (resumable|simple) and the file to upload"##),
                      Some(true),
                      Some(true)),
         

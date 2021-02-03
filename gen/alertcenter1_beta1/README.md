@@ -11,15 +11,15 @@ Everything else about the *AlertCenter* *v1_beta1* API can be found at the
 [official documentation site](https://developers.google.com/admin-sdk/alertcenter/).
 # Features
 
-Handle the following *Resources* with ease from the central [hub](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/struct.AlertCenter.html) ... 
+Handle the following *Resources* with ease from the central [hub](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/AlertCenter) ... 
 
-* [alerts](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/struct.Alert.html)
- * [*batch delete*](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/struct.AlertBatchDeleteCall.html), [*batch undelete*](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/struct.AlertBatchUndeleteCall.html), [*delete*](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/struct.AlertDeleteCall.html), [*feedback create*](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/struct.AlertFeedbackCreateCall.html), [*feedback list*](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/struct.AlertFeedbackListCall.html), [*get*](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/struct.AlertGetCall.html), [*get metadata*](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/struct.AlertGetMetadataCall.html), [*list*](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/struct.AlertListCall.html) and [*undelete*](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/struct.AlertUndeleteCall.html)
+* [alerts](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/api::Alert)
+ * [*batch delete*](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/api::AlertBatchDeleteCall), [*batch undelete*](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/api::AlertBatchUndeleteCall), [*delete*](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/api::AlertDeleteCall), [*feedback create*](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/api::AlertFeedbackCreateCall), [*feedback list*](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/api::AlertFeedbackListCall), [*get*](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/api::AlertGetCall), [*get metadata*](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/api::AlertGetMetadataCall), [*list*](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/api::AlertListCall) and [*undelete*](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/api::AlertUndeleteCall)
 
 Other activities are ...
 
-* [get settings](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/struct.MethodGetSettingCall.html)
-* [update settings](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/struct.MethodUpdateSettingCall.html)
+* [get settings](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/api::MethodGetSettingCall)
+* [update settings](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/api::MethodUpdateSettingCall)
 
 
 
@@ -27,17 +27,17 @@ Other activities are ...
 
 The API is structured into the following primary items:
 
-* **[Hub](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/struct.AlertCenter.html)**
+* **[Hub](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/AlertCenter)**
     * a central object to maintain state and allow accessing all *Activities*
-    * creates [*Method Builders*](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/trait.MethodsBuilder.html) which in turn
-      allow access to individual [*Call Builders*](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/trait.CallBuilder.html)
-* **[Resources](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/trait.Resource.html)**
+    * creates [*Method Builders*](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/client::MethodsBuilder) which in turn
+      allow access to individual [*Call Builders*](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/client::CallBuilder)
+* **[Resources](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/client::Resource)**
     * primary types that you can apply *Activities* to
     * a collection of properties and *Parts*
-    * **[Parts](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/trait.Part.html)**
+    * **[Parts](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/client::Part)**
         * a collection of properties
         * never directly used in *Activities*
-* **[Activities](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/trait.CallBuilder.html)**
+* **[Activities](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/client::CallBuilder)**
     * operations to apply to *Resources*
 
 All *structures* are marked with applicable traits to further categorize them and ease browsing.
@@ -51,15 +51,15 @@ let r = hub.resource().activity(...).doit()
 Or specifically ...
 
 ```ignore
-let r = hub.alerts().delete(...).doit()
-let r = hub.alerts().batch_undelete(...).doit()
-let r = hub.alerts().undelete(...).doit()
-let r = hub.alerts().get(...).doit()
-let r = hub.alerts().batch_delete(...).doit()
-let r = hub.alerts().list(...).doit()
-let r = hub.alerts().get_metadata(...).doit()
-let r = hub.alerts().feedback_list(...).doit()
 let r = hub.alerts().feedback_create(...).doit()
+let r = hub.alerts().feedback_list(...).doit()
+let r = hub.alerts().batch_delete(...).doit()
+let r = hub.alerts().batch_undelete(...).doit()
+let r = hub.alerts().delete(...).doit()
+let r = hub.alerts().get(...).doit()
+let r = hub.alerts().get_metadata(...).doit()
+let r = hub.alerts().list(...).doit()
+let r = hub.alerts().undelete(...).doit()
 ```
 
 The `resource()` and `activity(...)` calls create [builders][builder-pattern]. The second one dealing with `Activities` 
@@ -114,11 +114,11 @@ let mut hub = AlertCenter::new(hyper::Client::with_connector(hyper::net::HttpsCo
 // execute the final call using `doit()`.
 // Values shown here are possibly random and not representative !
 let result = hub.alerts().list()
-             .page_token("eirmod")
-             .page_size(-48)
-             .order_by("Stet")
-             .filter("sed")
-             .customer_id("et")
+             .page_token("et")
+             .page_size(-33)
+             .order_by("no")
+             .filter("ipsum")
+             .customer_id("voluptua.")
              .doit();
 
 match result {
@@ -141,17 +141,17 @@ match result {
 ```
 ## Handling Errors
 
-All errors produced by the system are provided either as [Result](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/enum.Result.html) enumeration as return value of 
+All errors produced by the system are provided either as [Result](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/client::Result) enumeration as return value of
 the doit() methods, or handed as possibly intermediate results to either the 
-[Hub Delegate](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/trait.Delegate.html), or the [Authenticator Delegate](https://docs.rs/yup-oauth2/*/yup_oauth2/trait.AuthenticatorDelegate.html).
+[Hub Delegate](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/client::Delegate), or the [Authenticator Delegate](https://docs.rs/yup-oauth2/*/yup_oauth2/trait.AuthenticatorDelegate.html).
 
 When delegates handle errors or intermediate values, they may have a chance to instruct the system to retry. This 
 makes the system potentially resilient to all kinds of errors.
 
 ## Uploads and Downloads
-If a method supports downloads, the response body, which is part of the [Result](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/enum.Result.html), should be
+If a method supports downloads, the response body, which is part of the [Result](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/client::Result), should be
 read by you to obtain the media.
-If such a method also supports a [Response Result](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/trait.ResponseResult.html), it will return that by default.
+If such a method also supports a [Response Result](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/client::ResponseResult), it will return that by default.
 You can see it as meta-data for the actual media. To trigger a media download, you will have to set up the builder by making
 this call: `.param("alt", "media")`.
 
@@ -161,29 +161,29 @@ Methods supporting uploads can do so using up to 2 different protocols:
 
 ## Customization and Callbacks
 
-You may alter the way an `doit()` method is called by providing a [delegate](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/trait.Delegate.html) to the 
-[Method Builder](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/trait.CallBuilder.html) before making the final `doit()` call. 
+You may alter the way an `doit()` method is called by providing a [delegate](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/client::Delegate) to the 
+[Method Builder](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/client::CallBuilder) before making the final `doit()` call. 
 Respective methods will be called to provide progress information, as well as determine whether the system should 
 retry on failure.
 
-The [delegate trait](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/trait.Delegate.html) is default-implemented, allowing you to customize it with minimal effort.
+The [delegate trait](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/client::Delegate) is default-implemented, allowing you to customize it with minimal effort.
 
 ## Optional Parts in Server-Requests
 
-All structures provided by this library are made to be [encodable](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/trait.RequestValue.html) and 
-[decodable](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/trait.ResponseResult.html) via *json*. Optionals are used to indicate that partial requests are responses 
+All structures provided by this library are made to be [encodable](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/client::RequestValue) and 
+[decodable](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/client::ResponseResult) via *json*. Optionals are used to indicate that partial requests are responses 
 are valid.
-Most optionals are are considered [Parts](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/trait.Part.html) which are identifiable by name, which will be sent to 
+Most optionals are are considered [Parts](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/client::Part) which are identifiable by name, which will be sent to 
 the server to indicate either the set parts of the request or the desired parts in the response.
 
 ## Builder Arguments
 
-Using [method builders](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/trait.CallBuilder.html), you are able to prepare an action call by repeatedly calling it's methods.
+Using [method builders](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/client::CallBuilder), you are able to prepare an action call by repeatedly calling it's methods.
 These will always take a single argument, for which the following statements are true.
 
 * [PODs][wiki-pod] are handed by copy
 * strings are passed as `&str`
-* [request values](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/trait.RequestValue.html) are moved
+* [request values](https://docs.rs/google-alertcenter1_beta1/1.0.14+20200704/google_alertcenter1_beta1/client::RequestValue) are moved
 
 Arguments will always be copied or cloned into the builder, to make them independent of their original life times.
 

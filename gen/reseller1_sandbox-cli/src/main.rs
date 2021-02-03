@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_reseller1_sandbox as api;
+extern crate google_reseller1_sandbox;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_reseller1_sandbox::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Reseller<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::Reseller<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -121,23 +123,23 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "alternate-email" => Some(("alternateEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "customer-domain" => Some(("customerDomain", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "customer-domain-verified" => Some(("customerDomainVerified", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "alternate-email" => Some(("alternateEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "customer-id" => Some(("customerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "resource-ui-url" => Some(("resourceUiUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "phone-number" => Some(("phoneNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "postal-address.kind" => Some(("postalAddress.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "postal-address.organization-name" => Some(("postalAddress.organizationName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "postal-address.country-code" => Some(("postalAddress.countryCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "postal-address.locality" => Some(("postalAddress.locality", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "postal-address.region" => Some(("postalAddress.region", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "postal-address.address-line1" => Some(("postalAddress.addressLine1", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "postal-address.address-line2" => Some(("postalAddress.addressLine2", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "postal-address.address-line3" => Some(("postalAddress.addressLine3", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "postal-address.contact-name" => Some(("postalAddress.contactName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "postal-address.address-line1" => Some(("postalAddress.addressLine1", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "postal-address.country-code" => Some(("postalAddress.countryCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "postal-address.kind" => Some(("postalAddress.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "postal-address.locality" => Some(("postalAddress.locality", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "postal-address.organization-name" => Some(("postalAddress.organizationName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "postal-address.postal-code" => Some(("postalAddress.postalCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "customer-id" => Some(("customerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "postal-address.region" => Some(("postalAddress.region", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "resource-ui-url" => Some(("resourceUiUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["address-line1", "address-line2", "address-line3", "alternate-email", "contact-name", "country-code", "customer-domain", "customer-domain-verified", "customer-id", "kind", "locality", "organization-name", "phone-number", "postal-address", "postal-code", "region", "resource-ui-url"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -226,23 +228,23 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "alternate-email" => Some(("alternateEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "customer-domain" => Some(("customerDomain", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "customer-domain-verified" => Some(("customerDomainVerified", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "alternate-email" => Some(("alternateEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "customer-id" => Some(("customerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "resource-ui-url" => Some(("resourceUiUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "phone-number" => Some(("phoneNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "postal-address.kind" => Some(("postalAddress.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "postal-address.organization-name" => Some(("postalAddress.organizationName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "postal-address.country-code" => Some(("postalAddress.countryCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "postal-address.locality" => Some(("postalAddress.locality", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "postal-address.region" => Some(("postalAddress.region", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "postal-address.address-line1" => Some(("postalAddress.addressLine1", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "postal-address.address-line2" => Some(("postalAddress.addressLine2", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "postal-address.address-line3" => Some(("postalAddress.addressLine3", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "postal-address.contact-name" => Some(("postalAddress.contactName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "postal-address.address-line1" => Some(("postalAddress.addressLine1", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "postal-address.country-code" => Some(("postalAddress.countryCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "postal-address.kind" => Some(("postalAddress.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "postal-address.locality" => Some(("postalAddress.locality", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "postal-address.organization-name" => Some(("postalAddress.organizationName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "postal-address.postal-code" => Some(("postalAddress.postalCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "customer-id" => Some(("customerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "postal-address.region" => Some(("postalAddress.region", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "resource-ui-url" => Some(("resourceUiUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["address-line1", "address-line2", "address-line3", "alternate-email", "contact-name", "country-code", "customer-domain", "customer-domain-verified", "customer-id", "kind", "locality", "organization-name", "phone-number", "postal-address", "postal-code", "region", "resource-ui-url"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -327,23 +329,23 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "alternate-email" => Some(("alternateEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "customer-domain" => Some(("customerDomain", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "customer-domain-verified" => Some(("customerDomainVerified", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "alternate-email" => Some(("alternateEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "customer-id" => Some(("customerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "resource-ui-url" => Some(("resourceUiUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "phone-number" => Some(("phoneNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "postal-address.kind" => Some(("postalAddress.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "postal-address.organization-name" => Some(("postalAddress.organizationName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "postal-address.country-code" => Some(("postalAddress.countryCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "postal-address.locality" => Some(("postalAddress.locality", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "postal-address.region" => Some(("postalAddress.region", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "postal-address.address-line1" => Some(("postalAddress.addressLine1", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "postal-address.address-line2" => Some(("postalAddress.addressLine2", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "postal-address.address-line3" => Some(("postalAddress.addressLine3", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "postal-address.contact-name" => Some(("postalAddress.contactName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "postal-address.address-line1" => Some(("postalAddress.addressLine1", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "postal-address.country-code" => Some(("postalAddress.countryCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "postal-address.kind" => Some(("postalAddress.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "postal-address.locality" => Some(("postalAddress.locality", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "postal-address.organization-name" => Some(("postalAddress.organizationName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "postal-address.postal-code" => Some(("postalAddress.postalCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "customer-id" => Some(("customerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "postal-address.region" => Some(("postalAddress.region", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "resource-ui-url" => Some(("resourceUiUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["address-line1", "address-line2", "address-line3", "alternate-email", "contact-name", "country-code", "customer-domain", "customer-domain-verified", "customer-id", "kind", "locality", "organization-name", "phone-number", "postal-address", "postal-code", "region", "resource-ui-url"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -480,14 +482,14 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "plan-name" => Some(("planName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "deal-code" => Some(("dealCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "seats.kind" => Some(("seats.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "seats.number-of-seats" => Some(("seats.numberOfSeats", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "seats.maximum-number-of-seats" => Some(("seats.maximumNumberOfSeats", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "seats.licensed-number-of-seats" => Some(("seats.licensedNumberOfSeats", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "plan-name" => Some(("planName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "purchase-order-id" => Some(("purchaseOrderId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "seats.kind" => Some(("seats.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "seats.licensed-number-of-seats" => Some(("seats.licensedNumberOfSeats", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "seats.maximum-number-of-seats" => Some(("seats.maximumNumberOfSeats", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "seats.number-of-seats" => Some(("seats.numberOfSeats", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["deal-code", "kind", "licensed-number-of-seats", "maximum-number-of-seats", "number-of-seats", "plan-name", "purchase-order-id", "seats"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -659,9 +661,9 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "number-of-seats" => Some(("numberOfSeats", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "maximum-number-of-seats" => Some(("maximumNumberOfSeats", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "licensed-number-of-seats" => Some(("licensedNumberOfSeats", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "maximum-number-of-seats" => Some(("maximumNumberOfSeats", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "number-of-seats" => Some(("numberOfSeats", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["kind", "licensed-number-of-seats", "maximum-number-of-seats", "number-of-seats"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -842,32 +844,32 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "sku-id" => Some(("skuId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "customer-domain" => Some(("customerDomain", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "purchase-order-id" => Some(("purchaseOrderId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "trial-settings.trial-end-time" => Some(("trialSettings.trialEndTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "trial-settings.is-in-trial" => Some(("trialSettings.isInTrial", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "deal-code" => Some(("dealCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "resource-ui-url" => Some(("resourceUiUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "suspension-reasons" => Some(("suspensionReasons", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "billing-method" => Some(("billingMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "creation-time" => Some(("creationTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "renewal-settings.kind" => Some(("renewalSettings.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "renewal-settings.renewal-type" => Some(("renewalSettings.renewalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "customer-domain" => Some(("customerDomain", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "customer-id" => Some(("customerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-info.transferability-expiration-time" => Some(("transferInfo.transferabilityExpirationTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-info.minimum-transferable-seats" => Some(("transferInfo.minimumTransferableSeats", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "plan.plan-name" => Some(("plan.planName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deal-code" => Some(("dealCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "plan.commitment-interval.end-time" => Some(("plan.commitmentInterval.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "plan.commitment-interval.start-time" => Some(("plan.commitmentInterval.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "plan.is-commitment-plan" => Some(("plan.isCommitmentPlan", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "plan.plan-name" => Some(("plan.planName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "purchase-order-id" => Some(("purchaseOrderId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "renewal-settings.kind" => Some(("renewalSettings.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "renewal-settings.renewal-type" => Some(("renewalSettings.renewalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "resource-ui-url" => Some(("resourceUiUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "seats.kind" => Some(("seats.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "seats.number-of-seats" => Some(("seats.numberOfSeats", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "seats.maximum-number-of-seats" => Some(("seats.maximumNumberOfSeats", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "seats.licensed-number-of-seats" => Some(("seats.licensedNumberOfSeats", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "seats.maximum-number-of-seats" => Some(("seats.maximumNumberOfSeats", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "seats.number-of-seats" => Some(("seats.numberOfSeats", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "sku-id" => Some(("skuId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "subscription-id" => Some(("subscriptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "billing-method" => Some(("billingMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "suspension-reasons" => Some(("suspensionReasons", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "transfer-info.minimum-transferable-seats" => Some(("transferInfo.minimumTransferableSeats", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "transfer-info.transferability-expiration-time" => Some(("transferInfo.transferabilityExpirationTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "trial-settings.is-in-trial" => Some(("trialSettings.isInTrial", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "trial-settings.trial-end-time" => Some(("trialSettings.trialEndTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["billing-method", "commitment-interval", "creation-time", "customer-domain", "customer-id", "deal-code", "end-time", "is-commitment-plan", "is-in-trial", "kind", "licensed-number-of-seats", "maximum-number-of-seats", "minimum-transferable-seats", "number-of-seats", "plan", "plan-name", "purchase-order-id", "renewal-settings", "renewal-type", "resource-ui-url", "seats", "sku-id", "start-time", "status", "subscription-id", "suspension-reasons", "transfer-info", "transferability-expiration-time", "trial-end-time", "trial-settings"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -967,7 +969,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["customer-auth-token", "page-token", "customer-id", "max-results", "customer-name-prefix"].iter().map(|v|*v));
+                                                                           v.extend(["customer-name-prefix", "max-results", "customer-auth-token", "page-token", "customer-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1187,12 +1189,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "reseller1-sandbox-secret.json",
+            match client::application_secret_from_directory(&config_dir, "reseller1-sandbox-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

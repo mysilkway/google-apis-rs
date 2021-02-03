@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_iap1 as api;
+extern crate google_iap1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_iap1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::CloudIAP<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::CloudIAP<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -377,23 +379,23 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "application-settings.cookie-domain" => Some(("applicationSettings.cookieDomain", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "application-settings.access-denied-page-settings.access-denied-page-uri" => Some(("applicationSettings.accessDeniedPageSettings.accessDeniedPageUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "application-settings.csm-settings.rctoken-aud" => Some(("applicationSettings.csmSettings.rctokenAud", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "access-settings.cors-settings.allow-http-options" => Some(("accessSettings.corsSettings.allowHttpOptions", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "access-settings.policy-delegation-settings.policy-name.region" => Some(("accessSettings.policyDelegationSettings.policyName.region", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "access-settings.policy-delegation-settings.policy-name.type" => Some(("accessSettings.policyDelegationSettings.policyName.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "access-settings.policy-delegation-settings.policy-name.id" => Some(("accessSettings.policyDelegationSettings.policyName.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "access-settings.policy-delegation-settings.iam-service-name" => Some(("accessSettings.policyDelegationSettings.iamServiceName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "access-settings.policy-delegation-settings.resource.labels" => Some(("accessSettings.policyDelegationSettings.resource.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "access-settings.policy-delegation-settings.resource.type" => Some(("accessSettings.policyDelegationSettings.resource.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "access-settings.policy-delegation-settings.resource.name" => Some(("accessSettings.policyDelegationSettings.resource.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "access-settings.policy-delegation-settings.resource.service" => Some(("accessSettings.policyDelegationSettings.resource.service", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "access-settings.policy-delegation-settings.iam-permission" => Some(("accessSettings.policyDelegationSettings.iamPermission", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "access-settings.oauth-settings.login-hint" => Some(("accessSettings.oauthSettings.loginHint", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "access-settings.oauth-settings.client-id" => Some(("accessSettings.oauthSettings.clientId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "access-settings.gcip-settings.login-page-uri" => Some(("accessSettings.gcipSettings.loginPageUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "access-settings.gcip-settings.tenant-ids" => Some(("accessSettings.gcipSettings.tenantIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "access-settings.oauth-settings.client-id" => Some(("accessSettings.oauthSettings.clientId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "access-settings.oauth-settings.login-hint" => Some(("accessSettings.oauthSettings.loginHint", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "access-settings.policy-delegation-settings.iam-permission" => Some(("accessSettings.policyDelegationSettings.iamPermission", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "access-settings.policy-delegation-settings.iam-service-name" => Some(("accessSettings.policyDelegationSettings.iamServiceName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "access-settings.policy-delegation-settings.policy-name.id" => Some(("accessSettings.policyDelegationSettings.policyName.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "access-settings.policy-delegation-settings.policy-name.region" => Some(("accessSettings.policyDelegationSettings.policyName.region", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "access-settings.policy-delegation-settings.policy-name.type" => Some(("accessSettings.policyDelegationSettings.policyName.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "access-settings.policy-delegation-settings.resource.labels" => Some(("accessSettings.policyDelegationSettings.resource.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "access-settings.policy-delegation-settings.resource.name" => Some(("accessSettings.policyDelegationSettings.resource.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "access-settings.policy-delegation-settings.resource.service" => Some(("accessSettings.policyDelegationSettings.resource.service", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "access-settings.policy-delegation-settings.resource.type" => Some(("accessSettings.policyDelegationSettings.resource.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "application-settings.access-denied-page-settings.access-denied-page-uri" => Some(("applicationSettings.accessDeniedPageSettings.accessDeniedPageUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "application-settings.cookie-domain" => Some(("applicationSettings.cookieDomain", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "application-settings.csm-settings.rctoken-aud" => Some(("applicationSettings.csmSettings.rctokenAud", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["access-denied-page-settings", "access-denied-page-uri", "access-settings", "allow-http-options", "application-settings", "client-id", "cookie-domain", "cors-settings", "csm-settings", "gcip-settings", "iam-permission", "iam-service-name", "id", "labels", "login-hint", "login-page-uri", "name", "oauth-settings", "policy-delegation-settings", "policy-name", "rctoken-aud", "region", "resource", "service", "tenant-ids", "type"]);
@@ -484,9 +486,9 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "application-title" => Some(("applicationTitle", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "org-internal-only" => Some(("orgInternalOnly", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "support-email" => Some(("supportEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["application-title", "name", "org-internal-only", "support-email"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -623,9 +625,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "secret" => Some(("secret", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "secret" => Some(("secret", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["display-name", "name", "secret"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -816,7 +818,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1065,12 +1067,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "iap1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "iap1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_cloudtrace2 as api;
+extern crate google_cloudtrace2;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_cloudtrace2::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::CloudTrace<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::CloudTrace<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -153,24 +155,24 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status.message" => Some(("status.message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "status.code" => Some(("status.code", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "child-span-count" => Some(("childSpanCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "display-name.value" => Some(("displayName.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "display-name.truncated-byte-count" => Some(("displayName.truncatedByteCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "links.dropped-links-count" => Some(("links.droppedLinksCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "stack-trace.stack-trace-hash-id" => Some(("stackTrace.stackTraceHashId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "stack-trace.stack-frames.dropped-frames-count" => Some(("stackTrace.stackFrames.droppedFramesCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "span-kind" => Some(("spanKind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "parent-span-id" => Some(("parentSpanId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "start-time" => Some(("startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "span-id" => Some(("spanId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "attributes.dropped-attributes-count" => Some(("attributes.droppedAttributesCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "time-events.dropped-message-events-count" => Some(("timeEvents.droppedMessageEventsCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "time-events.dropped-annotations-count" => Some(("timeEvents.droppedAnnotationsCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "child-span-count" => Some(("childSpanCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "display-name.truncated-byte-count" => Some(("displayName.truncatedByteCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "display-name.value" => Some(("displayName.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "end-time" => Some(("endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "links.dropped-links-count" => Some(("links.droppedLinksCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "parent-span-id" => Some(("parentSpanId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "same-process-as-parent-span" => Some(("sameProcessAsParentSpan", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "span-id" => Some(("spanId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "span-kind" => Some(("spanKind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "stack-trace.stack-frames.dropped-frames-count" => Some(("stackTrace.stackFrames.droppedFramesCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "stack-trace.stack-trace-hash-id" => Some(("stackTrace.stackTraceHashId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "start-time" => Some(("startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status.code" => Some(("status.code", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "status.message" => Some(("status.message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "time-events.dropped-annotations-count" => Some(("timeEvents.droppedAnnotationsCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "time-events.dropped-message-events-count" => Some(("timeEvents.droppedMessageEventsCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["attributes", "child-span-count", "code", "display-name", "dropped-annotations-count", "dropped-attributes-count", "dropped-frames-count", "dropped-links-count", "dropped-message-events-count", "end-time", "links", "message", "name", "parent-span-id", "same-process-as-parent-span", "span-id", "span-kind", "stack-frames", "stack-trace", "stack-trace-hash-id", "start-time", "status", "time-events", "truncated-byte-count", "value"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -270,12 +272,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "cloudtrace2-secret.json",
+            match client::application_secret_from_directory(&config_dir, "cloudtrace2-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

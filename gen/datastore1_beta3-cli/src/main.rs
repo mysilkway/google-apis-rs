@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_datastore1_beta3 as api;
+extern crate google_datastore1_beta3;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_datastore1_beta3::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Datastore<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::Datastore<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -238,8 +240,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "transaction" => Some(("transaction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "mode" => Some(("mode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transaction" => Some(("transaction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["mode", "transaction"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -324,8 +326,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "read-options.transaction" => Some(("readOptions.transaction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "read-options.read-consistency" => Some(("readOptions.readConsistency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "read-options.transaction" => Some(("readOptions.transaction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["read-consistency", "read-options", "transaction"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -580,34 +582,34 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "gql-query.allow-literals" => Some(("gqlQuery.allowLiterals", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "gql-query.query-string" => Some(("gqlQuery.queryString", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "partition-id.namespace-id" => Some(("partitionId.namespaceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "partition-id.project-id" => Some(("partitionId.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query.end-cursor" => Some(("query.endCursor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "query.filter.composite-filter.op" => Some(("query.filter.compositeFilter.op", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query.filter.property-filter.op" => Some(("query.filter.propertyFilter.op", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "query.filter.property-filter.property.name" => Some(("query.filter.propertyFilter.property.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "query.filter.property-filter.value.entity-value.key.partition-id.project-id" => Some(("query.filter.propertyFilter.value.entityValue.key.partitionId.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "query.filter.property-filter.value.entity-value.key.partition-id.namespace-id" => Some(("query.filter.propertyFilter.value.entityValue.key.partitionId.namespaceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "query.filter.property-filter.value.timestamp-value" => Some(("query.filter.propertyFilter.value.timestampValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "query.filter.property-filter.value.null-value" => Some(("query.filter.propertyFilter.value.nullValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "query.filter.property-filter.value.double-value" => Some(("query.filter.propertyFilter.value.doubleValue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "query.filter.property-filter.value.meaning" => Some(("query.filter.propertyFilter.value.meaning", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "query.filter.property-filter.value.exclude-from-indexes" => Some(("query.filter.propertyFilter.value.excludeFromIndexes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "query.filter.property-filter.value.key-value.partition-id.project-id" => Some(("query.filter.propertyFilter.value.keyValue.partitionId.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "query.filter.property-filter.value.key-value.partition-id.namespace-id" => Some(("query.filter.propertyFilter.value.keyValue.partitionId.namespaceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "query.filter.property-filter.value.string-value" => Some(("query.filter.propertyFilter.value.stringValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "query.filter.property-filter.value.blob-value" => Some(("query.filter.propertyFilter.value.blobValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "query.filter.property-filter.value.boolean-value" => Some(("query.filter.propertyFilter.value.booleanValue", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "query.filter.property-filter.value.integer-value" => Some(("query.filter.propertyFilter.value.integerValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query.filter.property-filter.value.double-value" => Some(("query.filter.propertyFilter.value.doubleValue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "query.filter.property-filter.value.entity-value.key.partition-id.namespace-id" => Some(("query.filter.propertyFilter.value.entityValue.key.partitionId.namespaceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query.filter.property-filter.value.entity-value.key.partition-id.project-id" => Some(("query.filter.propertyFilter.value.entityValue.key.partitionId.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query.filter.property-filter.value.exclude-from-indexes" => Some(("query.filter.propertyFilter.value.excludeFromIndexes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "query.filter.property-filter.value.geo-point-value.latitude" => Some(("query.filter.propertyFilter.value.geoPointValue.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "query.filter.property-filter.value.geo-point-value.longitude" => Some(("query.filter.propertyFilter.value.geoPointValue.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "query.filter.property-filter.op" => Some(("query.filter.propertyFilter.op", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "query.start-cursor" => Some(("query.startCursor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "query.end-cursor" => Some(("query.endCursor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query.filter.property-filter.value.integer-value" => Some(("query.filter.propertyFilter.value.integerValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query.filter.property-filter.value.key-value.partition-id.namespace-id" => Some(("query.filter.propertyFilter.value.keyValue.partitionId.namespaceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query.filter.property-filter.value.key-value.partition-id.project-id" => Some(("query.filter.propertyFilter.value.keyValue.partitionId.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query.filter.property-filter.value.meaning" => Some(("query.filter.propertyFilter.value.meaning", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "query.filter.property-filter.value.null-value" => Some(("query.filter.propertyFilter.value.nullValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query.filter.property-filter.value.string-value" => Some(("query.filter.propertyFilter.value.stringValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query.filter.property-filter.value.timestamp-value" => Some(("query.filter.propertyFilter.value.timestampValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "query.limit" => Some(("query.limit", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "query.offset" => Some(("query.offset", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "partition-id.project-id" => Some(("partitionId.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "partition-id.namespace-id" => Some(("partitionId.namespaceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gql-query.query-string" => Some(("gqlQuery.queryString", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gql-query.allow-literals" => Some(("gqlQuery.allowLiterals", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "read-options.transaction" => Some(("readOptions.transaction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query.start-cursor" => Some(("query.startCursor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "read-options.read-consistency" => Some(("readOptions.readConsistency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "read-options.transaction" => Some(("readOptions.transaction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["allow-literals", "blob-value", "boolean-value", "composite-filter", "double-value", "end-cursor", "entity-value", "exclude-from-indexes", "filter", "geo-point-value", "gql-query", "integer-value", "key", "key-value", "latitude", "limit", "longitude", "meaning", "name", "namespace-id", "null-value", "offset", "op", "partition-id", "project-id", "property", "property-filter", "query", "query-string", "read-consistency", "read-options", "start-cursor", "string-value", "timestamp-value", "transaction", "value"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -722,12 +724,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "datastore1-beta3-secret.json",
+            match client::application_secret_from_directory(&config_dir, "datastore1-beta3-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

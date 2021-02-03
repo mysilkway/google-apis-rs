@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_testing1 as api;
+extern crate google_testing1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_testing1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Testing<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::Testing<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -207,61 +209,61 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "client-info.name" => Some(("clientInfo.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "environment-matrix.android-matrix.android-model-ids" => Some(("environmentMatrix.androidMatrix.androidModelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "environment-matrix.android-matrix.android-version-ids" => Some(("environmentMatrix.androidMatrix.androidVersionIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "environment-matrix.android-matrix.locales" => Some(("environmentMatrix.androidMatrix.locales", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "environment-matrix.android-matrix.orientations" => Some(("environmentMatrix.androidMatrix.orientations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "flaky-test-attempts" => Some(("flakyTestAttempts", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "invalid-matrix-details" => Some(("invalidMatrixDetails", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "outcome-summary" => Some(("outcomeSummary", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "project-id" => Some(("projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "result-storage.tool-results-history.project-id" => Some(("resultStorage.toolResultsHistory.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "result-storage.tool-results-history.history-id" => Some(("resultStorage.toolResultsHistory.historyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "result-storage.google-cloud-storage.gcs-path" => Some(("resultStorage.googleCloudStorage.gcsPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "result-storage.tool-results-execution.project-id" => Some(("resultStorage.toolResultsExecution.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "result-storage.results-url" => Some(("resultStorage.resultsUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "result-storage.tool-results-execution.execution-id" => Some(("resultStorage.toolResultsExecution.executionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "result-storage.tool-results-execution.history-id" => Some(("resultStorage.toolResultsExecution.historyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "result-storage.results-url" => Some(("resultStorage.resultsUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "flaky-test-attempts" => Some(("flakyTestAttempts", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "test-specification.ios-test-setup.network-profile" => Some(("testSpecification.iosTestSetup.networkProfile", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-specification.ios-xc-test.app-bundle-id" => Some(("testSpecification.iosXcTest.appBundleId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-specification.ios-xc-test.test-special-entitlements" => Some(("testSpecification.iosXcTest.testSpecialEntitlements", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "test-specification.ios-xc-test.xctestrun.gcs-path" => Some(("testSpecification.iosXcTest.xctestrun.gcsPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-specification.ios-xc-test.tests-zip.gcs-path" => Some(("testSpecification.iosXcTest.testsZip.gcsPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-specification.ios-xc-test.xcode-version" => Some(("testSpecification.iosXcTest.xcodeVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-specification.ios-test-loop.scenarios" => Some(("testSpecification.iosTestLoop.scenarios", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
-                    "test-specification.ios-test-loop.app-bundle-id" => Some(("testSpecification.iosTestLoop.appBundleId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-specification.ios-test-loop.app-ipa.gcs-path" => Some(("testSpecification.iosTestLoop.appIpa.gcsPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-specification.test-timeout" => Some(("testSpecification.testTimeout", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-specification.test-setup.dont-autogrant-permissions" => Some(("testSpecification.testSetup.dontAutograntPermissions", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "test-specification.test-setup.directories-to-pull" => Some(("testSpecification.testSetup.directoriesToPull", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "test-specification.test-setup.systrace.duration-seconds" => Some(("testSpecification.testSetup.systrace.durationSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "test-specification.test-setup.network-profile" => Some(("testSpecification.testSetup.networkProfile", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-specification.disable-video-recording" => Some(("testSpecification.disableVideoRecording", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "test-specification.disable-performance-metrics" => Some(("testSpecification.disablePerformanceMetrics", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "result-storage.tool-results-execution.project-id" => Some(("resultStorage.toolResultsExecution.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "result-storage.tool-results-history.history-id" => Some(("resultStorage.toolResultsHistory.historyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "result-storage.tool-results-history.project-id" => Some(("resultStorage.toolResultsHistory.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-matrix-id" => Some(("testMatrixId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-specification.android-instrumentation-test.app-apk.gcs-path" => Some(("testSpecification.androidInstrumentationTest.appApk.gcsPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-specification.android-instrumentation-test.app-bundle.bundle-location.gcs-path" => Some(("testSpecification.androidInstrumentationTest.appBundle.bundleLocation.gcsPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-specification.android-instrumentation-test.app-package-id" => Some(("testSpecification.androidInstrumentationTest.appPackageId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-specification.android-instrumentation-test.orchestrator-option" => Some(("testSpecification.androidInstrumentationTest.orchestratorOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-specification.android-instrumentation-test.sharding-option.uniform-sharding.num-shards" => Some(("testSpecification.androidInstrumentationTest.shardingOption.uniformSharding.numShards", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "test-specification.android-instrumentation-test.test-apk.gcs-path" => Some(("testSpecification.androidInstrumentationTest.testApk.gcsPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-specification.android-instrumentation-test.test-package-id" => Some(("testSpecification.androidInstrumentationTest.testPackageId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-specification.android-instrumentation-test.test-runner-class" => Some(("testSpecification.androidInstrumentationTest.testRunnerClass", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-specification.android-instrumentation-test.test-targets" => Some(("testSpecification.androidInstrumentationTest.testTargets", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "test-specification.android-robo-test.app-apk.gcs-path" => Some(("testSpecification.androidRoboTest.appApk.gcsPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-specification.android-robo-test.app-bundle.bundle-location.gcs-path" => Some(("testSpecification.androidRoboTest.appBundle.bundleLocation.gcsPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-specification.android-robo-test.app-initial-activity" => Some(("testSpecification.androidRoboTest.appInitialActivity", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-specification.android-robo-test.app-package-id" => Some(("testSpecification.androidRoboTest.appPackageId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-specification.android-robo-test.max-depth" => Some(("testSpecification.androidRoboTest.maxDepth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "test-specification.android-robo-test.max-steps" => Some(("testSpecification.androidRoboTest.maxSteps", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "test-specification.android-robo-test.robo-script.gcs-path" => Some(("testSpecification.androidRoboTest.roboScript.gcsPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-specification.android-test-loop.app-apk.gcs-path" => Some(("testSpecification.androidTestLoop.appApk.gcsPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "test-specification.android-test-loop.app-bundle.bundle-location.gcs-path" => Some(("testSpecification.androidTestLoop.appBundle.bundleLocation.gcsPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "test-specification.android-test-loop.app-package-id" => Some(("testSpecification.androidTestLoop.appPackageId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "test-specification.android-test-loop.scenario-labels" => Some(("testSpecification.androidTestLoop.scenarioLabels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "test-specification.android-test-loop.scenarios" => Some(("testSpecification.androidTestLoop.scenarios", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
-                    "test-specification.android-test-loop.app-apk.gcs-path" => Some(("testSpecification.androidTestLoop.appApk.gcsPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-specification.android-robo-test.app-bundle.bundle-location.gcs-path" => Some(("testSpecification.androidRoboTest.appBundle.bundleLocation.gcsPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-specification.android-robo-test.robo-script.gcs-path" => Some(("testSpecification.androidRoboTest.roboScript.gcsPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-specification.android-robo-test.app-apk.gcs-path" => Some(("testSpecification.androidRoboTest.appApk.gcsPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-specification.android-robo-test.max-depth" => Some(("testSpecification.androidRoboTest.maxDepth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "test-specification.android-robo-test.max-steps" => Some(("testSpecification.androidRoboTest.maxSteps", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "test-specification.android-robo-test.app-package-id" => Some(("testSpecification.androidRoboTest.appPackageId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-specification.android-robo-test.app-initial-activity" => Some(("testSpecification.androidRoboTest.appInitialActivity", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-specification.android-instrumentation-test.app-bundle.bundle-location.gcs-path" => Some(("testSpecification.androidInstrumentationTest.appBundle.bundleLocation.gcsPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-specification.android-instrumentation-test.test-apk.gcs-path" => Some(("testSpecification.androidInstrumentationTest.testApk.gcsPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-specification.android-instrumentation-test.test-runner-class" => Some(("testSpecification.androidInstrumentationTest.testRunnerClass", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-specification.android-instrumentation-test.test-package-id" => Some(("testSpecification.androidInstrumentationTest.testPackageId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-specification.android-instrumentation-test.app-apk.gcs-path" => Some(("testSpecification.androidInstrumentationTest.appApk.gcsPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-specification.android-instrumentation-test.app-package-id" => Some(("testSpecification.androidInstrumentationTest.appPackageId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-specification.android-instrumentation-test.orchestrator-option" => Some(("testSpecification.androidInstrumentationTest.orchestratorOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-specification.android-instrumentation-test.sharding-option.uniform-sharding.num-shards" => Some(("testSpecification.androidInstrumentationTest.shardingOption.uniformSharding.numShards", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "test-specification.android-instrumentation-test.test-targets" => Some(("testSpecification.androidInstrumentationTest.testTargets", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-matrix-id" => Some(("testMatrixId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-specification.disable-performance-metrics" => Some(("testSpecification.disablePerformanceMetrics", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "test-specification.disable-video-recording" => Some(("testSpecification.disableVideoRecording", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "test-specification.ios-test-loop.app-bundle-id" => Some(("testSpecification.iosTestLoop.appBundleId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-specification.ios-test-loop.app-ipa.gcs-path" => Some(("testSpecification.iosTestLoop.appIpa.gcsPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-specification.ios-test-loop.scenarios" => Some(("testSpecification.iosTestLoop.scenarios", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
+                    "test-specification.ios-test-setup.network-profile" => Some(("testSpecification.iosTestSetup.networkProfile", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-specification.ios-xc-test.app-bundle-id" => Some(("testSpecification.iosXcTest.appBundleId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-specification.ios-xc-test.test-special-entitlements" => Some(("testSpecification.iosXcTest.testSpecialEntitlements", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "test-specification.ios-xc-test.tests-zip.gcs-path" => Some(("testSpecification.iosXcTest.testsZip.gcsPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-specification.ios-xc-test.xcode-version" => Some(("testSpecification.iosXcTest.xcodeVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-specification.ios-xc-test.xctestrun.gcs-path" => Some(("testSpecification.iosXcTest.xctestrun.gcsPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-specification.test-setup.directories-to-pull" => Some(("testSpecification.testSetup.directoriesToPull", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "test-specification.test-setup.dont-autogrant-permissions" => Some(("testSpecification.testSetup.dontAutograntPermissions", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "test-specification.test-setup.network-profile" => Some(("testSpecification.testSetup.networkProfile", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-specification.test-setup.systrace.duration-seconds" => Some(("testSpecification.testSetup.systrace.durationSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "test-specification.test-timeout" => Some(("testSpecification.testTimeout", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "timestamp" => Some(("timestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "invalid-matrix-details" => Some(("invalidMatrixDetails", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "environment-matrix.android-matrix.locales" => Some(("environmentMatrix.androidMatrix.locales", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "environment-matrix.android-matrix.android-model-ids" => Some(("environmentMatrix.androidMatrix.androidModelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "environment-matrix.android-matrix.android-version-ids" => Some(("environmentMatrix.androidMatrix.androidVersionIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "environment-matrix.android-matrix.orientations" => Some(("environmentMatrix.androidMatrix.orientations", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "outcome-summary" => Some(("outcomeSummary", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["android-instrumentation-test", "android-matrix", "android-model-ids", "android-robo-test", "android-test-loop", "android-version-ids", "app-apk", "app-bundle", "app-bundle-id", "app-initial-activity", "app-ipa", "app-package-id", "bundle-location", "client-info", "directories-to-pull", "disable-performance-metrics", "disable-video-recording", "dont-autogrant-permissions", "duration-seconds", "environment-matrix", "execution-id", "flaky-test-attempts", "gcs-path", "google-cloud-storage", "history-id", "invalid-matrix-details", "ios-test-loop", "ios-test-setup", "ios-xc-test", "locales", "max-depth", "max-steps", "name", "network-profile", "num-shards", "orchestrator-option", "orientations", "outcome-summary", "project-id", "result-storage", "results-url", "robo-script", "scenario-labels", "scenarios", "sharding-option", "state", "systrace", "test-apk", "test-matrix-id", "test-package-id", "test-runner-class", "test-setup", "test-special-entitlements", "test-specification", "test-targets", "test-timeout", "tests-zip", "timestamp", "tool-results-execution", "tool-results-history", "uniform-sharding", "xcode-version", "xctestrun"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -498,12 +500,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "testing1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "testing1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

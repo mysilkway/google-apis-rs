@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_cloudtasks2 as api;
+extern crate google_cloudtasks2;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_cloudtasks2::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::CloudTasks<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::CloudTasks<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -126,7 +128,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -183,22 +185,22 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "stackdriver-logging-config.sampling-ratio" => Some(("stackdriverLoggingConfig.samplingRatio", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "rate-limits.max-concurrent-dispatches" => Some(("rateLimits.maxConcurrentDispatches", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "rate-limits.max-burst-size" => Some(("rateLimits.maxBurstSize", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "rate-limits.max-dispatches-per-second" => Some(("rateLimits.maxDispatchesPerSecond", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "app-engine-routing-override.instance" => Some(("appEngineRoutingOverride.instance", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "app-engine-routing-override.host" => Some(("appEngineRoutingOverride.host", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "app-engine-routing-override.version" => Some(("appEngineRoutingOverride.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-engine-routing-override.instance" => Some(("appEngineRoutingOverride.instance", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "app-engine-routing-override.service" => Some(("appEngineRoutingOverride.service", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-engine-routing-override.version" => Some(("appEngineRoutingOverride.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "purge-time" => Some(("purgeTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "retry-config.max-retry-duration" => Some(("retryConfig.maxRetryDuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "retry-config.max-doublings" => Some(("retryConfig.maxDoublings", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "rate-limits.max-burst-size" => Some(("rateLimits.maxBurstSize", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "rate-limits.max-concurrent-dispatches" => Some(("rateLimits.maxConcurrentDispatches", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "rate-limits.max-dispatches-per-second" => Some(("rateLimits.maxDispatchesPerSecond", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "retry-config.max-attempts" => Some(("retryConfig.maxAttempts", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "retry-config.max-backoff" => Some(("retryConfig.maxBackoff", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "retry-config.max-doublings" => Some(("retryConfig.maxDoublings", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "retry-config.max-retry-duration" => Some(("retryConfig.maxRetryDuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "retry-config.min-backoff" => Some(("retryConfig.minBackoff", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "stackdriver-logging-config.sampling-ratio" => Some(("stackdriverLoggingConfig.samplingRatio", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["app-engine-routing-override", "host", "instance", "max-attempts", "max-backoff", "max-burst-size", "max-concurrent-dispatches", "max-dispatches-per-second", "max-doublings", "max-retry-duration", "min-backoff", "name", "purge-time", "rate-limits", "retry-config", "sampling-ratio", "service", "stackdriver-logging-config", "state", "version"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -477,7 +479,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -534,22 +536,22 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "stackdriver-logging-config.sampling-ratio" => Some(("stackdriverLoggingConfig.samplingRatio", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "rate-limits.max-concurrent-dispatches" => Some(("rateLimits.maxConcurrentDispatches", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "rate-limits.max-burst-size" => Some(("rateLimits.maxBurstSize", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "rate-limits.max-dispatches-per-second" => Some(("rateLimits.maxDispatchesPerSecond", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "app-engine-routing-override.instance" => Some(("appEngineRoutingOverride.instance", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "app-engine-routing-override.host" => Some(("appEngineRoutingOverride.host", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "app-engine-routing-override.version" => Some(("appEngineRoutingOverride.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-engine-routing-override.instance" => Some(("appEngineRoutingOverride.instance", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "app-engine-routing-override.service" => Some(("appEngineRoutingOverride.service", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-engine-routing-override.version" => Some(("appEngineRoutingOverride.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "purge-time" => Some(("purgeTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "retry-config.max-retry-duration" => Some(("retryConfig.maxRetryDuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "retry-config.max-doublings" => Some(("retryConfig.maxDoublings", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "rate-limits.max-burst-size" => Some(("rateLimits.maxBurstSize", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "rate-limits.max-concurrent-dispatches" => Some(("rateLimits.maxConcurrentDispatches", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "rate-limits.max-dispatches-per-second" => Some(("rateLimits.maxDispatchesPerSecond", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "retry-config.max-attempts" => Some(("retryConfig.maxAttempts", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "retry-config.max-backoff" => Some(("retryConfig.maxBackoff", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "retry-config.max-doublings" => Some(("retryConfig.maxDoublings", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "retry-config.max-retry-duration" => Some(("retryConfig.maxRetryDuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "retry-config.min-backoff" => Some(("retryConfig.minBackoff", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "stackdriver-logging-config.sampling-ratio" => Some(("stackdriverLoggingConfig.samplingRatio", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["app-engine-routing-override", "host", "instance", "max-attempts", "max-backoff", "max-burst-size", "max-concurrent-dispatches", "max-dispatches-per-second", "max-doublings", "max-retry-duration", "min-backoff", "name", "purge-time", "rate-limits", "retry-config", "sampling-ratio", "service", "stackdriver-logging-config", "state", "version"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -977,39 +979,39 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "response-view" => Some(("responseView", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "task.http-request.body" => Some(("task.httpRequest.body", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "task.http-request.http-method" => Some(("task.httpRequest.httpMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "task.http-request.url" => Some(("task.httpRequest.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "task.http-request.oidc-token.audience" => Some(("task.httpRequest.oidcToken.audience", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "task.http-request.oidc-token.service-account-email" => Some(("task.httpRequest.oidcToken.serviceAccountEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "task.http-request.oauth-token.scope" => Some(("task.httpRequest.oauthToken.scope", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "task.http-request.oauth-token.service-account-email" => Some(("task.httpRequest.oauthToken.serviceAccountEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "task.http-request.headers" => Some(("task.httpRequest.headers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "task.app-engine-http-request.app-engine-routing.host" => Some(("task.appEngineHttpRequest.appEngineRouting.host", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "task.app-engine-http-request.app-engine-routing.instance" => Some(("task.appEngineHttpRequest.appEngineRouting.instance", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "task.app-engine-http-request.app-engine-routing.service" => Some(("task.appEngineHttpRequest.appEngineRouting.service", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "task.app-engine-http-request.app-engine-routing.version" => Some(("task.appEngineHttpRequest.appEngineRouting.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "task.app-engine-http-request.body" => Some(("task.appEngineHttpRequest.body", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "task.app-engine-http-request.headers" => Some(("task.appEngineHttpRequest.headers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "task.app-engine-http-request.app-engine-routing.instance" => Some(("task.appEngineHttpRequest.appEngineRouting.instance", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "task.app-engine-http-request.app-engine-routing.host" => Some(("task.appEngineHttpRequest.appEngineRouting.host", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "task.app-engine-http-request.app-engine-routing.version" => Some(("task.appEngineHttpRequest.appEngineRouting.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "task.app-engine-http-request.app-engine-routing.service" => Some(("task.appEngineHttpRequest.appEngineRouting.service", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "task.app-engine-http-request.relative-uri" => Some(("task.appEngineHttpRequest.relativeUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "task.app-engine-http-request.http-method" => Some(("task.appEngineHttpRequest.httpMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "task.first-attempt.schedule-time" => Some(("task.firstAttempt.scheduleTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "task.first-attempt.dispatch-time" => Some(("task.firstAttempt.dispatchTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "task.first-attempt.response-time" => Some(("task.firstAttempt.responseTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "task.first-attempt.response-status.message" => Some(("task.firstAttempt.responseStatus.message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "task.first-attempt.response-status.code" => Some(("task.firstAttempt.responseStatus.code", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "task.last-attempt.schedule-time" => Some(("task.lastAttempt.scheduleTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "task.last-attempt.dispatch-time" => Some(("task.lastAttempt.dispatchTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "task.last-attempt.response-time" => Some(("task.lastAttempt.responseTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "task.last-attempt.response-status.message" => Some(("task.lastAttempt.responseStatus.message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "task.last-attempt.response-status.code" => Some(("task.lastAttempt.responseStatus.code", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "task.view" => Some(("task.view", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "task.schedule-time" => Some(("task.scheduleTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "task.dispatch-deadline" => Some(("task.dispatchDeadline", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "task.response-count" => Some(("task.responseCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "task.app-engine-http-request.relative-uri" => Some(("task.appEngineHttpRequest.relativeUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "task.create-time" => Some(("task.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "task.dispatch-count" => Some(("task.dispatchCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "task.dispatch-deadline" => Some(("task.dispatchDeadline", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "task.first-attempt.dispatch-time" => Some(("task.firstAttempt.dispatchTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "task.first-attempt.response-status.code" => Some(("task.firstAttempt.responseStatus.code", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "task.first-attempt.response-status.message" => Some(("task.firstAttempt.responseStatus.message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "task.first-attempt.response-time" => Some(("task.firstAttempt.responseTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "task.first-attempt.schedule-time" => Some(("task.firstAttempt.scheduleTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "task.http-request.body" => Some(("task.httpRequest.body", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "task.http-request.headers" => Some(("task.httpRequest.headers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "task.http-request.http-method" => Some(("task.httpRequest.httpMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "task.http-request.oauth-token.scope" => Some(("task.httpRequest.oauthToken.scope", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "task.http-request.oauth-token.service-account-email" => Some(("task.httpRequest.oauthToken.serviceAccountEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "task.http-request.oidc-token.audience" => Some(("task.httpRequest.oidcToken.audience", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "task.http-request.oidc-token.service-account-email" => Some(("task.httpRequest.oidcToken.serviceAccountEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "task.http-request.url" => Some(("task.httpRequest.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "task.last-attempt.dispatch-time" => Some(("task.lastAttempt.dispatchTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "task.last-attempt.response-status.code" => Some(("task.lastAttempt.responseStatus.code", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "task.last-attempt.response-status.message" => Some(("task.lastAttempt.responseStatus.message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "task.last-attempt.response-time" => Some(("task.lastAttempt.responseTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "task.last-attempt.schedule-time" => Some(("task.lastAttempt.scheduleTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "task.name" => Some(("task.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "task.response-count" => Some(("task.responseCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "task.schedule-time" => Some(("task.scheduleTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "task.view" => Some(("task.view", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["app-engine-http-request", "app-engine-routing", "audience", "body", "code", "create-time", "dispatch-count", "dispatch-deadline", "dispatch-time", "first-attempt", "headers", "host", "http-method", "http-request", "instance", "last-attempt", "message", "name", "oauth-token", "oidc-token", "relative-uri", "response-count", "response-status", "response-time", "response-view", "schedule-time", "scope", "service", "service-account-email", "task", "url", "version", "view"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1207,7 +1209,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "response-view", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "page-size", "response-view"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1497,12 +1499,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "cloudtasks2-secret.json",
+            match client::application_secret_from_directory(&config_dir, "cloudtasks2-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

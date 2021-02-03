@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_safebrowsing4 as api;
+extern crate google_safebrowsing4;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_safebrowsing4::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Safebrowsing<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::Safebrowsing<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -71,7 +73,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["client-id", "client-version"].iter().map(|v|*v));
+                                                                           v.extend(["client-version", "client-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -127,7 +129,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["client-id", "client-version"].iter().map(|v|*v));
+                                                                           v.extend(["client-version", "client-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -181,14 +183,14 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "client.client-version" => Some(("client.clientVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client.client-id" => Some(("client.clientId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "api-client.client-version" => Some(("apiClient.clientVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "api-client.client-id" => Some(("apiClient.clientId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "threat-info.threat-types" => Some(("threatInfo.threatTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "api-client.client-version" => Some(("apiClient.clientVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client.client-id" => Some(("client.clientId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client.client-version" => Some(("client.clientVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-states" => Some(("clientStates", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "threat-info.platform-types" => Some(("threatInfo.platformTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "threat-info.threat-entry-types" => Some(("threatInfo.threatEntryTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "client-states" => Some(("clientStates", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "threat-info.threat-types" => Some(("threatInfo.threatTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["api-client", "client", "client-id", "client-states", "client-version", "platform-types", "threat-entry-types", "threat-info", "threat-types"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -270,15 +272,15 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "entry.url" => Some(("entry.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "entry.hash" => Some(("entry.hash", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "entry.digest" => Some(("entry.digest", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "threat-type" => Some(("threatType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-info.client-version" => Some(("clientInfo.clientVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "client-info.client-id" => Some(("clientInfo.clientId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-info.client-version" => Some(("clientInfo.clientVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "entry.digest" => Some(("entry.digest", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "entry.hash" => Some(("entry.hash", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "entry.url" => Some(("entry.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "platform-type" => Some(("platformType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "threat-type" => Some(("threatType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "user-info.region-code" => Some(("userInfo.regionCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "user-info.user-id" => Some(("userInfo.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "platform-type" => Some(("platformType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["client-id", "client-info", "client-version", "digest", "entry", "hash", "platform-type", "region-code", "threat-type", "url", "user-id", "user-info"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -360,8 +362,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "client.client-version" => Some(("client.clientVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "client.client-id" => Some(("client.clientId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client.client-version" => Some(("client.clientVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["client", "client-id", "client-version"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -492,11 +494,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "client.client-version" => Some(("client.clientVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "client.client-id" => Some(("client.clientId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "threat-info.threat-types" => Some(("threatInfo.threatTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "client.client-version" => Some(("client.clientVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "threat-info.platform-types" => Some(("threatInfo.platformTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "threat-info.threat-entry-types" => Some(("threatInfo.threatEntryTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "threat-info.threat-types" => Some(("threatInfo.threatTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["client", "client-id", "client-version", "platform-types", "threat-entry-types", "threat-info", "threat-types"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -656,12 +658,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "safebrowsing4-secret.json",
+            match client::application_secret_from_directory(&config_dir, "safebrowsing4-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

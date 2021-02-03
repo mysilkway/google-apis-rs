@@ -11,10 +11,10 @@ Everything else about the *Game Services* *v1* API can be found at the
 [official documentation site](https://cloud.google.com/solutions/gaming/).
 # Features
 
-Handle the following *Resources* with ease from the central [hub](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.GameServices.html) ... 
+Handle the following *Resources* with ease from the central [hub](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/GameServices) ... 
 
 * projects
- * [*locations game server deployments configs create*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationGameServerDeploymentConfigCreateCall.html), [*locations game server deployments configs delete*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationGameServerDeploymentConfigDeleteCall.html), [*locations game server deployments configs get*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationGameServerDeploymentConfigGetCall.html), [*locations game server deployments configs list*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationGameServerDeploymentConfigListCall.html), [*locations game server deployments create*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationGameServerDeploymentCreateCall.html), [*locations game server deployments delete*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationGameServerDeploymentDeleteCall.html), [*locations game server deployments fetch deployment state*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationGameServerDeploymentFetchDeploymentStateCall.html), [*locations game server deployments get*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationGameServerDeploymentGetCall.html), [*locations game server deployments get iam policy*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationGameServerDeploymentGetIamPolicyCall.html), [*locations game server deployments get rollout*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationGameServerDeploymentGetRolloutCall.html), [*locations game server deployments list*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationGameServerDeploymentListCall.html), [*locations game server deployments patch*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationGameServerDeploymentPatchCall.html), [*locations game server deployments preview rollout*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationGameServerDeploymentPreviewRolloutCall.html), [*locations game server deployments set iam policy*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationGameServerDeploymentSetIamPolicyCall.html), [*locations game server deployments test iam permissions*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationGameServerDeploymentTestIamPermissionCall.html), [*locations game server deployments update rollout*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationGameServerDeploymentUpdateRolloutCall.html), [*locations get*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationGetCall.html), [*locations list*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationListCall.html), [*locations operations cancel*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationOperationCancelCall.html), [*locations operations delete*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationOperationDeleteCall.html), [*locations operations get*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationOperationGetCall.html), [*locations operations list*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationOperationListCall.html), [*locations realms create*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationRealmCreateCall.html), [*locations realms delete*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationRealmDeleteCall.html), [*locations realms game server clusters create*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationRealmGameServerClusterCreateCall.html), [*locations realms game server clusters delete*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationRealmGameServerClusterDeleteCall.html), [*locations realms game server clusters get*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationRealmGameServerClusterGetCall.html), [*locations realms game server clusters list*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationRealmGameServerClusterListCall.html), [*locations realms game server clusters patch*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationRealmGameServerClusterPatchCall.html), [*locations realms game server clusters preview create*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationRealmGameServerClusterPreviewCreateCall.html), [*locations realms game server clusters preview delete*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationRealmGameServerClusterPreviewDeleteCall.html), [*locations realms game server clusters preview update*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationRealmGameServerClusterPreviewUpdateCall.html), [*locations realms get*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationRealmGetCall.html), [*locations realms list*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationRealmListCall.html), [*locations realms patch*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationRealmPatchCall.html) and [*locations realms preview update*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.ProjectLocationRealmPreviewUpdateCall.html)
+ * [*locations game server deployments configs create*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationGameServerDeploymentConfigCreateCall), [*locations game server deployments configs delete*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationGameServerDeploymentConfigDeleteCall), [*locations game server deployments configs get*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationGameServerDeploymentConfigGetCall), [*locations game server deployments configs list*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationGameServerDeploymentConfigListCall), [*locations game server deployments create*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationGameServerDeploymentCreateCall), [*locations game server deployments delete*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationGameServerDeploymentDeleteCall), [*locations game server deployments fetch deployment state*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationGameServerDeploymentFetchDeploymentStateCall), [*locations game server deployments get*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationGameServerDeploymentGetCall), [*locations game server deployments get iam policy*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationGameServerDeploymentGetIamPolicyCall), [*locations game server deployments get rollout*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationGameServerDeploymentGetRolloutCall), [*locations game server deployments list*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationGameServerDeploymentListCall), [*locations game server deployments patch*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationGameServerDeploymentPatchCall), [*locations game server deployments preview rollout*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationGameServerDeploymentPreviewRolloutCall), [*locations game server deployments set iam policy*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationGameServerDeploymentSetIamPolicyCall), [*locations game server deployments test iam permissions*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationGameServerDeploymentTestIamPermissionCall), [*locations game server deployments update rollout*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationGameServerDeploymentUpdateRolloutCall), [*locations get*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationGetCall), [*locations list*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationListCall), [*locations operations cancel*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationOperationCancelCall), [*locations operations delete*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationOperationDeleteCall), [*locations operations get*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationOperationGetCall), [*locations operations list*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationOperationListCall), [*locations realms create*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationRealmCreateCall), [*locations realms delete*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationRealmDeleteCall), [*locations realms game server clusters create*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationRealmGameServerClusterCreateCall), [*locations realms game server clusters delete*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationRealmGameServerClusterDeleteCall), [*locations realms game server clusters get*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationRealmGameServerClusterGetCall), [*locations realms game server clusters list*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationRealmGameServerClusterListCall), [*locations realms game server clusters patch*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationRealmGameServerClusterPatchCall), [*locations realms game server clusters preview create*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationRealmGameServerClusterPreviewCreateCall), [*locations realms game server clusters preview delete*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationRealmGameServerClusterPreviewDeleteCall), [*locations realms game server clusters preview update*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationRealmGameServerClusterPreviewUpdateCall), [*locations realms get*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationRealmGetCall), [*locations realms list*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationRealmListCall), [*locations realms patch*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationRealmPatchCall) and [*locations realms preview update*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/api::ProjectLocationRealmPreviewUpdateCall)
 
 
 
@@ -23,17 +23,17 @@ Handle the following *Resources* with ease from the central [hub](https://docs.r
 
 The API is structured into the following primary items:
 
-* **[Hub](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/struct.GameServices.html)**
+* **[Hub](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/GameServices)**
     * a central object to maintain state and allow accessing all *Activities*
-    * creates [*Method Builders*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/trait.MethodsBuilder.html) which in turn
-      allow access to individual [*Call Builders*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/trait.CallBuilder.html)
-* **[Resources](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/trait.Resource.html)**
+    * creates [*Method Builders*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/client::MethodsBuilder) which in turn
+      allow access to individual [*Call Builders*](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/client::CallBuilder)
+* **[Resources](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/client::Resource)**
     * primary types that you can apply *Activities* to
     * a collection of properties and *Parts*
-    * **[Parts](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/trait.Part.html)**
+    * **[Parts](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/client::Part)**
         * a collection of properties
         * never directly used in *Activities*
-* **[Activities](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/trait.CallBuilder.html)**
+* **[Activities](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/client::CallBuilder)**
     * operations to apply to *Resources*
 
 All *structures* are marked with applicable traits to further categorize them and ease browsing.
@@ -48,18 +48,18 @@ Or specifically ...
 
 ```ignore
 let r = hub.projects().locations_game_server_deployments_configs_create(...).doit()
-let r = hub.projects().locations_game_server_deployments_delete(...).doit()
-let r = hub.projects().locations_realms_game_server_clusters_create(...).doit()
-let r = hub.projects().locations_operations_get(...).doit()
-let r = hub.projects().locations_game_server_deployments_update_rollout(...).doit()
-let r = hub.projects().locations_realms_game_server_clusters_patch(...).doit()
-let r = hub.projects().locations_realms_game_server_clusters_delete(...).doit()
-let r = hub.projects().locations_realms_delete(...).doit()
-let r = hub.projects().locations_game_server_deployments_patch(...).doit()
-let r = hub.projects().locations_realms_patch(...).doit()
 let r = hub.projects().locations_game_server_deployments_configs_delete(...).doit()
-let r = hub.projects().locations_realms_create(...).doit()
 let r = hub.projects().locations_game_server_deployments_create(...).doit()
+let r = hub.projects().locations_game_server_deployments_delete(...).doit()
+let r = hub.projects().locations_game_server_deployments_patch(...).doit()
+let r = hub.projects().locations_game_server_deployments_update_rollout(...).doit()
+let r = hub.projects().locations_operations_get(...).doit()
+let r = hub.projects().locations_realms_game_server_clusters_create(...).doit()
+let r = hub.projects().locations_realms_game_server_clusters_delete(...).doit()
+let r = hub.projects().locations_realms_game_server_clusters_patch(...).doit()
+let r = hub.projects().locations_realms_create(...).doit()
+let r = hub.projects().locations_realms_delete(...).doit()
+let r = hub.projects().locations_realms_patch(...).doit()
 ```
 
 The `resource()` and `activity(...)` calls create [builders][builder-pattern]. The second one dealing with `Activities` 
@@ -93,7 +93,7 @@ extern crate hyper;
 extern crate hyper_rustls;
 extern crate yup_oauth2 as oauth2;
 extern crate google_gameservices1 as gameservices1;
-use gameservices1::GameServerConfig;
+use gameservices1::api::GameServerConfig;
 use gameservices1::{Result, Error};
 use std::default::Default;
 use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
@@ -120,7 +120,7 @@ let mut req = GameServerConfig::default();
 // execute the final call using `doit()`.
 // Values shown here are possibly random and not representative !
 let result = hub.projects().locations_game_server_deployments_configs_create(req, "parent")
-             .config_id("sit")
+             .config_id("magna")
              .doit();
 
 match result {
@@ -143,17 +143,17 @@ match result {
 ```
 ## Handling Errors
 
-All errors produced by the system are provided either as [Result](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/enum.Result.html) enumeration as return value of 
+All errors produced by the system are provided either as [Result](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/client::Result) enumeration as return value of
 the doit() methods, or handed as possibly intermediate results to either the 
-[Hub Delegate](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/trait.Delegate.html), or the [Authenticator Delegate](https://docs.rs/yup-oauth2/*/yup_oauth2/trait.AuthenticatorDelegate.html).
+[Hub Delegate](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/client::Delegate), or the [Authenticator Delegate](https://docs.rs/yup-oauth2/*/yup_oauth2/trait.AuthenticatorDelegate.html).
 
 When delegates handle errors or intermediate values, they may have a chance to instruct the system to retry. This 
 makes the system potentially resilient to all kinds of errors.
 
 ## Uploads and Downloads
-If a method supports downloads, the response body, which is part of the [Result](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/enum.Result.html), should be
+If a method supports downloads, the response body, which is part of the [Result](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/client::Result), should be
 read by you to obtain the media.
-If such a method also supports a [Response Result](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/trait.ResponseResult.html), it will return that by default.
+If such a method also supports a [Response Result](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/client::ResponseResult), it will return that by default.
 You can see it as meta-data for the actual media. To trigger a media download, you will have to set up the builder by making
 this call: `.param("alt", "media")`.
 
@@ -163,29 +163,29 @@ Methods supporting uploads can do so using up to 2 different protocols:
 
 ## Customization and Callbacks
 
-You may alter the way an `doit()` method is called by providing a [delegate](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/trait.Delegate.html) to the 
-[Method Builder](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/trait.CallBuilder.html) before making the final `doit()` call. 
+You may alter the way an `doit()` method is called by providing a [delegate](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/client::Delegate) to the 
+[Method Builder](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/client::CallBuilder) before making the final `doit()` call. 
 Respective methods will be called to provide progress information, as well as determine whether the system should 
 retry on failure.
 
-The [delegate trait](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/trait.Delegate.html) is default-implemented, allowing you to customize it with minimal effort.
+The [delegate trait](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/client::Delegate) is default-implemented, allowing you to customize it with minimal effort.
 
 ## Optional Parts in Server-Requests
 
-All structures provided by this library are made to be [encodable](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/trait.RequestValue.html) and 
-[decodable](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/trait.ResponseResult.html) via *json*. Optionals are used to indicate that partial requests are responses 
+All structures provided by this library are made to be [encodable](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/client::RequestValue) and 
+[decodable](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/client::ResponseResult) via *json*. Optionals are used to indicate that partial requests are responses 
 are valid.
-Most optionals are are considered [Parts](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/trait.Part.html) which are identifiable by name, which will be sent to 
+Most optionals are are considered [Parts](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/client::Part) which are identifiable by name, which will be sent to 
 the server to indicate either the set parts of the request or the desired parts in the response.
 
 ## Builder Arguments
 
-Using [method builders](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/trait.CallBuilder.html), you are able to prepare an action call by repeatedly calling it's methods.
+Using [method builders](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/client::CallBuilder), you are able to prepare an action call by repeatedly calling it's methods.
 These will always take a single argument, for which the following statements are true.
 
 * [PODs][wiki-pod] are handed by copy
 * strings are passed as `&str`
-* [request values](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/trait.RequestValue.html) are moved
+* [request values](https://docs.rs/google-gameservices1/1.0.14+20200630/google_gameservices1/client::RequestValue) are moved
 
 Arguments will always be copied or cloned into the builder, to make them independent of their original life times.
 

@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_photoslibrary1 as api;
+extern crate google_photoslibrary1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_photoslibrary1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::PhotosLibrary<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::PhotosLibrary<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -69,19 +71,19 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "album-position.relative-media-item-id" => Some(("albumPosition.relativeMediaItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "album-position.position" => Some(("albumPosition.position", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "album-position.relative-enrichment-item-id" => Some(("albumPosition.relativeEnrichmentItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "new-enrichment-item.location-enrichment.location.location-name" => Some(("newEnrichmentItem.locationEnrichment.location.locationName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "album-position.relative-media-item-id" => Some(("albumPosition.relativeMediaItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "new-enrichment-item.location-enrichment.location.latlng.latitude" => Some(("newEnrichmentItem.locationEnrichment.location.latlng.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "new-enrichment-item.location-enrichment.location.latlng.longitude" => Some(("newEnrichmentItem.locationEnrichment.location.latlng.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "new-enrichment-item.text-enrichment.text" => Some(("newEnrichmentItem.textEnrichment.text", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "new-enrichment-item.map-enrichment.origin.location-name" => Some(("newEnrichmentItem.mapEnrichment.origin.locationName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "new-enrichment-item.map-enrichment.origin.latlng.latitude" => Some(("newEnrichmentItem.mapEnrichment.origin.latlng.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "new-enrichment-item.map-enrichment.origin.latlng.longitude" => Some(("newEnrichmentItem.mapEnrichment.origin.latlng.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "new-enrichment-item.map-enrichment.destination.location-name" => Some(("newEnrichmentItem.mapEnrichment.destination.locationName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "new-enrichment-item.location-enrichment.location.location-name" => Some(("newEnrichmentItem.locationEnrichment.location.locationName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "new-enrichment-item.map-enrichment.destination.latlng.latitude" => Some(("newEnrichmentItem.mapEnrichment.destination.latlng.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "new-enrichment-item.map-enrichment.destination.latlng.longitude" => Some(("newEnrichmentItem.mapEnrichment.destination.latlng.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "new-enrichment-item.map-enrichment.destination.location-name" => Some(("newEnrichmentItem.mapEnrichment.destination.locationName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "new-enrichment-item.map-enrichment.origin.latlng.latitude" => Some(("newEnrichmentItem.mapEnrichment.origin.latlng.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "new-enrichment-item.map-enrichment.origin.latlng.longitude" => Some(("newEnrichmentItem.mapEnrichment.origin.latlng.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "new-enrichment-item.map-enrichment.origin.location-name" => Some(("newEnrichmentItem.mapEnrichment.origin.locationName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "new-enrichment-item.text-enrichment.text" => Some(("newEnrichmentItem.textEnrichment.text", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["album-position", "destination", "latitude", "latlng", "location", "location-enrichment", "location-name", "longitude", "map-enrichment", "new-enrichment-item", "origin", "position", "relative-enrichment-item-id", "relative-media-item-id", "text", "text-enrichment"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -336,20 +338,20 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "album.media-items-count" => Some(("album.mediaItemsCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "album.title" => Some(("album.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "album.is-writeable" => Some(("album.isWriteable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "album.share-info.share-token" => Some(("album.shareInfo.shareToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "album.share-info.is-owned" => Some(("album.shareInfo.isOwned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "album.share-info.shared-album-options.is-commentable" => Some(("album.shareInfo.sharedAlbumOptions.isCommentable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "album.share-info.shared-album-options.is-collaborative" => Some(("album.shareInfo.sharedAlbumOptions.isCollaborative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "album.share-info.is-joinable" => Some(("album.shareInfo.isJoinable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "album.share-info.is-joined" => Some(("album.shareInfo.isJoined", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "album.share-info.shareable-url" => Some(("album.shareInfo.shareableUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "album.cover-photo-base-url" => Some(("album.coverPhotoBaseUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "album.product-url" => Some(("album.productUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "album.cover-photo-media-item-id" => Some(("album.coverPhotoMediaItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "album.id" => Some(("album.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "album.is-writeable" => Some(("album.isWriteable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "album.media-items-count" => Some(("album.mediaItemsCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "album.product-url" => Some(("album.productUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "album.share-info.is-joinable" => Some(("album.shareInfo.isJoinable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "album.share-info.is-joined" => Some(("album.shareInfo.isJoined", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "album.share-info.is-owned" => Some(("album.shareInfo.isOwned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "album.share-info.share-token" => Some(("album.shareInfo.shareToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "album.share-info.shareable-url" => Some(("album.shareInfo.shareableUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "album.share-info.shared-album-options.is-collaborative" => Some(("album.shareInfo.sharedAlbumOptions.isCollaborative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "album.share-info.shared-album-options.is-commentable" => Some(("album.shareInfo.sharedAlbumOptions.isCommentable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "album.title" => Some(("album.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["album", "cover-photo-base-url", "cover-photo-media-item-id", "id", "is-collaborative", "is-commentable", "is-joinable", "is-joined", "is-owned", "is-writeable", "media-items-count", "product-url", "share-info", "share-token", "shareable-url", "shared-album-options", "title"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -491,7 +493,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "exclude-non-app-created-data", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "page-size", "exclude-non-app-created-data"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -548,20 +550,20 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "media-items-count" => Some(("mediaItemsCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "title" => Some(("title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-writeable" => Some(("isWriteable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "share-info.share-token" => Some(("shareInfo.shareToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "share-info.is-owned" => Some(("shareInfo.isOwned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "share-info.shared-album-options.is-commentable" => Some(("shareInfo.sharedAlbumOptions.isCommentable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "share-info.shared-album-options.is-collaborative" => Some(("shareInfo.sharedAlbumOptions.isCollaborative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "share-info.is-joinable" => Some(("shareInfo.isJoinable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "share-info.is-joined" => Some(("shareInfo.isJoined", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "share-info.shareable-url" => Some(("shareInfo.shareableUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "cover-photo-base-url" => Some(("coverPhotoBaseUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "product-url" => Some(("productUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "cover-photo-media-item-id" => Some(("coverPhotoMediaItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "is-writeable" => Some(("isWriteable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "media-items-count" => Some(("mediaItemsCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "product-url" => Some(("productUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "share-info.is-joinable" => Some(("shareInfo.isJoinable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "share-info.is-joined" => Some(("shareInfo.isJoined", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "share-info.is-owned" => Some(("shareInfo.isOwned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "share-info.share-token" => Some(("shareInfo.shareToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "share-info.shareable-url" => Some(("shareInfo.shareableUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "share-info.shared-album-options.is-collaborative" => Some(("shareInfo.sharedAlbumOptions.isCollaborative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "share-info.shared-album-options.is-commentable" => Some(("shareInfo.sharedAlbumOptions.isCommentable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "title" => Some(("title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["cover-photo-base-url", "cover-photo-media-item-id", "id", "is-collaborative", "is-commentable", "is-joinable", "is-joined", "is-owned", "is-writeable", "media-items-count", "product-url", "share-info", "share-token", "shareable-url", "shared-album-options", "title"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -647,8 +649,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "shared-album-options.is-commentable" => Some(("sharedAlbumOptions.isCommentable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "shared-album-options.is-collaborative" => Some(("sharedAlbumOptions.isCollaborative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "shared-album-options.is-commentable" => Some(("sharedAlbumOptions.isCommentable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["is-collaborative", "is-commentable", "shared-album-options"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -818,9 +820,9 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "album-id" => Some(("albumId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "album-position.relative-media-item-id" => Some(("albumPosition.relativeMediaItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "album-position.position" => Some(("albumPosition.position", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "album-position.relative-enrichment-item-id" => Some(("albumPosition.relativeEnrichmentItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "album-position.relative-media-item-id" => Some(("albumPosition.relativeMediaItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["album-id", "album-position", "position", "relative-enrichment-item-id", "relative-media-item-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1072,27 +1074,27 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "mime-type" => Some(("mimeType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "base-url" => Some(("baseUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "filename" => Some(("filename", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "product-url" => Some(("productUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "contributor-info.profile-picture-base-url" => Some(("contributorInfo.profilePictureBaseUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "contributor-info.display-name" => Some(("contributorInfo.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "media-metadata.photo.exposure-time" => Some(("mediaMetadata.photo.exposureTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "contributor-info.profile-picture-base-url" => Some(("contributorInfo.profilePictureBaseUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "filename" => Some(("filename", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "media-metadata.creation-time" => Some(("mediaMetadata.creationTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "media-metadata.height" => Some(("mediaMetadata.height", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "media-metadata.photo.aperture-f-number" => Some(("mediaMetadata.photo.apertureFNumber", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "media-metadata.photo.camera-make" => Some(("mediaMetadata.photo.cameraMake", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "media-metadata.photo.camera-model" => Some(("mediaMetadata.photo.cameraModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "media-metadata.photo.exposure-time" => Some(("mediaMetadata.photo.exposureTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "media-metadata.photo.focal-length" => Some(("mediaMetadata.photo.focalLength", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "media-metadata.photo.iso-equivalent" => Some(("mediaMetadata.photo.isoEquivalent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "media-metadata.photo.aperture-f-number" => Some(("mediaMetadata.photo.apertureFNumber", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "media-metadata.photo.camera-model" => Some(("mediaMetadata.photo.cameraModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "media-metadata.creation-time" => Some(("mediaMetadata.creationTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "media-metadata.video.status" => Some(("mediaMetadata.video.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "media-metadata.video.camera-make" => Some(("mediaMetadata.video.cameraMake", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "media-metadata.video.fps" => Some(("mediaMetadata.video.fps", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "media-metadata.video.camera-model" => Some(("mediaMetadata.video.cameraModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "media-metadata.video.fps" => Some(("mediaMetadata.video.fps", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "media-metadata.video.status" => Some(("mediaMetadata.video.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "media-metadata.width" => Some(("mediaMetadata.width", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "media-metadata.height" => Some(("mediaMetadata.height", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mime-type" => Some(("mimeType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "product-url" => Some(("productUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["aperture-f-number", "base-url", "camera-make", "camera-model", "contributor-info", "creation-time", "description", "display-name", "exposure-time", "filename", "focal-length", "fps", "height", "id", "iso-equivalent", "media-metadata", "mime-type", "photo", "product-url", "profile-picture-base-url", "status", "video", "width"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1179,13 +1181,13 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "album-id" => Some(("albumId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "page-size" => Some(("pageSize", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "filters.content-filter.excluded-content-categories" => Some(("filters.contentFilter.excludedContentCategories", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "filters.content-filter.included-content-categories" => Some(("filters.contentFilter.includedContentCategories", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "filters.include-archived-media" => Some(("filters.includeArchivedMedia", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "filters.exclude-non-app-created-data" => Some(("filters.excludeNonAppCreatedData", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "filters.media-type-filter.media-types" => Some(("filters.mediaTypeFilter.mediaTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "filters.feature-filter.included-features" => Some(("filters.featureFilter.includedFeatures", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "filters.include-archived-media" => Some(("filters.includeArchivedMedia", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "filters.media-type-filter.media-types" => Some(("filters.mediaTypeFilter.mediaTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "page-size" => Some(("pageSize", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "page-token" => Some(("pageToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["album-id", "content-filter", "exclude-non-app-created-data", "excluded-content-categories", "feature-filter", "filters", "include-archived-media", "included-content-categories", "included-features", "media-type-filter", "media-types", "page-size", "page-token"]);
@@ -1498,7 +1500,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "exclude-non-app-created-data", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "page-size", "exclude-non-app-created-data"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1637,12 +1639,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "photoslibrary1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "photoslibrary1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

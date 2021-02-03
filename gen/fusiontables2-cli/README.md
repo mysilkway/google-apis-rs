@@ -50,13 +50,13 @@ fusiontables2 [options]
                 copy <table-id> [-p <v>]... [-o <out>]
                 delete <table-id> [-p <v>]...
                 get <table-id> [-p <v>]... [-o <out>]
-                import-rows <table-id> (-u (simple|resumable) -f <file> [-m <mime>]) [-p <v>]... [-o <out>]
-                import-table <name> (-u (simple|resumable) -f <file> [-m <mime>]) [-p <v>]... [-o <out>]
+                import-rows <table-id> (-u (resumable|simple) -f <file> [-m <mime>]) [-p <v>]... [-o <out>]
+                import-table <name> (-u (resumable|simple) -f <file> [-m <mime>]) [-p <v>]... [-o <out>]
                 insert (-r <kv>)... [-p <v>]... [-o <out>]
                 list [-p <v>]... [-o <out>]
                 patch <table-id> (-r <kv>)... [-p <v>]... [-o <out>]
                 refetch-sheet <table-id> [-p <v>]... [-o <out>]
-                replace-rows <table-id> (-u (simple|resumable) -f <file> [-m <mime>]) [-p <v>]... [-o <out>]
+                replace-rows <table-id> (-u (resumable|simple) -f <file> [-m <mime>]) [-p <v>]... [-o <out>]
                 update <table-id> (-r <kv>)... [-p <v>]... [-o <out>]
         task
                 delete <table-id> <task-id> [-p <v>]...

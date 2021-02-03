@@ -53,14 +53,14 @@ drive3 [options]
                 update <drive-id> (-r <kv>)... [-p <v>]... [-o <out>]
         files
                 copy <file-id> (-r <kv>)... [-p <v>]... [-o <out>]
-                create (-r <kv>)... (-u (simple|resumable) -f <file> [-m <mime>]) [-p <v>]... [-o <out>]
+                create (-r <kv>)... (-u (resumable|simple) -f <file> [-m <mime>]) [-p <v>]... [-o <out>]
                 delete <file-id> [-p <v>]...
                 empty-trash [-p <v>]...
                 export <file-id> <mime-type> [-p <v>]... [-o <out>]
                 generate-ids [-p <v>]... [-o <out>]
                 get <file-id> [-p <v>]... [-o <out>]
                 list [-p <v>]... [-o <out>]
-                update <file-id> (-r <kv>)... (-u (simple|resumable) -f <file> [-m <mime>]) [-p <v>]... [-o <out>]
+                update <file-id> (-r <kv>)... (-u (resumable|simple) -f <file> [-m <mime>]) [-p <v>]... [-o <out>]
                 watch <file-id> (-r <kv>)... [-p <v>]... [-o <out>]
         permissions
                 create <file-id> (-r <kv>)... [-p <v>]... [-o <out>]

@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_dlp2_beta1 as api;
+extern crate google_dlp2_beta1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_dlp2_beta1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::DLP<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::DLP<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -333,14 +335,14 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "privacy-metric.numerical-stats-config.field.column-name" => Some(("privacyMetric.numericalStatsConfig.field.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "privacy-metric.l-diversity-config.sensitive-attribute.column-name" => Some(("privacyMetric.lDiversityConfig.sensitiveAttribute.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "privacy-metric.k-map-estimation-config.region-code" => Some(("privacyMetric.kMapEstimationConfig.regionCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "privacy-metric.categorical-stats-config.field.column-name" => Some(("privacyMetric.categoricalStatsConfig.field.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "privacy-metric.k-anonymity-config.entity-id.field.column-name" => Some(("privacyMetric.kAnonymityConfig.entityId.field.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "source-table.project-id" => Some(("sourceTable.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "source-table.table-id" => Some(("sourceTable.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "source-table.project-id" => Some(("sourceTable.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "source-table.dataset-id" => Some(("sourceTable.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "privacy-metric.k-map-estimation-config.region-code" => Some(("privacyMetric.kMapEstimationConfig.regionCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "privacy-metric.l-diversity-config.sensitive-attribute.column-name" => Some(("privacyMetric.lDiversityConfig.sensitiveAttribute.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "privacy-metric.numerical-stats-config.field.column-name" => Some(("privacyMetric.numericalStatsConfig.field.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "privacy-metric.k-anonymity-config.entity-id.field.column-name" => Some(("privacyMetric.kAnonymityConfig.entityId.field.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "privacy-metric.categorical-stats-config.field.column-name" => Some(("privacyMetric.categoricalStatsConfig.field.columnName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["categorical-stats-config", "column-name", "dataset-id", "entity-id", "field", "k-anonymity-config", "k-map-estimation-config", "l-diversity-config", "numerical-stats-config", "privacy-metric", "project-id", "region-code", "sensitive-attribute", "source-table", "table-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -509,22 +511,22 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "output-config.table.project-id" => Some(("outputConfig.table.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "output-config.table.table-id" => Some(("outputConfig.table.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "output-config.table.dataset-id" => Some(("outputConfig.table.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "storage-config.big-query-options.table-reference.table-id" => Some(("storageConfig.bigQueryOptions.tableReference.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "storage-config.big-query-options.table-reference.project-id" => Some(("storageConfig.bigQueryOptions.tableReference.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "storage-config.big-query-options.table-reference.dataset-id" => Some(("storageConfig.bigQueryOptions.tableReference.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "storage-config.cloud-storage-options.file-set.url" => Some(("storageConfig.cloudStorageOptions.fileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "storage-config.datastore-options.partition-id.namespace-id" => Some(("storageConfig.datastoreOptions.partitionId.namespaceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "storage-config.datastore-options.partition-id.project-id" => Some(("storageConfig.datastoreOptions.partitionId.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "storage-config.datastore-options.kind.name" => Some(("storageConfig.datastoreOptions.kind.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "output-config.storage-path.path" => Some(("outputConfig.storagePath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "output-config.table.table-id" => Some(("outputConfig.table.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "output-config.table.project-id" => Some(("outputConfig.table.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "output-config.table.dataset-id" => Some(("outputConfig.table.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation-config.max-item-findings" => Some(("operationConfig.maxItemFindings", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "inspect-config.max-findings" => Some(("inspectConfig.maxFindings", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "inspect-config.include-quote" => Some(("inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "inspect-config.exclude-types" => Some(("inspectConfig.excludeTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "inspect-config.min-likelihood" => Some(("inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "storage-config.big-query-options.table-reference.project-id" => Some(("storageConfig.bigQueryOptions.tableReference.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "storage-config.big-query-options.table-reference.table-id" => Some(("storageConfig.bigQueryOptions.tableReference.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "storage-config.big-query-options.table-reference.dataset-id" => Some(("storageConfig.bigQueryOptions.tableReference.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "storage-config.datastore-options.partition-id.project-id" => Some(("storageConfig.datastoreOptions.partitionId.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "storage-config.datastore-options.partition-id.namespace-id" => Some(("storageConfig.datastoreOptions.partitionId.namespaceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "storage-config.datastore-options.kind.name" => Some(("storageConfig.datastoreOptions.kind.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "storage-config.cloud-storage-options.file-set.url" => Some(("storageConfig.cloudStorageOptions.fileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation-config.max-item-findings" => Some(("operationConfig.maxItemFindings", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["big-query-options", "cloud-storage-options", "dataset-id", "datastore-options", "exclude-types", "file-set", "include-quote", "inspect-config", "kind", "max-findings", "max-item-findings", "min-likelihood", "name", "namespace-id", "operation-config", "output-config", "partition-id", "path", "project-id", "storage-config", "storage-path", "table", "table-id", "table-reference", "url"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -718,7 +720,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["filter", "page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -780,7 +782,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["filter", "page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1030,7 +1032,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["filter", "page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1288,12 +1290,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "dlp2-beta1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "dlp2-beta1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

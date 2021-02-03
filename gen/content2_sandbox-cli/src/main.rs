@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_content2_sandbox as api;
+extern crate google_content2_sandbox;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_content2_sandbox::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::ShoppingContent<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::ShoppingContent<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -69,24 +71,24 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "operation-id" => Some(("operationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "invoice-summary.product-total.tax.currency" => Some(("invoiceSummary.productTotal.tax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "invoice-summary.product-total.tax.value" => Some(("invoiceSummary.productTotal.tax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "invoice-summary.product-total.pretax.currency" => Some(("invoiceSummary.productTotal.pretax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "invoice-summary.product-total.pretax.value" => Some(("invoiceSummary.productTotal.pretax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "invoice-summary.google-balance.tax.currency" => Some(("invoiceSummary.googleBalance.tax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "invoice-summary.google-balance.tax.value" => Some(("invoiceSummary.googleBalance.tax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "invoice-summary.google-balance.pretax.currency" => Some(("invoiceSummary.googleBalance.pretax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "invoice-summary.google-balance.pretax.value" => Some(("invoiceSummary.googleBalance.pretax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "invoice-summary.merchant-balance.tax.currency" => Some(("invoiceSummary.merchantBalance.tax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "invoice-summary.merchant-balance.tax.value" => Some(("invoiceSummary.merchantBalance.tax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "invoice-summary.merchant-balance.pretax.currency" => Some(("invoiceSummary.merchantBalance.pretax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "invoice-summary.merchant-balance.pretax.value" => Some(("invoiceSummary.merchantBalance.pretax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "invoice-summary.customer-balance.tax.currency" => Some(("invoiceSummary.customerBalance.tax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "invoice-summary.customer-balance.tax.value" => Some(("invoiceSummary.customerBalance.tax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "invoice-id" => Some(("invoiceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "invoice-summary.customer-balance.pretax.currency" => Some(("invoiceSummary.customerBalance.pretax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "invoice-summary.customer-balance.pretax.value" => Some(("invoiceSummary.customerBalance.pretax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "invoice-id" => Some(("invoiceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "invoice-summary.customer-balance.tax.currency" => Some(("invoiceSummary.customerBalance.tax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "invoice-summary.customer-balance.tax.value" => Some(("invoiceSummary.customerBalance.tax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "invoice-summary.google-balance.pretax.currency" => Some(("invoiceSummary.googleBalance.pretax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "invoice-summary.google-balance.pretax.value" => Some(("invoiceSummary.googleBalance.pretax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "invoice-summary.google-balance.tax.currency" => Some(("invoiceSummary.googleBalance.tax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "invoice-summary.google-balance.tax.value" => Some(("invoiceSummary.googleBalance.tax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "invoice-summary.merchant-balance.pretax.currency" => Some(("invoiceSummary.merchantBalance.pretax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "invoice-summary.merchant-balance.pretax.value" => Some(("invoiceSummary.merchantBalance.pretax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "invoice-summary.merchant-balance.tax.currency" => Some(("invoiceSummary.merchantBalance.tax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "invoice-summary.merchant-balance.tax.value" => Some(("invoiceSummary.merchantBalance.tax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "invoice-summary.product-total.pretax.currency" => Some(("invoiceSummary.productTotal.pretax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "invoice-summary.product-total.pretax.value" => Some(("invoiceSummary.productTotal.pretax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "invoice-summary.product-total.tax.currency" => Some(("invoiceSummary.productTotal.tax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "invoice-summary.product-total.tax.value" => Some(("invoiceSummary.productTotal.tax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation-id" => Some(("operationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "shipment-group-id" => Some(("shipmentGroupId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["currency", "customer-balance", "google-balance", "invoice-id", "invoice-summary", "merchant-balance", "operation-id", "pretax", "product-total", "shipment-group-id", "tax", "value"]);
@@ -173,11 +175,11 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "invoice-id" => Some(("invoiceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "return-option.reason" => Some(("returnOption.reason", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "return-option.description" => Some(("returnOption.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "refund-only-option.reason" => Some(("refundOnlyOption.reason", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "refund-only-option.description" => Some(("refundOnlyOption.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation-id" => Some(("operationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "refund-only-option.description" => Some(("refundOnlyOption.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "refund-only-option.reason" => Some(("refundOnlyOption.reason", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "return-option.description" => Some(("returnOption.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "return-option.reason" => Some(("returnOption.reason", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["description", "invoice-id", "operation-id", "reason", "refund-only-option", "return-option"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -262,10 +264,10 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "auth-amount-tax.currency" => Some(("authAmountTax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "auth-amount-tax.value" => Some(("authAmountTax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "auth-amount-pretax.currency" => Some(("authAmountPretax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "auth-amount-pretax.value" => Some(("authAmountPretax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "auth-amount-tax.currency" => Some(("authAmountTax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "auth-amount-tax.value" => Some(("authAmountTax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["auth-amount-pretax", "auth-amount-tax", "currency", "value"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -523,8 +525,8 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "invoice-id" => Some(("invoiceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "refund-state" => Some(("refundState", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "invoice-ids" => Some(("invoiceIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "refund-state" => Some(("refundState", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["invoice-id", "invoice-ids", "refund-state"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -672,7 +674,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "created-start-date", "max-results", "created-end-date"].iter().map(|v|*v));
+                                                                           v.extend(["max-results", "order-by", "created-end-date", "created-start-date", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -866,9 +868,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "operation-id" => Some(("operationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "reason" => Some(("reason", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "reason-text" => Some(("reasonText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation-id" => Some(("operationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["operation-id", "reason", "reason-text"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -953,18 +955,18 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "amount-pretax.currency" => Some(("amountPretax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "amount-pretax.value" => Some(("amountPretax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "quantity" => Some(("quantity", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "amount.currency" => Some(("amount.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "amount.value" => Some(("amount.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "reason" => Some(("reason", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "reason-text" => Some(("reasonText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "line-item-id" => Some(("lineItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "amount-pretax.currency" => Some(("amountPretax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "amount-pretax.value" => Some(("amountPretax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "amount-tax.currency" => Some(("amountTax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "amount-tax.value" => Some(("amountTax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "line-item-id" => Some(("lineItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation-id" => Some(("operationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "product-id" => Some(("productId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "quantity" => Some(("quantity", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "reason" => Some(("reason", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "reason-text" => Some(("reasonText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["amount", "amount-pretax", "amount-tax", "currency", "line-item-id", "operation-id", "product-id", "quantity", "reason", "reason-text", "value"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1135,26 +1137,26 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "country" => Some(("country", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "template-name" => Some(("templateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-order.customer.email" => Some(("testOrder.customer.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "test-order.customer.explicit-marketing-preference" => Some(("testOrder.customer.explicitMarketingPreference", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "test-order.customer.full-name" => Some(("testOrder.customer.fullName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-order.customer.email" => Some(("testOrder.customer.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "test-order.customer.marketing-rights-info.explicit-marketing-preference" => Some(("testOrder.customer.marketingRightsInfo.explicitMarketingPreference", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "test-order.customer.marketing-rights-info.last-updated-timestamp" => Some(("testOrder.customer.marketingRightsInfo.lastUpdatedTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-order.enable-orderinvoices" => Some(("testOrder.enableOrderinvoices", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "test-order.kind" => Some(("testOrder.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "test-order.notification-mode" => Some(("testOrder.notificationMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-order.predefined-delivery-address" => Some(("testOrder.predefinedDeliveryAddress", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-order.shipping-cost.currency" => Some(("testOrder.shippingCost.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-order.shipping-cost.value" => Some(("testOrder.shippingCost.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-order.shipping-option" => Some(("testOrder.shippingOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-order.enable-orderinvoices" => Some(("testOrder.enableOrderinvoices", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "test-order.shipping-cost-tax.currency" => Some(("testOrder.shippingCostTax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "test-order.shipping-cost-tax.value" => Some(("testOrder.shippingCostTax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "test-order.payment-method.expiration-month" => Some(("testOrder.paymentMethod.expirationMonth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "test-order.payment-method.type" => Some(("testOrder.paymentMethod.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "test-order.payment-method.expiration-year" => Some(("testOrder.paymentMethod.expirationYear", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "test-order.payment-method.last-four-digits" => Some(("testOrder.paymentMethod.lastFourDigits", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "test-order.payment-method.predefined-billing-address" => Some(("testOrder.paymentMethod.predefinedBillingAddress", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "template-name" => Some(("templateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-order.payment-method.type" => Some(("testOrder.paymentMethod.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-order.predefined-delivery-address" => Some(("testOrder.predefinedDeliveryAddress", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-order.shipping-cost.currency" => Some(("testOrder.shippingCost.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-order.shipping-cost.value" => Some(("testOrder.shippingCost.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-order.shipping-cost-tax.currency" => Some(("testOrder.shippingCostTax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-order.shipping-cost-tax.value" => Some(("testOrder.shippingCostTax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "test-order.shipping-option" => Some(("testOrder.shippingOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["country", "currency", "customer", "email", "enable-orderinvoices", "expiration-month", "expiration-year", "explicit-marketing-preference", "full-name", "kind", "last-four-digits", "last-updated-timestamp", "marketing-rights-info", "notification-mode", "payment-method", "predefined-billing-address", "predefined-delivery-address", "shipping-cost", "shipping-cost-tax", "shipping-option", "template-name", "test-order", "type", "value"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1567,16 +1569,16 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "operation-id" => Some(("operationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "reason" => Some(("reason", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "amount-pretax.currency" => Some(("amountPretax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "amount-pretax.value" => Some(("amountPretax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "reason-text" => Some(("reasonText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "line-item-id" => Some(("lineItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "amount-tax.currency" => Some(("amountTax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "amount-tax.value" => Some(("amountTax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "line-item-id" => Some(("lineItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation-id" => Some(("operationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "product-id" => Some(("productId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "quantity" => Some(("quantity", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "reason" => Some(("reason", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "reason-text" => Some(("reasonText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["amount-pretax", "amount-tax", "currency", "line-item-id", "operation-id", "product-id", "quantity", "reason", "reason-text", "value"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1678,7 +1680,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "placed-date-end", "acknowledged", "max-results", "page-token", "placed-date-start", "statuses"].iter().map(|v|*v));
+                                                                           v.extend(["max-results", "acknowledged", "order-by", "placed-date-end", "placed-date-start", "page-token", "statuses"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1735,15 +1737,15 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "amount-pretax.currency" => Some(("amountPretax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "amount-pretax.value" => Some(("amountPretax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "amount.currency" => Some(("amount.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "amount.value" => Some(("amount.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "reason-text" => Some(("reasonText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "reason" => Some(("reason", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "amount-pretax.currency" => Some(("amountPretax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "amount-pretax.value" => Some(("amountPretax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "amount-tax.currency" => Some(("amountTax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "amount-tax.value" => Some(("amountTax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation-id" => Some(("operationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "reason" => Some(("reason", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "reason-text" => Some(("reasonText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["amount", "amount-pretax", "amount-tax", "currency", "operation-id", "reason", "reason-text", "value"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1828,12 +1830,12 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "operation-id" => Some(("operationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "reason" => Some(("reason", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "reason-text" => Some(("reasonText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "line-item-id" => Some(("lineItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation-id" => Some(("operationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "product-id" => Some(("productId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "quantity" => Some(("quantity", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "reason" => Some(("reason", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "reason-text" => Some(("reasonText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["line-item-id", "operation-id", "product-id", "quantity", "reason", "reason-text"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1918,12 +1920,12 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "operation-id" => Some(("operationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "reason" => Some(("reason", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "reason-text" => Some(("reasonText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "line-item-id" => Some(("lineItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation-id" => Some(("operationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "product-id" => Some(("productId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "quantity" => Some(("quantity", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "reason" => Some(("reason", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "reason-text" => Some(("reasonText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["line-item-id", "operation-id", "product-id", "quantity", "reason", "reason-text"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2008,16 +2010,16 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "operation-id" => Some(("operationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "reason" => Some(("reason", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "amount-pretax.currency" => Some(("amountPretax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "amount-pretax.value" => Some(("amountPretax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "reason-text" => Some(("reasonText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "line-item-id" => Some(("lineItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "amount-tax.currency" => Some(("amountTax.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "amount-tax.value" => Some(("amountTax.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "line-item-id" => Some(("lineItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation-id" => Some(("operationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "product-id" => Some(("productId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "quantity" => Some(("quantity", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "reason" => Some(("reason", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "reason-text" => Some(("reasonText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["amount-pretax", "amount-tax", "currency", "line-item-id", "operation-id", "product-id", "quantity", "reason", "reason-text", "value"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2102,9 +2104,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "product-id" => Some(("productId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "line-item-id" => Some(("lineItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation-id" => Some(("operationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "product-id" => Some(("productId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["line-item-id", "operation-id", "product-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2189,11 +2191,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "operation-id" => Some(("operationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "shipment-id" => Some(("shipmentId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "carrier" => Some(("carrier", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "tracking-id" => Some(("trackingId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation-id" => Some(("operationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "shipment-group-id" => Some(("shipmentGroupId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "shipment-id" => Some(("shipmentId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "tracking-id" => Some(("trackingId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["carrier", "operation-id", "shipment-group-id", "shipment-id", "tracking-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2279,10 +2281,10 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "deliver-by-date" => Some(("deliverByDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "ship-by-date" => Some(("shipByDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "product-id" => Some(("productId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "line-item-id" => Some(("lineItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation-id" => Some(("operationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "product-id" => Some(("productId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "ship-by-date" => Some(("shipByDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["deliver-by-date", "line-item-id", "operation-id", "product-id", "ship-by-date"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2453,12 +2455,12 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "carrier" => Some(("carrier", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "tracking-id" => Some(("trackingId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "shipment-id" => Some(("shipmentId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "delivery-date" => Some(("deliveryDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation-id" => Some(("operationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "shipment-id" => Some(("shipmentId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "tracking-id" => Some(("trackingId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["carrier", "delivery-date", "operation-id", "shipment-id", "status", "tracking-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2666,12 +2668,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "content2-sandbox-secret.json",
+            match client::application_secret_from_directory(&config_dir, "content2-sandbox-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

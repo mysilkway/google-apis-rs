@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_prod_tt_sasportal1_alpha1 as api;
+extern crate google_prod_tt_sasportal1_alpha1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_prod_tt_sasportal1_alpha1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::SASPortalTesting<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::SASPortalTesting<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -69,11 +71,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "sas-user-ids" => Some(("sasUserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "allowed-billing-modes" => Some(("allowedBillingModes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "default-billing-mode" => Some(("defaultBillingMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "sas-user-ids" => Some(("sasUserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["allowed-billing-modes", "default-billing-mode", "display-name", "name", "sas-user-ids"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -264,7 +266,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -321,11 +323,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "sas-user-ids" => Some(("sasUserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "allowed-billing-modes" => Some(("allowedBillingModes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "default-billing-mode" => Some(("defaultBillingMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "sas-user-ids" => Some(("sasUserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["allowed-billing-modes", "default-billing-mode", "display-name", "name", "sas-user-ids"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -499,66 +501,66 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "preloaded-config.category" => Some(("preloadedConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.air-interface.radio-technology" => Some(("preloadedConfig.airInterface.radioTechnology", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.air-interface.supported-spec" => Some(("preloadedConfig.airInterface.supportedSpec", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.update-time" => Some(("preloadedConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.user-id" => Some(("preloadedConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.measurement-capabilities" => Some(("preloadedConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "preloaded-config.state" => Some(("preloadedConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.call-sign" => Some(("preloadedConfig.callSign", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.cpe-cbsd-indication" => Some(("preloadedConfig.installationParams.cpeCbsdIndication", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.eirp-capability" => Some(("preloadedConfig.installationParams.eirpCapability", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-azimuth" => Some(("preloadedConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.height-type" => Some(("preloadedConfig.installationParams.heightType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-model" => Some(("preloadedConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.longitude" => Some(("preloadedConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-gain" => Some(("preloadedConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.indoor-deployment" => Some(("preloadedConfig.installationParams.indoorDeployment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.latitude" => Some(("preloadedConfig.installationParams.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.horizontal-accuracy" => Some(("preloadedConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-downtilt" => Some(("preloadedConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-beamwidth" => Some(("preloadedConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.height" => Some(("preloadedConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.vertical-accuracy" => Some(("preloadedConfig.installationParams.verticalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.software-version" => Some(("preloadedConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.hardware-version" => Some(("preloadedConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.vendor" => Some(("preloadedConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.name" => Some(("preloadedConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.firmware-version" => Some(("preloadedConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.is-signed" => Some(("preloadedConfig.isSigned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "fcc-id" => Some(("fccId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "serial-number" => Some(("serialNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.category" => Some(("activeConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.air-interface.radio-technology" => Some(("activeConfig.airInterface.radioTechnology", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.air-interface.supported-spec" => Some(("activeConfig.airInterface.supportedSpec", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.update-time" => Some(("activeConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.user-id" => Some(("activeConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.measurement-capabilities" => Some(("activeConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "active-config.state" => Some(("activeConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.call-sign" => Some(("activeConfig.callSign", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.category" => Some(("activeConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-azimuth" => Some(("activeConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-beamwidth" => Some(("activeConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-downtilt" => Some(("activeConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-gain" => Some(("activeConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-model" => Some(("activeConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.installation-params.cpe-cbsd-indication" => Some(("activeConfig.installationParams.cpeCbsdIndication", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "active-config.installation-params.eirp-capability" => Some(("activeConfig.installationParams.eirpCapability", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-azimuth" => Some(("activeConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.height" => Some(("activeConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "active-config.installation-params.height-type" => Some(("activeConfig.installationParams.heightType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-model" => Some(("activeConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.longitude" => Some(("activeConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-gain" => Some(("activeConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.horizontal-accuracy" => Some(("activeConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "active-config.installation-params.indoor-deployment" => Some(("activeConfig.installationParams.indoorDeployment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "active-config.installation-params.latitude" => Some(("activeConfig.installationParams.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.horizontal-accuracy" => Some(("activeConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-downtilt" => Some(("activeConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-beamwidth" => Some(("activeConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.height" => Some(("activeConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.longitude" => Some(("activeConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "active-config.installation-params.vertical-accuracy" => Some(("activeConfig.installationParams.verticalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "active-config.model.software-version" => Some(("activeConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.model.hardware-version" => Some(("activeConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.model.vendor" => Some(("activeConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.model.name" => Some(("activeConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.model.firmware-version" => Some(("activeConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.is-signed" => Some(("activeConfig.isSigned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "active-config.measurement-capabilities" => Some(("activeConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "active-config.model.firmware-version" => Some(("activeConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.model.hardware-version" => Some(("activeConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.model.name" => Some(("activeConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.model.software-version" => Some(("activeConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.model.vendor" => Some(("activeConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.state" => Some(("activeConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.update-time" => Some(("activeConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.user-id" => Some(("activeConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "fcc-id" => Some(("fccId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.air-interface.radio-technology" => Some(("preloadedConfig.airInterface.radioTechnology", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.air-interface.supported-spec" => Some(("preloadedConfig.airInterface.supportedSpec", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.call-sign" => Some(("preloadedConfig.callSign", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.category" => Some(("preloadedConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-azimuth" => Some(("preloadedConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-beamwidth" => Some(("preloadedConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-downtilt" => Some(("preloadedConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-gain" => Some(("preloadedConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-model" => Some(("preloadedConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.cpe-cbsd-indication" => Some(("preloadedConfig.installationParams.cpeCbsdIndication", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.eirp-capability" => Some(("preloadedConfig.installationParams.eirpCapability", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.height" => Some(("preloadedConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.height-type" => Some(("preloadedConfig.installationParams.heightType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.horizontal-accuracy" => Some(("preloadedConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.indoor-deployment" => Some(("preloadedConfig.installationParams.indoorDeployment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.latitude" => Some(("preloadedConfig.installationParams.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.longitude" => Some(("preloadedConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.vertical-accuracy" => Some(("preloadedConfig.installationParams.verticalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.is-signed" => Some(("preloadedConfig.isSigned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "preloaded-config.measurement-capabilities" => Some(("preloadedConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "preloaded-config.model.firmware-version" => Some(("preloadedConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.model.hardware-version" => Some(("preloadedConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.model.name" => Some(("preloadedConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.model.software-version" => Some(("preloadedConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.model.vendor" => Some(("preloadedConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.state" => Some(("preloadedConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.update-time" => Some(("preloadedConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.user-id" => Some(("preloadedConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "serial-number" => Some(("serialNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["active-config", "air-interface", "antenna-azimuth", "antenna-beamwidth", "antenna-downtilt", "antenna-gain", "antenna-model", "call-sign", "category", "cpe-cbsd-indication", "display-name", "eirp-capability", "fcc-id", "firmware-version", "hardware-version", "height", "height-type", "horizontal-accuracy", "indoor-deployment", "installation-params", "is-signed", "latitude", "longitude", "measurement-capabilities", "model", "name", "preloaded-config", "radio-technology", "serial-number", "software-version", "state", "supported-spec", "update-time", "user-id", "vendor", "vertical-accuracy"]);
@@ -839,7 +841,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "filter", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -981,66 +983,66 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "preloaded-config.category" => Some(("preloadedConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.air-interface.radio-technology" => Some(("preloadedConfig.airInterface.radioTechnology", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.air-interface.supported-spec" => Some(("preloadedConfig.airInterface.supportedSpec", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.update-time" => Some(("preloadedConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.user-id" => Some(("preloadedConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.measurement-capabilities" => Some(("preloadedConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "preloaded-config.state" => Some(("preloadedConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.call-sign" => Some(("preloadedConfig.callSign", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.cpe-cbsd-indication" => Some(("preloadedConfig.installationParams.cpeCbsdIndication", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.eirp-capability" => Some(("preloadedConfig.installationParams.eirpCapability", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-azimuth" => Some(("preloadedConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.height-type" => Some(("preloadedConfig.installationParams.heightType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-model" => Some(("preloadedConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.longitude" => Some(("preloadedConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-gain" => Some(("preloadedConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.indoor-deployment" => Some(("preloadedConfig.installationParams.indoorDeployment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.latitude" => Some(("preloadedConfig.installationParams.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.horizontal-accuracy" => Some(("preloadedConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-downtilt" => Some(("preloadedConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-beamwidth" => Some(("preloadedConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.height" => Some(("preloadedConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.vertical-accuracy" => Some(("preloadedConfig.installationParams.verticalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.software-version" => Some(("preloadedConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.hardware-version" => Some(("preloadedConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.vendor" => Some(("preloadedConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.name" => Some(("preloadedConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.firmware-version" => Some(("preloadedConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.is-signed" => Some(("preloadedConfig.isSigned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "fcc-id" => Some(("fccId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "serial-number" => Some(("serialNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.category" => Some(("activeConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.air-interface.radio-technology" => Some(("activeConfig.airInterface.radioTechnology", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.air-interface.supported-spec" => Some(("activeConfig.airInterface.supportedSpec", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.update-time" => Some(("activeConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.user-id" => Some(("activeConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.measurement-capabilities" => Some(("activeConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "active-config.state" => Some(("activeConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.call-sign" => Some(("activeConfig.callSign", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.category" => Some(("activeConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-azimuth" => Some(("activeConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-beamwidth" => Some(("activeConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-downtilt" => Some(("activeConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-gain" => Some(("activeConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-model" => Some(("activeConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.installation-params.cpe-cbsd-indication" => Some(("activeConfig.installationParams.cpeCbsdIndication", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "active-config.installation-params.eirp-capability" => Some(("activeConfig.installationParams.eirpCapability", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-azimuth" => Some(("activeConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.height" => Some(("activeConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "active-config.installation-params.height-type" => Some(("activeConfig.installationParams.heightType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-model" => Some(("activeConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.longitude" => Some(("activeConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-gain" => Some(("activeConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.horizontal-accuracy" => Some(("activeConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "active-config.installation-params.indoor-deployment" => Some(("activeConfig.installationParams.indoorDeployment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "active-config.installation-params.latitude" => Some(("activeConfig.installationParams.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.horizontal-accuracy" => Some(("activeConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-downtilt" => Some(("activeConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-beamwidth" => Some(("activeConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.height" => Some(("activeConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.longitude" => Some(("activeConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "active-config.installation-params.vertical-accuracy" => Some(("activeConfig.installationParams.verticalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "active-config.model.software-version" => Some(("activeConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.model.hardware-version" => Some(("activeConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.model.vendor" => Some(("activeConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.model.name" => Some(("activeConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.model.firmware-version" => Some(("activeConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.is-signed" => Some(("activeConfig.isSigned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "active-config.measurement-capabilities" => Some(("activeConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "active-config.model.firmware-version" => Some(("activeConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.model.hardware-version" => Some(("activeConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.model.name" => Some(("activeConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.model.software-version" => Some(("activeConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.model.vendor" => Some(("activeConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.state" => Some(("activeConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.update-time" => Some(("activeConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.user-id" => Some(("activeConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "fcc-id" => Some(("fccId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.air-interface.radio-technology" => Some(("preloadedConfig.airInterface.radioTechnology", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.air-interface.supported-spec" => Some(("preloadedConfig.airInterface.supportedSpec", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.call-sign" => Some(("preloadedConfig.callSign", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.category" => Some(("preloadedConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-azimuth" => Some(("preloadedConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-beamwidth" => Some(("preloadedConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-downtilt" => Some(("preloadedConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-gain" => Some(("preloadedConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-model" => Some(("preloadedConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.cpe-cbsd-indication" => Some(("preloadedConfig.installationParams.cpeCbsdIndication", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.eirp-capability" => Some(("preloadedConfig.installationParams.eirpCapability", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.height" => Some(("preloadedConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.height-type" => Some(("preloadedConfig.installationParams.heightType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.horizontal-accuracy" => Some(("preloadedConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.indoor-deployment" => Some(("preloadedConfig.installationParams.indoorDeployment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.latitude" => Some(("preloadedConfig.installationParams.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.longitude" => Some(("preloadedConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.vertical-accuracy" => Some(("preloadedConfig.installationParams.verticalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.is-signed" => Some(("preloadedConfig.isSigned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "preloaded-config.measurement-capabilities" => Some(("preloadedConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "preloaded-config.model.firmware-version" => Some(("preloadedConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.model.hardware-version" => Some(("preloadedConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.model.name" => Some(("preloadedConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.model.software-version" => Some(("preloadedConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.model.vendor" => Some(("preloadedConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.state" => Some(("preloadedConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.update-time" => Some(("preloadedConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.user-id" => Some(("preloadedConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "serial-number" => Some(("serialNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["active-config", "air-interface", "antenna-azimuth", "antenna-beamwidth", "antenna-downtilt", "antenna-gain", "antenna-model", "call-sign", "category", "cpe-cbsd-indication", "display-name", "eirp-capability", "fcc-id", "firmware-version", "hardware-version", "height", "height-type", "horizontal-accuracy", "indoor-deployment", "installation-params", "is-signed", "latitude", "longitude", "measurement-capabilities", "model", "name", "preloaded-config", "radio-technology", "serial-number", "software-version", "state", "supported-spec", "update-time", "user-id", "vendor", "vertical-accuracy"]);
@@ -1130,66 +1132,66 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "device.preloaded-config.category" => Some(("device.preloadedConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.air-interface.radio-technology" => Some(("device.preloadedConfig.airInterface.radioTechnology", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.air-interface.supported-spec" => Some(("device.preloadedConfig.airInterface.supportedSpec", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.update-time" => Some(("device.preloadedConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.user-id" => Some(("device.preloadedConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.measurement-capabilities" => Some(("device.preloadedConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "device.preloaded-config.state" => Some(("device.preloadedConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.call-sign" => Some(("device.preloadedConfig.callSign", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.cpe-cbsd-indication" => Some(("device.preloadedConfig.installationParams.cpeCbsdIndication", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.eirp-capability" => Some(("device.preloadedConfig.installationParams.eirpCapability", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.antenna-azimuth" => Some(("device.preloadedConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.height-type" => Some(("device.preloadedConfig.installationParams.heightType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.antenna-model" => Some(("device.preloadedConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.longitude" => Some(("device.preloadedConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.antenna-gain" => Some(("device.preloadedConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.indoor-deployment" => Some(("device.preloadedConfig.installationParams.indoorDeployment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.latitude" => Some(("device.preloadedConfig.installationParams.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.horizontal-accuracy" => Some(("device.preloadedConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.antenna-downtilt" => Some(("device.preloadedConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.antenna-beamwidth" => Some(("device.preloadedConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.height" => Some(("device.preloadedConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.vertical-accuracy" => Some(("device.preloadedConfig.installationParams.verticalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.model.software-version" => Some(("device.preloadedConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.model.hardware-version" => Some(("device.preloadedConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.model.vendor" => Some(("device.preloadedConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.model.name" => Some(("device.preloadedConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.model.firmware-version" => Some(("device.preloadedConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.is-signed" => Some(("device.preloadedConfig.isSigned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "device.display-name" => Some(("device.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.name" => Some(("device.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.fcc-id" => Some(("device.fccId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.serial-number" => Some(("device.serialNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.active-config.category" => Some(("device.activeConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device.active-config.air-interface.radio-technology" => Some(("device.activeConfig.airInterface.radioTechnology", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device.active-config.air-interface.supported-spec" => Some(("device.activeConfig.airInterface.supportedSpec", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.active-config.update-time" => Some(("device.activeConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.active-config.user-id" => Some(("device.activeConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.active-config.measurement-capabilities" => Some(("device.activeConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "device.active-config.state" => Some(("device.activeConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device.active-config.call-sign" => Some(("device.activeConfig.callSign", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.active-config.category" => Some(("device.activeConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.active-config.installation-params.antenna-azimuth" => Some(("device.activeConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "device.active-config.installation-params.antenna-beamwidth" => Some(("device.activeConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "device.active-config.installation-params.antenna-downtilt" => Some(("device.activeConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "device.active-config.installation-params.antenna-gain" => Some(("device.activeConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "device.active-config.installation-params.antenna-model" => Some(("device.activeConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device.active-config.installation-params.cpe-cbsd-indication" => Some(("device.activeConfig.installationParams.cpeCbsdIndication", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "device.active-config.installation-params.eirp-capability" => Some(("device.activeConfig.installationParams.eirpCapability", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "device.active-config.installation-params.antenna-azimuth" => Some(("device.activeConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "device.active-config.installation-params.height" => Some(("device.activeConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "device.active-config.installation-params.height-type" => Some(("device.activeConfig.installationParams.heightType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.active-config.installation-params.antenna-model" => Some(("device.activeConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.active-config.installation-params.longitude" => Some(("device.activeConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "device.active-config.installation-params.antenna-gain" => Some(("device.activeConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "device.active-config.installation-params.horizontal-accuracy" => Some(("device.activeConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "device.active-config.installation-params.indoor-deployment" => Some(("device.activeConfig.installationParams.indoorDeployment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "device.active-config.installation-params.latitude" => Some(("device.activeConfig.installationParams.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "device.active-config.installation-params.horizontal-accuracy" => Some(("device.activeConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "device.active-config.installation-params.antenna-downtilt" => Some(("device.activeConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "device.active-config.installation-params.antenna-beamwidth" => Some(("device.activeConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "device.active-config.installation-params.height" => Some(("device.activeConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "device.active-config.installation-params.longitude" => Some(("device.activeConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "device.active-config.installation-params.vertical-accuracy" => Some(("device.activeConfig.installationParams.verticalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "device.active-config.model.software-version" => Some(("device.activeConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.active-config.model.hardware-version" => Some(("device.activeConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.active-config.model.vendor" => Some(("device.activeConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.active-config.model.name" => Some(("device.activeConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.active-config.model.firmware-version" => Some(("device.activeConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device.active-config.is-signed" => Some(("device.activeConfig.isSigned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "device.active-config.measurement-capabilities" => Some(("device.activeConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "device.active-config.model.firmware-version" => Some(("device.activeConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.active-config.model.hardware-version" => Some(("device.activeConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.active-config.model.name" => Some(("device.activeConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.active-config.model.software-version" => Some(("device.activeConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.active-config.model.vendor" => Some(("device.activeConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.active-config.state" => Some(("device.activeConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.active-config.update-time" => Some(("device.activeConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.active-config.user-id" => Some(("device.activeConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.display-name" => Some(("device.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.fcc-id" => Some(("device.fccId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.name" => Some(("device.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.air-interface.radio-technology" => Some(("device.preloadedConfig.airInterface.radioTechnology", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.air-interface.supported-spec" => Some(("device.preloadedConfig.airInterface.supportedSpec", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.call-sign" => Some(("device.preloadedConfig.callSign", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.category" => Some(("device.preloadedConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.antenna-azimuth" => Some(("device.preloadedConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.antenna-beamwidth" => Some(("device.preloadedConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.antenna-downtilt" => Some(("device.preloadedConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.antenna-gain" => Some(("device.preloadedConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.antenna-model" => Some(("device.preloadedConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.cpe-cbsd-indication" => Some(("device.preloadedConfig.installationParams.cpeCbsdIndication", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.eirp-capability" => Some(("device.preloadedConfig.installationParams.eirpCapability", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.height" => Some(("device.preloadedConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.height-type" => Some(("device.preloadedConfig.installationParams.heightType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.horizontal-accuracy" => Some(("device.preloadedConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.indoor-deployment" => Some(("device.preloadedConfig.installationParams.indoorDeployment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.latitude" => Some(("device.preloadedConfig.installationParams.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.longitude" => Some(("device.preloadedConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.vertical-accuracy" => Some(("device.preloadedConfig.installationParams.verticalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.is-signed" => Some(("device.preloadedConfig.isSigned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.measurement-capabilities" => Some(("device.preloadedConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "device.preloaded-config.model.firmware-version" => Some(("device.preloadedConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.model.hardware-version" => Some(("device.preloadedConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.model.name" => Some(("device.preloadedConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.model.software-version" => Some(("device.preloadedConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.model.vendor" => Some(("device.preloadedConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.state" => Some(("device.preloadedConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.update-time" => Some(("device.preloadedConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.user-id" => Some(("device.preloadedConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.serial-number" => Some(("device.serialNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device.state" => Some(("device.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["active-config", "air-interface", "antenna-azimuth", "antenna-beamwidth", "antenna-downtilt", "antenna-gain", "antenna-model", "call-sign", "category", "cpe-cbsd-indication", "device", "display-name", "eirp-capability", "fcc-id", "firmware-version", "hardware-version", "height", "height-type", "horizontal-accuracy", "indoor-deployment", "installation-params", "is-signed", "latitude", "longitude", "measurement-capabilities", "model", "name", "preloaded-config", "radio-technology", "serial-number", "software-version", "state", "supported-spec", "update-time", "user-id", "vendor", "vertical-accuracy"]);
@@ -1415,7 +1417,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1472,9 +1474,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "sas-user-ids" => Some(("sasUserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "sas-user-ids" => Some(("sasUserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["display-name", "name", "sas-user-ids"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1611,11 +1613,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "sas-user-ids" => Some(("sasUserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "allowed-billing-modes" => Some(("allowedBillingModes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "default-billing-mode" => Some(("defaultBillingMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "sas-user-ids" => Some(("sasUserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["allowed-billing-modes", "default-billing-mode", "display-name", "name", "sas-user-ids"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1702,7 +1704,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1813,7 +1815,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1955,9 +1957,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "sas-user-ids" => Some(("sasUserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "sas-user-ids" => Some(("sasUserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["display-name", "name", "sas-user-ids"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2044,7 +2046,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2101,9 +2103,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "sas-user-ids" => Some(("sasUserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "sas-user-ids" => Some(("sasUserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["display-name", "name", "sas-user-ids"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2192,9 +2194,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "sas-user-ids" => Some(("sasUserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "sas-user-ids" => Some(("sasUserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["display-name", "name", "sas-user-ids"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2419,9 +2421,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "secret" => Some(("secret", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "encoded-secret" => Some(("encodedSecret", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "installer-id" => Some(("installerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "secret" => Some(("secret", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["encoded-secret", "installer-id", "secret"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2612,7 +2614,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2669,11 +2671,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "sas-user-ids" => Some(("sasUserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "allowed-billing-modes" => Some(("allowedBillingModes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "default-billing-mode" => Some(("defaultBillingMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "sas-user-ids" => Some(("sasUserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["allowed-billing-modes", "default-billing-mode", "display-name", "name", "sas-user-ids"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2847,66 +2849,66 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "preloaded-config.category" => Some(("preloadedConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.air-interface.radio-technology" => Some(("preloadedConfig.airInterface.radioTechnology", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.air-interface.supported-spec" => Some(("preloadedConfig.airInterface.supportedSpec", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.update-time" => Some(("preloadedConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.user-id" => Some(("preloadedConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.measurement-capabilities" => Some(("preloadedConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "preloaded-config.state" => Some(("preloadedConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.call-sign" => Some(("preloadedConfig.callSign", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.cpe-cbsd-indication" => Some(("preloadedConfig.installationParams.cpeCbsdIndication", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.eirp-capability" => Some(("preloadedConfig.installationParams.eirpCapability", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-azimuth" => Some(("preloadedConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.height-type" => Some(("preloadedConfig.installationParams.heightType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-model" => Some(("preloadedConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.longitude" => Some(("preloadedConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-gain" => Some(("preloadedConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.indoor-deployment" => Some(("preloadedConfig.installationParams.indoorDeployment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.latitude" => Some(("preloadedConfig.installationParams.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.horizontal-accuracy" => Some(("preloadedConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-downtilt" => Some(("preloadedConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-beamwidth" => Some(("preloadedConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.height" => Some(("preloadedConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.vertical-accuracy" => Some(("preloadedConfig.installationParams.verticalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.software-version" => Some(("preloadedConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.hardware-version" => Some(("preloadedConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.vendor" => Some(("preloadedConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.name" => Some(("preloadedConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.firmware-version" => Some(("preloadedConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.is-signed" => Some(("preloadedConfig.isSigned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "fcc-id" => Some(("fccId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "serial-number" => Some(("serialNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.category" => Some(("activeConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.air-interface.radio-technology" => Some(("activeConfig.airInterface.radioTechnology", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.air-interface.supported-spec" => Some(("activeConfig.airInterface.supportedSpec", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.update-time" => Some(("activeConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.user-id" => Some(("activeConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.measurement-capabilities" => Some(("activeConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "active-config.state" => Some(("activeConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.call-sign" => Some(("activeConfig.callSign", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.category" => Some(("activeConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-azimuth" => Some(("activeConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-beamwidth" => Some(("activeConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-downtilt" => Some(("activeConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-gain" => Some(("activeConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-model" => Some(("activeConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.installation-params.cpe-cbsd-indication" => Some(("activeConfig.installationParams.cpeCbsdIndication", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "active-config.installation-params.eirp-capability" => Some(("activeConfig.installationParams.eirpCapability", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-azimuth" => Some(("activeConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.height" => Some(("activeConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "active-config.installation-params.height-type" => Some(("activeConfig.installationParams.heightType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-model" => Some(("activeConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.longitude" => Some(("activeConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-gain" => Some(("activeConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.horizontal-accuracy" => Some(("activeConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "active-config.installation-params.indoor-deployment" => Some(("activeConfig.installationParams.indoorDeployment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "active-config.installation-params.latitude" => Some(("activeConfig.installationParams.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.horizontal-accuracy" => Some(("activeConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-downtilt" => Some(("activeConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-beamwidth" => Some(("activeConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.height" => Some(("activeConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.longitude" => Some(("activeConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "active-config.installation-params.vertical-accuracy" => Some(("activeConfig.installationParams.verticalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "active-config.model.software-version" => Some(("activeConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.model.hardware-version" => Some(("activeConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.model.vendor" => Some(("activeConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.model.name" => Some(("activeConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.model.firmware-version" => Some(("activeConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.is-signed" => Some(("activeConfig.isSigned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "active-config.measurement-capabilities" => Some(("activeConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "active-config.model.firmware-version" => Some(("activeConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.model.hardware-version" => Some(("activeConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.model.name" => Some(("activeConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.model.software-version" => Some(("activeConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.model.vendor" => Some(("activeConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.state" => Some(("activeConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.update-time" => Some(("activeConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.user-id" => Some(("activeConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "fcc-id" => Some(("fccId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.air-interface.radio-technology" => Some(("preloadedConfig.airInterface.radioTechnology", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.air-interface.supported-spec" => Some(("preloadedConfig.airInterface.supportedSpec", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.call-sign" => Some(("preloadedConfig.callSign", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.category" => Some(("preloadedConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-azimuth" => Some(("preloadedConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-beamwidth" => Some(("preloadedConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-downtilt" => Some(("preloadedConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-gain" => Some(("preloadedConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-model" => Some(("preloadedConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.cpe-cbsd-indication" => Some(("preloadedConfig.installationParams.cpeCbsdIndication", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.eirp-capability" => Some(("preloadedConfig.installationParams.eirpCapability", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.height" => Some(("preloadedConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.height-type" => Some(("preloadedConfig.installationParams.heightType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.horizontal-accuracy" => Some(("preloadedConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.indoor-deployment" => Some(("preloadedConfig.installationParams.indoorDeployment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.latitude" => Some(("preloadedConfig.installationParams.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.longitude" => Some(("preloadedConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.vertical-accuracy" => Some(("preloadedConfig.installationParams.verticalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.is-signed" => Some(("preloadedConfig.isSigned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "preloaded-config.measurement-capabilities" => Some(("preloadedConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "preloaded-config.model.firmware-version" => Some(("preloadedConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.model.hardware-version" => Some(("preloadedConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.model.name" => Some(("preloadedConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.model.software-version" => Some(("preloadedConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.model.vendor" => Some(("preloadedConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.state" => Some(("preloadedConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.update-time" => Some(("preloadedConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.user-id" => Some(("preloadedConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "serial-number" => Some(("serialNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["active-config", "air-interface", "antenna-azimuth", "antenna-beamwidth", "antenna-downtilt", "antenna-gain", "antenna-model", "call-sign", "category", "cpe-cbsd-indication", "display-name", "eirp-capability", "fcc-id", "firmware-version", "hardware-version", "height", "height-type", "horizontal-accuracy", "indoor-deployment", "installation-params", "is-signed", "latitude", "longitude", "measurement-capabilities", "model", "name", "preloaded-config", "radio-technology", "serial-number", "software-version", "state", "supported-spec", "update-time", "user-id", "vendor", "vertical-accuracy"]);
@@ -3187,7 +3189,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "filter", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3329,66 +3331,66 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "preloaded-config.category" => Some(("preloadedConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.air-interface.radio-technology" => Some(("preloadedConfig.airInterface.radioTechnology", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.air-interface.supported-spec" => Some(("preloadedConfig.airInterface.supportedSpec", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.update-time" => Some(("preloadedConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.user-id" => Some(("preloadedConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.measurement-capabilities" => Some(("preloadedConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "preloaded-config.state" => Some(("preloadedConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.call-sign" => Some(("preloadedConfig.callSign", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.cpe-cbsd-indication" => Some(("preloadedConfig.installationParams.cpeCbsdIndication", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.eirp-capability" => Some(("preloadedConfig.installationParams.eirpCapability", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-azimuth" => Some(("preloadedConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.height-type" => Some(("preloadedConfig.installationParams.heightType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-model" => Some(("preloadedConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.longitude" => Some(("preloadedConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-gain" => Some(("preloadedConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.indoor-deployment" => Some(("preloadedConfig.installationParams.indoorDeployment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.latitude" => Some(("preloadedConfig.installationParams.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.horizontal-accuracy" => Some(("preloadedConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-downtilt" => Some(("preloadedConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-beamwidth" => Some(("preloadedConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.height" => Some(("preloadedConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.vertical-accuracy" => Some(("preloadedConfig.installationParams.verticalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.software-version" => Some(("preloadedConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.hardware-version" => Some(("preloadedConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.vendor" => Some(("preloadedConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.name" => Some(("preloadedConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.firmware-version" => Some(("preloadedConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.is-signed" => Some(("preloadedConfig.isSigned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "fcc-id" => Some(("fccId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "serial-number" => Some(("serialNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.category" => Some(("activeConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.air-interface.radio-technology" => Some(("activeConfig.airInterface.radioTechnology", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.air-interface.supported-spec" => Some(("activeConfig.airInterface.supportedSpec", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.update-time" => Some(("activeConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.user-id" => Some(("activeConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.measurement-capabilities" => Some(("activeConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "active-config.state" => Some(("activeConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.call-sign" => Some(("activeConfig.callSign", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.category" => Some(("activeConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-azimuth" => Some(("activeConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-beamwidth" => Some(("activeConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-downtilt" => Some(("activeConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-gain" => Some(("activeConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-model" => Some(("activeConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.installation-params.cpe-cbsd-indication" => Some(("activeConfig.installationParams.cpeCbsdIndication", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "active-config.installation-params.eirp-capability" => Some(("activeConfig.installationParams.eirpCapability", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-azimuth" => Some(("activeConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.height" => Some(("activeConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "active-config.installation-params.height-type" => Some(("activeConfig.installationParams.heightType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-model" => Some(("activeConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.longitude" => Some(("activeConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-gain" => Some(("activeConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.horizontal-accuracy" => Some(("activeConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "active-config.installation-params.indoor-deployment" => Some(("activeConfig.installationParams.indoorDeployment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "active-config.installation-params.latitude" => Some(("activeConfig.installationParams.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.horizontal-accuracy" => Some(("activeConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-downtilt" => Some(("activeConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-beamwidth" => Some(("activeConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.height" => Some(("activeConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.longitude" => Some(("activeConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "active-config.installation-params.vertical-accuracy" => Some(("activeConfig.installationParams.verticalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "active-config.model.software-version" => Some(("activeConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.model.hardware-version" => Some(("activeConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.model.vendor" => Some(("activeConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.model.name" => Some(("activeConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.model.firmware-version" => Some(("activeConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.is-signed" => Some(("activeConfig.isSigned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "active-config.measurement-capabilities" => Some(("activeConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "active-config.model.firmware-version" => Some(("activeConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.model.hardware-version" => Some(("activeConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.model.name" => Some(("activeConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.model.software-version" => Some(("activeConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.model.vendor" => Some(("activeConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.state" => Some(("activeConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.update-time" => Some(("activeConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.user-id" => Some(("activeConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "fcc-id" => Some(("fccId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.air-interface.radio-technology" => Some(("preloadedConfig.airInterface.radioTechnology", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.air-interface.supported-spec" => Some(("preloadedConfig.airInterface.supportedSpec", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.call-sign" => Some(("preloadedConfig.callSign", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.category" => Some(("preloadedConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-azimuth" => Some(("preloadedConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-beamwidth" => Some(("preloadedConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-downtilt" => Some(("preloadedConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-gain" => Some(("preloadedConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-model" => Some(("preloadedConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.cpe-cbsd-indication" => Some(("preloadedConfig.installationParams.cpeCbsdIndication", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.eirp-capability" => Some(("preloadedConfig.installationParams.eirpCapability", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.height" => Some(("preloadedConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.height-type" => Some(("preloadedConfig.installationParams.heightType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.horizontal-accuracy" => Some(("preloadedConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.indoor-deployment" => Some(("preloadedConfig.installationParams.indoorDeployment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.latitude" => Some(("preloadedConfig.installationParams.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.longitude" => Some(("preloadedConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.vertical-accuracy" => Some(("preloadedConfig.installationParams.verticalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.is-signed" => Some(("preloadedConfig.isSigned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "preloaded-config.measurement-capabilities" => Some(("preloadedConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "preloaded-config.model.firmware-version" => Some(("preloadedConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.model.hardware-version" => Some(("preloadedConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.model.name" => Some(("preloadedConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.model.software-version" => Some(("preloadedConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.model.vendor" => Some(("preloadedConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.state" => Some(("preloadedConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.update-time" => Some(("preloadedConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.user-id" => Some(("preloadedConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "serial-number" => Some(("serialNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["active-config", "air-interface", "antenna-azimuth", "antenna-beamwidth", "antenna-downtilt", "antenna-gain", "antenna-model", "call-sign", "category", "cpe-cbsd-indication", "display-name", "eirp-capability", "fcc-id", "firmware-version", "hardware-version", "height", "height-type", "horizontal-accuracy", "indoor-deployment", "installation-params", "is-signed", "latitude", "longitude", "measurement-capabilities", "model", "name", "preloaded-config", "radio-technology", "serial-number", "software-version", "state", "supported-spec", "update-time", "user-id", "vendor", "vertical-accuracy"]);
@@ -3478,66 +3480,66 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "device.preloaded-config.category" => Some(("device.preloadedConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.air-interface.radio-technology" => Some(("device.preloadedConfig.airInterface.radioTechnology", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.air-interface.supported-spec" => Some(("device.preloadedConfig.airInterface.supportedSpec", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.update-time" => Some(("device.preloadedConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.user-id" => Some(("device.preloadedConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.measurement-capabilities" => Some(("device.preloadedConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "device.preloaded-config.state" => Some(("device.preloadedConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.call-sign" => Some(("device.preloadedConfig.callSign", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.cpe-cbsd-indication" => Some(("device.preloadedConfig.installationParams.cpeCbsdIndication", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.eirp-capability" => Some(("device.preloadedConfig.installationParams.eirpCapability", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.antenna-azimuth" => Some(("device.preloadedConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.height-type" => Some(("device.preloadedConfig.installationParams.heightType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.antenna-model" => Some(("device.preloadedConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.longitude" => Some(("device.preloadedConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.antenna-gain" => Some(("device.preloadedConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.indoor-deployment" => Some(("device.preloadedConfig.installationParams.indoorDeployment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.latitude" => Some(("device.preloadedConfig.installationParams.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.horizontal-accuracy" => Some(("device.preloadedConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.antenna-downtilt" => Some(("device.preloadedConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.antenna-beamwidth" => Some(("device.preloadedConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.height" => Some(("device.preloadedConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.installation-params.vertical-accuracy" => Some(("device.preloadedConfig.installationParams.verticalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.model.software-version" => Some(("device.preloadedConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.model.hardware-version" => Some(("device.preloadedConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.model.vendor" => Some(("device.preloadedConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.model.name" => Some(("device.preloadedConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.model.firmware-version" => Some(("device.preloadedConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.preloaded-config.is-signed" => Some(("device.preloadedConfig.isSigned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "device.display-name" => Some(("device.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.name" => Some(("device.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.fcc-id" => Some(("device.fccId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.serial-number" => Some(("device.serialNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.active-config.category" => Some(("device.activeConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device.active-config.air-interface.radio-technology" => Some(("device.activeConfig.airInterface.radioTechnology", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device.active-config.air-interface.supported-spec" => Some(("device.activeConfig.airInterface.supportedSpec", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.active-config.update-time" => Some(("device.activeConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.active-config.user-id" => Some(("device.activeConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.active-config.measurement-capabilities" => Some(("device.activeConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "device.active-config.state" => Some(("device.activeConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device.active-config.call-sign" => Some(("device.activeConfig.callSign", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.active-config.category" => Some(("device.activeConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.active-config.installation-params.antenna-azimuth" => Some(("device.activeConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "device.active-config.installation-params.antenna-beamwidth" => Some(("device.activeConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "device.active-config.installation-params.antenna-downtilt" => Some(("device.activeConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "device.active-config.installation-params.antenna-gain" => Some(("device.activeConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "device.active-config.installation-params.antenna-model" => Some(("device.activeConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device.active-config.installation-params.cpe-cbsd-indication" => Some(("device.activeConfig.installationParams.cpeCbsdIndication", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "device.active-config.installation-params.eirp-capability" => Some(("device.activeConfig.installationParams.eirpCapability", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "device.active-config.installation-params.antenna-azimuth" => Some(("device.activeConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "device.active-config.installation-params.height" => Some(("device.activeConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "device.active-config.installation-params.height-type" => Some(("device.activeConfig.installationParams.heightType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.active-config.installation-params.antenna-model" => Some(("device.activeConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.active-config.installation-params.longitude" => Some(("device.activeConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "device.active-config.installation-params.antenna-gain" => Some(("device.activeConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "device.active-config.installation-params.horizontal-accuracy" => Some(("device.activeConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "device.active-config.installation-params.indoor-deployment" => Some(("device.activeConfig.installationParams.indoorDeployment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "device.active-config.installation-params.latitude" => Some(("device.activeConfig.installationParams.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "device.active-config.installation-params.horizontal-accuracy" => Some(("device.activeConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "device.active-config.installation-params.antenna-downtilt" => Some(("device.activeConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "device.active-config.installation-params.antenna-beamwidth" => Some(("device.activeConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "device.active-config.installation-params.height" => Some(("device.activeConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "device.active-config.installation-params.longitude" => Some(("device.activeConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "device.active-config.installation-params.vertical-accuracy" => Some(("device.activeConfig.installationParams.verticalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "device.active-config.model.software-version" => Some(("device.activeConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.active-config.model.hardware-version" => Some(("device.activeConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.active-config.model.vendor" => Some(("device.activeConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.active-config.model.name" => Some(("device.activeConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.active-config.model.firmware-version" => Some(("device.activeConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device.active-config.is-signed" => Some(("device.activeConfig.isSigned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "device.active-config.measurement-capabilities" => Some(("device.activeConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "device.active-config.model.firmware-version" => Some(("device.activeConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.active-config.model.hardware-version" => Some(("device.activeConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.active-config.model.name" => Some(("device.activeConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.active-config.model.software-version" => Some(("device.activeConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.active-config.model.vendor" => Some(("device.activeConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.active-config.state" => Some(("device.activeConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.active-config.update-time" => Some(("device.activeConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.active-config.user-id" => Some(("device.activeConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.display-name" => Some(("device.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.fcc-id" => Some(("device.fccId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.name" => Some(("device.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.air-interface.radio-technology" => Some(("device.preloadedConfig.airInterface.radioTechnology", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.air-interface.supported-spec" => Some(("device.preloadedConfig.airInterface.supportedSpec", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.call-sign" => Some(("device.preloadedConfig.callSign", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.category" => Some(("device.preloadedConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.antenna-azimuth" => Some(("device.preloadedConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.antenna-beamwidth" => Some(("device.preloadedConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.antenna-downtilt" => Some(("device.preloadedConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.antenna-gain" => Some(("device.preloadedConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.antenna-model" => Some(("device.preloadedConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.cpe-cbsd-indication" => Some(("device.preloadedConfig.installationParams.cpeCbsdIndication", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.eirp-capability" => Some(("device.preloadedConfig.installationParams.eirpCapability", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.height" => Some(("device.preloadedConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.height-type" => Some(("device.preloadedConfig.installationParams.heightType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.horizontal-accuracy" => Some(("device.preloadedConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.indoor-deployment" => Some(("device.preloadedConfig.installationParams.indoorDeployment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.latitude" => Some(("device.preloadedConfig.installationParams.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.longitude" => Some(("device.preloadedConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.installation-params.vertical-accuracy" => Some(("device.preloadedConfig.installationParams.verticalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.is-signed" => Some(("device.preloadedConfig.isSigned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.measurement-capabilities" => Some(("device.preloadedConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "device.preloaded-config.model.firmware-version" => Some(("device.preloadedConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.model.hardware-version" => Some(("device.preloadedConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.model.name" => Some(("device.preloadedConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.model.software-version" => Some(("device.preloadedConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.model.vendor" => Some(("device.preloadedConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.state" => Some(("device.preloadedConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.update-time" => Some(("device.preloadedConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.preloaded-config.user-id" => Some(("device.preloadedConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.serial-number" => Some(("device.serialNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device.state" => Some(("device.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["active-config", "air-interface", "antenna-azimuth", "antenna-beamwidth", "antenna-downtilt", "antenna-gain", "antenna-model", "call-sign", "category", "cpe-cbsd-indication", "device", "display-name", "eirp-capability", "fcc-id", "firmware-version", "hardware-version", "height", "height-type", "horizontal-accuracy", "indoor-deployment", "installation-params", "is-signed", "latitude", "longitude", "measurement-capabilities", "model", "name", "preloaded-config", "radio-technology", "serial-number", "software-version", "state", "supported-spec", "update-time", "user-id", "vendor", "vertical-accuracy"]);
@@ -3761,9 +3763,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "sas-user-ids" => Some(("sasUserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "sas-user-ids" => Some(("sasUserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["display-name", "name", "sas-user-ids"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3900,11 +3902,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "sas-user-ids" => Some(("sasUserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "allowed-billing-modes" => Some(("allowedBillingModes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "default-billing-mode" => Some(("defaultBillingMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "sas-user-ids" => Some(("sasUserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["allowed-billing-modes", "default-billing-mode", "display-name", "name", "sas-user-ids"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3991,7 +3993,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4133,66 +4135,66 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "preloaded-config.category" => Some(("preloadedConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.air-interface.radio-technology" => Some(("preloadedConfig.airInterface.radioTechnology", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.air-interface.supported-spec" => Some(("preloadedConfig.airInterface.supportedSpec", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.update-time" => Some(("preloadedConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.user-id" => Some(("preloadedConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.measurement-capabilities" => Some(("preloadedConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "preloaded-config.state" => Some(("preloadedConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.call-sign" => Some(("preloadedConfig.callSign", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.cpe-cbsd-indication" => Some(("preloadedConfig.installationParams.cpeCbsdIndication", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.eirp-capability" => Some(("preloadedConfig.installationParams.eirpCapability", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-azimuth" => Some(("preloadedConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.height-type" => Some(("preloadedConfig.installationParams.heightType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-model" => Some(("preloadedConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.longitude" => Some(("preloadedConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-gain" => Some(("preloadedConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.indoor-deployment" => Some(("preloadedConfig.installationParams.indoorDeployment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.latitude" => Some(("preloadedConfig.installationParams.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.horizontal-accuracy" => Some(("preloadedConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-downtilt" => Some(("preloadedConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.antenna-beamwidth" => Some(("preloadedConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.height" => Some(("preloadedConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.installation-params.vertical-accuracy" => Some(("preloadedConfig.installationParams.verticalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.software-version" => Some(("preloadedConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.hardware-version" => Some(("preloadedConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.vendor" => Some(("preloadedConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.name" => Some(("preloadedConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.model.firmware-version" => Some(("preloadedConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "preloaded-config.is-signed" => Some(("preloadedConfig.isSigned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "fcc-id" => Some(("fccId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "serial-number" => Some(("serialNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.category" => Some(("activeConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.air-interface.radio-technology" => Some(("activeConfig.airInterface.radioTechnology", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.air-interface.supported-spec" => Some(("activeConfig.airInterface.supportedSpec", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.update-time" => Some(("activeConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.user-id" => Some(("activeConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.measurement-capabilities" => Some(("activeConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "active-config.state" => Some(("activeConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.call-sign" => Some(("activeConfig.callSign", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.category" => Some(("activeConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-azimuth" => Some(("activeConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-beamwidth" => Some(("activeConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-downtilt" => Some(("activeConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-gain" => Some(("activeConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.antenna-model" => Some(("activeConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.installation-params.cpe-cbsd-indication" => Some(("activeConfig.installationParams.cpeCbsdIndication", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "active-config.installation-params.eirp-capability" => Some(("activeConfig.installationParams.eirpCapability", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-azimuth" => Some(("activeConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.height" => Some(("activeConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "active-config.installation-params.height-type" => Some(("activeConfig.installationParams.heightType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-model" => Some(("activeConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.longitude" => Some(("activeConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-gain" => Some(("activeConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.horizontal-accuracy" => Some(("activeConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "active-config.installation-params.indoor-deployment" => Some(("activeConfig.installationParams.indoorDeployment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "active-config.installation-params.latitude" => Some(("activeConfig.installationParams.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.horizontal-accuracy" => Some(("activeConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-downtilt" => Some(("activeConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.antenna-beamwidth" => Some(("activeConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "active-config.installation-params.height" => Some(("activeConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "active-config.installation-params.longitude" => Some(("activeConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "active-config.installation-params.vertical-accuracy" => Some(("activeConfig.installationParams.verticalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "active-config.model.software-version" => Some(("activeConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.model.hardware-version" => Some(("activeConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.model.vendor" => Some(("activeConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.model.name" => Some(("activeConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-config.model.firmware-version" => Some(("activeConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-config.is-signed" => Some(("activeConfig.isSigned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "active-config.measurement-capabilities" => Some(("activeConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "active-config.model.firmware-version" => Some(("activeConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.model.hardware-version" => Some(("activeConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.model.name" => Some(("activeConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.model.software-version" => Some(("activeConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.model.vendor" => Some(("activeConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.state" => Some(("activeConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.update-time" => Some(("activeConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-config.user-id" => Some(("activeConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "fcc-id" => Some(("fccId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.air-interface.radio-technology" => Some(("preloadedConfig.airInterface.radioTechnology", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.air-interface.supported-spec" => Some(("preloadedConfig.airInterface.supportedSpec", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.call-sign" => Some(("preloadedConfig.callSign", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.category" => Some(("preloadedConfig.category", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-azimuth" => Some(("preloadedConfig.installationParams.antennaAzimuth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-beamwidth" => Some(("preloadedConfig.installationParams.antennaBeamwidth", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-downtilt" => Some(("preloadedConfig.installationParams.antennaDowntilt", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-gain" => Some(("preloadedConfig.installationParams.antennaGain", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.antenna-model" => Some(("preloadedConfig.installationParams.antennaModel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.cpe-cbsd-indication" => Some(("preloadedConfig.installationParams.cpeCbsdIndication", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.eirp-capability" => Some(("preloadedConfig.installationParams.eirpCapability", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.height" => Some(("preloadedConfig.installationParams.height", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.height-type" => Some(("preloadedConfig.installationParams.heightType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.horizontal-accuracy" => Some(("preloadedConfig.installationParams.horizontalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.indoor-deployment" => Some(("preloadedConfig.installationParams.indoorDeployment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.latitude" => Some(("preloadedConfig.installationParams.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.longitude" => Some(("preloadedConfig.installationParams.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.installation-params.vertical-accuracy" => Some(("preloadedConfig.installationParams.verticalAccuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "preloaded-config.is-signed" => Some(("preloadedConfig.isSigned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "preloaded-config.measurement-capabilities" => Some(("preloadedConfig.measurementCapabilities", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "preloaded-config.model.firmware-version" => Some(("preloadedConfig.model.firmwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.model.hardware-version" => Some(("preloadedConfig.model.hardwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.model.name" => Some(("preloadedConfig.model.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.model.software-version" => Some(("preloadedConfig.model.softwareVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.model.vendor" => Some(("preloadedConfig.model.vendor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.state" => Some(("preloadedConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.update-time" => Some(("preloadedConfig.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "preloaded-config.user-id" => Some(("preloadedConfig.userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "serial-number" => Some(("serialNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["active-config", "air-interface", "antenna-azimuth", "antenna-beamwidth", "antenna-downtilt", "antenna-gain", "antenna-model", "call-sign", "category", "cpe-cbsd-indication", "display-name", "eirp-capability", "fcc-id", "firmware-version", "hardware-version", "height", "height-type", "horizontal-accuracy", "indoor-deployment", "installation-params", "is-signed", "latitude", "longitude", "measurement-capabilities", "model", "name", "preloaded-config", "radio-technology", "serial-number", "software-version", "state", "supported-spec", "update-time", "user-id", "vendor", "vertical-accuracy"]);
@@ -4369,7 +4371,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "filter", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4480,7 +4482,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4622,9 +4624,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "sas-user-ids" => Some(("sasUserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "sas-user-ids" => Some(("sasUserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["display-name", "name", "sas-user-ids"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -4711,7 +4713,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4768,9 +4770,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "sas-user-ids" => Some(("sasUserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "sas-user-ids" => Some(("sasUserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["display-name", "name", "sas-user-ids"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -5030,8 +5032,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "resource" => Some(("resource", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "permissions" => Some(("permissions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "resource" => Some(("resource", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["permissions", "resource"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -5346,12 +5348,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "prod-tt-sasportal1-alpha1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "prod-tt-sasportal1-alpha1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

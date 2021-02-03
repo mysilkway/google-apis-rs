@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_ml1 as api;
+extern crate google_ml1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_ml1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::CloudMachineLearningEngine<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::CloudMachineLearningEngine<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -69,8 +71,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "http-body.data" => Some(("httpBody.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "http-body.content-type" => Some(("httpBody.contentType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "http-body.data" => Some(("httpBody.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["content-type", "data", "http-body"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -291,92 +293,92 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "error-message" => Some(("errorMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "start-time" => Some(("startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "job-id" => Some(("jobId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-output.completed-trial-count" => Some(("trainingOutput.completedTrialCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "training-output.is-hyperparameter-tuning-job" => Some(("trainingOutput.isHyperparameterTuningJob", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "training-output.is-built-in-algorithm-job" => Some(("trainingOutput.isBuiltInAlgorithmJob", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "training-output.consumed-ml-units" => Some(("trainingOutput.consumedMLUnits", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "training-output.hyperparameter-metric-tag" => Some(("trainingOutput.hyperparameterMetricTag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-output.built-in-algorithm-output.framework" => Some(("trainingOutput.builtInAlgorithmOutput.framework", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-output.built-in-algorithm-output.model-path" => Some(("trainingOutput.builtInAlgorithmOutput.modelPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-output.built-in-algorithm-output.runtime-version" => Some(("trainingOutput.builtInAlgorithmOutput.runtimeVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-output.built-in-algorithm-output.python-version" => Some(("trainingOutput.builtInAlgorithmOutput.pythonVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "prediction-input.model-name" => Some(("predictionInput.modelName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "prediction-input.signature-name" => Some(("predictionInput.signatureName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "prediction-input.runtime-version" => Some(("predictionInput.runtimeVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "prediction-input.batch-size" => Some(("predictionInput.batchSize", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "prediction-input.max-worker-count" => Some(("predictionInput.maxWorkerCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "prediction-input.uri" => Some(("predictionInput.uri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "prediction-input.output-path" => Some(("predictionInput.outputPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "prediction-input.data-format" => Some(("predictionInput.dataFormat", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "prediction-input.version-name" => Some(("predictionInput.versionName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "prediction-input.region" => Some(("predictionInput.region", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "prediction-input.input-paths" => Some(("predictionInput.inputPaths", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "prediction-input.output-data-format" => Some(("predictionInput.outputDataFormat", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.master-type" => Some(("trainingInput.masterType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.job-dir" => Some(("trainingInput.jobDir", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.scheduling.max-running-time" => Some(("trainingInput.scheduling.maxRunningTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.scheduling.max-wait-time" => Some(("trainingInput.scheduling.maxWaitTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.parameter-server-count" => Some(("trainingInput.parameterServerCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "training-input.evaluator-count" => Some(("trainingInput.evaluatorCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "training-input.worker-type" => Some(("trainingInput.workerType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.network" => Some(("trainingInput.network", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.scale-tier" => Some(("trainingInput.scaleTier", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.service-account" => Some(("trainingInput.serviceAccount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.package-uris" => Some(("trainingInput.packageUris", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "training-input.worker-config.container-args" => Some(("trainingInput.workerConfig.containerArgs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "training-input.worker-config.container-command" => Some(("trainingInput.workerConfig.containerCommand", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "training-input.worker-config.tpu-tf-version" => Some(("trainingInput.workerConfig.tpuTfVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.worker-config.accelerator-config.count" => Some(("trainingInput.workerConfig.acceleratorConfig.count", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.worker-config.accelerator-config.type" => Some(("trainingInput.workerConfig.acceleratorConfig.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.worker-config.image-uri" => Some(("trainingInput.workerConfig.imageUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.evaluator-config.container-args" => Some(("trainingInput.evaluatorConfig.containerArgs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "training-input.evaluator-config.container-command" => Some(("trainingInput.evaluatorConfig.containerCommand", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "training-input.evaluator-config.tpu-tf-version" => Some(("trainingInput.evaluatorConfig.tpuTfVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.evaluator-config.accelerator-config.count" => Some(("trainingInput.evaluatorConfig.acceleratorConfig.count", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.evaluator-config.accelerator-config.type" => Some(("trainingInput.evaluatorConfig.acceleratorConfig.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.evaluator-config.image-uri" => Some(("trainingInput.evaluatorConfig.imageUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.use-chief-in-tf-config" => Some(("trainingInput.useChiefInTfConfig", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "training-input.master-config.container-args" => Some(("trainingInput.masterConfig.containerArgs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "training-input.master-config.container-command" => Some(("trainingInput.masterConfig.containerCommand", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "training-input.master-config.tpu-tf-version" => Some(("trainingInput.masterConfig.tpuTfVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.master-config.accelerator-config.count" => Some(("trainingInput.masterConfig.acceleratorConfig.count", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.master-config.accelerator-config.type" => Some(("trainingInput.masterConfig.acceleratorConfig.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.master-config.image-uri" => Some(("trainingInput.masterConfig.imageUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.runtime-version" => Some(("trainingInput.runtimeVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.hyperparameters.max-trials" => Some(("trainingInput.hyperparameters.maxTrials", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "training-input.hyperparameters.goal" => Some(("trainingInput.hyperparameters.goal", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.hyperparameters.algorithm" => Some(("trainingInput.hyperparameters.algorithm", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.hyperparameters.max-failed-trials" => Some(("trainingInput.hyperparameters.maxFailedTrials", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "training-input.hyperparameters.enable-trial-early-stopping" => Some(("trainingInput.hyperparameters.enableTrialEarlyStopping", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "training-input.hyperparameters.resume-previous-job-id" => Some(("trainingInput.hyperparameters.resumePreviousJobId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.hyperparameters.hyperparameter-metric-tag" => Some(("trainingInput.hyperparameters.hyperparameterMetricTag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.hyperparameters.max-parallel-trials" => Some(("trainingInput.hyperparameters.maxParallelTrials", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "training-input.args" => Some(("trainingInput.args", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "training-input.python-module" => Some(("trainingInput.pythonModule", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.worker-count" => Some(("trainingInput.workerCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "training-input.encryption-config.kms-key-name" => Some(("trainingInput.encryptionConfig.kmsKeyName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.parameter-server-config.container-args" => Some(("trainingInput.parameterServerConfig.containerArgs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "training-input.parameter-server-config.container-command" => Some(("trainingInput.parameterServerConfig.containerCommand", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "training-input.parameter-server-config.tpu-tf-version" => Some(("trainingInput.parameterServerConfig.tpuTfVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.parameter-server-config.accelerator-config.count" => Some(("trainingInput.parameterServerConfig.acceleratorConfig.count", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.parameter-server-config.accelerator-config.type" => Some(("trainingInput.parameterServerConfig.acceleratorConfig.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.parameter-server-config.image-uri" => Some(("trainingInput.parameterServerConfig.imageUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.region" => Some(("trainingInput.region", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.python-version" => Some(("trainingInput.pythonVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.evaluator-type" => Some(("trainingInput.evaluatorType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.parameter-server-type" => Some(("trainingInput.parameterServerType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "end-time" => Some(("endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "error-message" => Some(("errorMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-id" => Some(("jobId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "prediction-input.batch-size" => Some(("predictionInput.batchSize", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "prediction-input.data-format" => Some(("predictionInput.dataFormat", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "prediction-input.input-paths" => Some(("predictionInput.inputPaths", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "prediction-input.max-worker-count" => Some(("predictionInput.maxWorkerCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "prediction-input.model-name" => Some(("predictionInput.modelName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "prediction-input.output-data-format" => Some(("predictionInput.outputDataFormat", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "prediction-input.output-path" => Some(("predictionInput.outputPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "prediction-input.region" => Some(("predictionInput.region", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "prediction-input.runtime-version" => Some(("predictionInput.runtimeVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "prediction-input.signature-name" => Some(("predictionInput.signatureName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "prediction-input.uri" => Some(("predictionInput.uri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "prediction-input.version-name" => Some(("predictionInput.versionName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "prediction-output.error-count" => Some(("predictionOutput.errorCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "prediction-output.node-hours" => Some(("predictionOutput.nodeHours", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "prediction-output.output-path" => Some(("predictionOutput.outputPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "prediction-output.prediction-count" => Some(("predictionOutput.predictionCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "prediction-output.error-count" => Some(("predictionOutput.errorCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "start-time" => Some(("startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.args" => Some(("trainingInput.args", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "training-input.encryption-config.kms-key-name" => Some(("trainingInput.encryptionConfig.kmsKeyName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.evaluator-config.accelerator-config.count" => Some(("trainingInput.evaluatorConfig.acceleratorConfig.count", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.evaluator-config.accelerator-config.type" => Some(("trainingInput.evaluatorConfig.acceleratorConfig.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.evaluator-config.container-args" => Some(("trainingInput.evaluatorConfig.containerArgs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "training-input.evaluator-config.container-command" => Some(("trainingInput.evaluatorConfig.containerCommand", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "training-input.evaluator-config.image-uri" => Some(("trainingInput.evaluatorConfig.imageUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.evaluator-config.tpu-tf-version" => Some(("trainingInput.evaluatorConfig.tpuTfVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.evaluator-count" => Some(("trainingInput.evaluatorCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "training-input.evaluator-type" => Some(("trainingInput.evaluatorType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.hyperparameters.algorithm" => Some(("trainingInput.hyperparameters.algorithm", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.hyperparameters.enable-trial-early-stopping" => Some(("trainingInput.hyperparameters.enableTrialEarlyStopping", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "training-input.hyperparameters.goal" => Some(("trainingInput.hyperparameters.goal", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.hyperparameters.hyperparameter-metric-tag" => Some(("trainingInput.hyperparameters.hyperparameterMetricTag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.hyperparameters.max-failed-trials" => Some(("trainingInput.hyperparameters.maxFailedTrials", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "training-input.hyperparameters.max-parallel-trials" => Some(("trainingInput.hyperparameters.maxParallelTrials", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "training-input.hyperparameters.max-trials" => Some(("trainingInput.hyperparameters.maxTrials", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "training-input.hyperparameters.resume-previous-job-id" => Some(("trainingInput.hyperparameters.resumePreviousJobId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.job-dir" => Some(("trainingInput.jobDir", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.master-config.accelerator-config.count" => Some(("trainingInput.masterConfig.acceleratorConfig.count", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.master-config.accelerator-config.type" => Some(("trainingInput.masterConfig.acceleratorConfig.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.master-config.container-args" => Some(("trainingInput.masterConfig.containerArgs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "training-input.master-config.container-command" => Some(("trainingInput.masterConfig.containerCommand", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "training-input.master-config.image-uri" => Some(("trainingInput.masterConfig.imageUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.master-config.tpu-tf-version" => Some(("trainingInput.masterConfig.tpuTfVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.master-type" => Some(("trainingInput.masterType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.network" => Some(("trainingInput.network", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.package-uris" => Some(("trainingInput.packageUris", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "training-input.parameter-server-config.accelerator-config.count" => Some(("trainingInput.parameterServerConfig.acceleratorConfig.count", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.parameter-server-config.accelerator-config.type" => Some(("trainingInput.parameterServerConfig.acceleratorConfig.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.parameter-server-config.container-args" => Some(("trainingInput.parameterServerConfig.containerArgs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "training-input.parameter-server-config.container-command" => Some(("trainingInput.parameterServerConfig.containerCommand", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "training-input.parameter-server-config.image-uri" => Some(("trainingInput.parameterServerConfig.imageUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.parameter-server-config.tpu-tf-version" => Some(("trainingInput.parameterServerConfig.tpuTfVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.parameter-server-count" => Some(("trainingInput.parameterServerCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "training-input.parameter-server-type" => Some(("trainingInput.parameterServerType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.python-module" => Some(("trainingInput.pythonModule", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.python-version" => Some(("trainingInput.pythonVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.region" => Some(("trainingInput.region", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.runtime-version" => Some(("trainingInput.runtimeVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.scale-tier" => Some(("trainingInput.scaleTier", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.scheduling.max-running-time" => Some(("trainingInput.scheduling.maxRunningTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.scheduling.max-wait-time" => Some(("trainingInput.scheduling.maxWaitTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.service-account" => Some(("trainingInput.serviceAccount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.use-chief-in-tf-config" => Some(("trainingInput.useChiefInTfConfig", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "training-input.worker-config.accelerator-config.count" => Some(("trainingInput.workerConfig.acceleratorConfig.count", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.worker-config.accelerator-config.type" => Some(("trainingInput.workerConfig.acceleratorConfig.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.worker-config.container-args" => Some(("trainingInput.workerConfig.containerArgs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "training-input.worker-config.container-command" => Some(("trainingInput.workerConfig.containerCommand", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "training-input.worker-config.image-uri" => Some(("trainingInput.workerConfig.imageUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.worker-config.tpu-tf-version" => Some(("trainingInput.workerConfig.tpuTfVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.worker-count" => Some(("trainingInput.workerCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "training-input.worker-type" => Some(("trainingInput.workerType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-output.built-in-algorithm-output.framework" => Some(("trainingOutput.builtInAlgorithmOutput.framework", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-output.built-in-algorithm-output.model-path" => Some(("trainingOutput.builtInAlgorithmOutput.modelPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-output.built-in-algorithm-output.python-version" => Some(("trainingOutput.builtInAlgorithmOutput.pythonVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-output.built-in-algorithm-output.runtime-version" => Some(("trainingOutput.builtInAlgorithmOutput.runtimeVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-output.completed-trial-count" => Some(("trainingOutput.completedTrialCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "training-output.consumed-ml-units" => Some(("trainingOutput.consumedMLUnits", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "training-output.hyperparameter-metric-tag" => Some(("trainingOutput.hyperparameterMetricTag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-output.is-built-in-algorithm-job" => Some(("trainingOutput.isBuiltInAlgorithmJob", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "training-output.is-hyperparameter-tuning-job" => Some(("trainingOutput.isHyperparameterTuningJob", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["accelerator-config", "algorithm", "args", "batch-size", "built-in-algorithm-output", "completed-trial-count", "consumed-ml-units", "container-args", "container-command", "count", "create-time", "data-format", "enable-trial-early-stopping", "encryption-config", "end-time", "error-count", "error-message", "etag", "evaluator-config", "evaluator-count", "evaluator-type", "framework", "goal", "hyperparameter-metric-tag", "hyperparameters", "image-uri", "input-paths", "is-built-in-algorithm-job", "is-hyperparameter-tuning-job", "job-dir", "job-id", "kms-key-name", "labels", "master-config", "master-type", "max-failed-trials", "max-parallel-trials", "max-running-time", "max-trials", "max-wait-time", "max-worker-count", "model-name", "model-path", "network", "node-hours", "output-data-format", "output-path", "package-uris", "parameter-server-config", "parameter-server-count", "parameter-server-type", "prediction-count", "prediction-input", "prediction-output", "python-module", "python-version", "region", "resume-previous-job-id", "runtime-version", "scale-tier", "scheduling", "service-account", "signature-name", "start-time", "state", "tpu-tf-version", "training-input", "training-output", "type", "uri", "use-chief-in-tf-config", "version-name", "worker-config", "worker-count", "worker-type"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -574,7 +576,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -631,92 +633,92 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "error-message" => Some(("errorMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "start-time" => Some(("startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "job-id" => Some(("jobId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-output.completed-trial-count" => Some(("trainingOutput.completedTrialCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "training-output.is-hyperparameter-tuning-job" => Some(("trainingOutput.isHyperparameterTuningJob", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "training-output.is-built-in-algorithm-job" => Some(("trainingOutput.isBuiltInAlgorithmJob", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "training-output.consumed-ml-units" => Some(("trainingOutput.consumedMLUnits", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "training-output.hyperparameter-metric-tag" => Some(("trainingOutput.hyperparameterMetricTag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-output.built-in-algorithm-output.framework" => Some(("trainingOutput.builtInAlgorithmOutput.framework", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-output.built-in-algorithm-output.model-path" => Some(("trainingOutput.builtInAlgorithmOutput.modelPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-output.built-in-algorithm-output.runtime-version" => Some(("trainingOutput.builtInAlgorithmOutput.runtimeVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-output.built-in-algorithm-output.python-version" => Some(("trainingOutput.builtInAlgorithmOutput.pythonVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "prediction-input.model-name" => Some(("predictionInput.modelName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "prediction-input.signature-name" => Some(("predictionInput.signatureName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "prediction-input.runtime-version" => Some(("predictionInput.runtimeVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "prediction-input.batch-size" => Some(("predictionInput.batchSize", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "prediction-input.max-worker-count" => Some(("predictionInput.maxWorkerCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "prediction-input.uri" => Some(("predictionInput.uri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "prediction-input.output-path" => Some(("predictionInput.outputPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "prediction-input.data-format" => Some(("predictionInput.dataFormat", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "prediction-input.version-name" => Some(("predictionInput.versionName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "prediction-input.region" => Some(("predictionInput.region", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "prediction-input.input-paths" => Some(("predictionInput.inputPaths", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "prediction-input.output-data-format" => Some(("predictionInput.outputDataFormat", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.master-type" => Some(("trainingInput.masterType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.job-dir" => Some(("trainingInput.jobDir", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.scheduling.max-running-time" => Some(("trainingInput.scheduling.maxRunningTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.scheduling.max-wait-time" => Some(("trainingInput.scheduling.maxWaitTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.parameter-server-count" => Some(("trainingInput.parameterServerCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "training-input.evaluator-count" => Some(("trainingInput.evaluatorCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "training-input.worker-type" => Some(("trainingInput.workerType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.network" => Some(("trainingInput.network", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.scale-tier" => Some(("trainingInput.scaleTier", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.service-account" => Some(("trainingInput.serviceAccount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.package-uris" => Some(("trainingInput.packageUris", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "training-input.worker-config.container-args" => Some(("trainingInput.workerConfig.containerArgs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "training-input.worker-config.container-command" => Some(("trainingInput.workerConfig.containerCommand", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "training-input.worker-config.tpu-tf-version" => Some(("trainingInput.workerConfig.tpuTfVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.worker-config.accelerator-config.count" => Some(("trainingInput.workerConfig.acceleratorConfig.count", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.worker-config.accelerator-config.type" => Some(("trainingInput.workerConfig.acceleratorConfig.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.worker-config.image-uri" => Some(("trainingInput.workerConfig.imageUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.evaluator-config.container-args" => Some(("trainingInput.evaluatorConfig.containerArgs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "training-input.evaluator-config.container-command" => Some(("trainingInput.evaluatorConfig.containerCommand", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "training-input.evaluator-config.tpu-tf-version" => Some(("trainingInput.evaluatorConfig.tpuTfVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.evaluator-config.accelerator-config.count" => Some(("trainingInput.evaluatorConfig.acceleratorConfig.count", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.evaluator-config.accelerator-config.type" => Some(("trainingInput.evaluatorConfig.acceleratorConfig.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.evaluator-config.image-uri" => Some(("trainingInput.evaluatorConfig.imageUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.use-chief-in-tf-config" => Some(("trainingInput.useChiefInTfConfig", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "training-input.master-config.container-args" => Some(("trainingInput.masterConfig.containerArgs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "training-input.master-config.container-command" => Some(("trainingInput.masterConfig.containerCommand", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "training-input.master-config.tpu-tf-version" => Some(("trainingInput.masterConfig.tpuTfVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.master-config.accelerator-config.count" => Some(("trainingInput.masterConfig.acceleratorConfig.count", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.master-config.accelerator-config.type" => Some(("trainingInput.masterConfig.acceleratorConfig.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.master-config.image-uri" => Some(("trainingInput.masterConfig.imageUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.runtime-version" => Some(("trainingInput.runtimeVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.hyperparameters.max-trials" => Some(("trainingInput.hyperparameters.maxTrials", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "training-input.hyperparameters.goal" => Some(("trainingInput.hyperparameters.goal", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.hyperparameters.algorithm" => Some(("trainingInput.hyperparameters.algorithm", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.hyperparameters.max-failed-trials" => Some(("trainingInput.hyperparameters.maxFailedTrials", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "training-input.hyperparameters.enable-trial-early-stopping" => Some(("trainingInput.hyperparameters.enableTrialEarlyStopping", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "training-input.hyperparameters.resume-previous-job-id" => Some(("trainingInput.hyperparameters.resumePreviousJobId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.hyperparameters.hyperparameter-metric-tag" => Some(("trainingInput.hyperparameters.hyperparameterMetricTag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.hyperparameters.max-parallel-trials" => Some(("trainingInput.hyperparameters.maxParallelTrials", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "training-input.args" => Some(("trainingInput.args", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "training-input.python-module" => Some(("trainingInput.pythonModule", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.worker-count" => Some(("trainingInput.workerCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "training-input.encryption-config.kms-key-name" => Some(("trainingInput.encryptionConfig.kmsKeyName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.parameter-server-config.container-args" => Some(("trainingInput.parameterServerConfig.containerArgs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "training-input.parameter-server-config.container-command" => Some(("trainingInput.parameterServerConfig.containerCommand", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "training-input.parameter-server-config.tpu-tf-version" => Some(("trainingInput.parameterServerConfig.tpuTfVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.parameter-server-config.accelerator-config.count" => Some(("trainingInput.parameterServerConfig.acceleratorConfig.count", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.parameter-server-config.accelerator-config.type" => Some(("trainingInput.parameterServerConfig.acceleratorConfig.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.parameter-server-config.image-uri" => Some(("trainingInput.parameterServerConfig.imageUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.region" => Some(("trainingInput.region", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.python-version" => Some(("trainingInput.pythonVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.evaluator-type" => Some(("trainingInput.evaluatorType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "training-input.parameter-server-type" => Some(("trainingInput.parameterServerType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "end-time" => Some(("endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "error-message" => Some(("errorMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-id" => Some(("jobId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "prediction-input.batch-size" => Some(("predictionInput.batchSize", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "prediction-input.data-format" => Some(("predictionInput.dataFormat", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "prediction-input.input-paths" => Some(("predictionInput.inputPaths", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "prediction-input.max-worker-count" => Some(("predictionInput.maxWorkerCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "prediction-input.model-name" => Some(("predictionInput.modelName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "prediction-input.output-data-format" => Some(("predictionInput.outputDataFormat", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "prediction-input.output-path" => Some(("predictionInput.outputPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "prediction-input.region" => Some(("predictionInput.region", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "prediction-input.runtime-version" => Some(("predictionInput.runtimeVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "prediction-input.signature-name" => Some(("predictionInput.signatureName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "prediction-input.uri" => Some(("predictionInput.uri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "prediction-input.version-name" => Some(("predictionInput.versionName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "prediction-output.error-count" => Some(("predictionOutput.errorCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "prediction-output.node-hours" => Some(("predictionOutput.nodeHours", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "prediction-output.output-path" => Some(("predictionOutput.outputPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "prediction-output.prediction-count" => Some(("predictionOutput.predictionCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "prediction-output.error-count" => Some(("predictionOutput.errorCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "start-time" => Some(("startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.args" => Some(("trainingInput.args", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "training-input.encryption-config.kms-key-name" => Some(("trainingInput.encryptionConfig.kmsKeyName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.evaluator-config.accelerator-config.count" => Some(("trainingInput.evaluatorConfig.acceleratorConfig.count", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.evaluator-config.accelerator-config.type" => Some(("trainingInput.evaluatorConfig.acceleratorConfig.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.evaluator-config.container-args" => Some(("trainingInput.evaluatorConfig.containerArgs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "training-input.evaluator-config.container-command" => Some(("trainingInput.evaluatorConfig.containerCommand", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "training-input.evaluator-config.image-uri" => Some(("trainingInput.evaluatorConfig.imageUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.evaluator-config.tpu-tf-version" => Some(("trainingInput.evaluatorConfig.tpuTfVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.evaluator-count" => Some(("trainingInput.evaluatorCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "training-input.evaluator-type" => Some(("trainingInput.evaluatorType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.hyperparameters.algorithm" => Some(("trainingInput.hyperparameters.algorithm", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.hyperparameters.enable-trial-early-stopping" => Some(("trainingInput.hyperparameters.enableTrialEarlyStopping", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "training-input.hyperparameters.goal" => Some(("trainingInput.hyperparameters.goal", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.hyperparameters.hyperparameter-metric-tag" => Some(("trainingInput.hyperparameters.hyperparameterMetricTag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.hyperparameters.max-failed-trials" => Some(("trainingInput.hyperparameters.maxFailedTrials", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "training-input.hyperparameters.max-parallel-trials" => Some(("trainingInput.hyperparameters.maxParallelTrials", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "training-input.hyperparameters.max-trials" => Some(("trainingInput.hyperparameters.maxTrials", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "training-input.hyperparameters.resume-previous-job-id" => Some(("trainingInput.hyperparameters.resumePreviousJobId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.job-dir" => Some(("trainingInput.jobDir", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.master-config.accelerator-config.count" => Some(("trainingInput.masterConfig.acceleratorConfig.count", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.master-config.accelerator-config.type" => Some(("trainingInput.masterConfig.acceleratorConfig.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.master-config.container-args" => Some(("trainingInput.masterConfig.containerArgs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "training-input.master-config.container-command" => Some(("trainingInput.masterConfig.containerCommand", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "training-input.master-config.image-uri" => Some(("trainingInput.masterConfig.imageUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.master-config.tpu-tf-version" => Some(("trainingInput.masterConfig.tpuTfVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.master-type" => Some(("trainingInput.masterType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.network" => Some(("trainingInput.network", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.package-uris" => Some(("trainingInput.packageUris", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "training-input.parameter-server-config.accelerator-config.count" => Some(("trainingInput.parameterServerConfig.acceleratorConfig.count", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.parameter-server-config.accelerator-config.type" => Some(("trainingInput.parameterServerConfig.acceleratorConfig.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.parameter-server-config.container-args" => Some(("trainingInput.parameterServerConfig.containerArgs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "training-input.parameter-server-config.container-command" => Some(("trainingInput.parameterServerConfig.containerCommand", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "training-input.parameter-server-config.image-uri" => Some(("trainingInput.parameterServerConfig.imageUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.parameter-server-config.tpu-tf-version" => Some(("trainingInput.parameterServerConfig.tpuTfVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.parameter-server-count" => Some(("trainingInput.parameterServerCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "training-input.parameter-server-type" => Some(("trainingInput.parameterServerType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.python-module" => Some(("trainingInput.pythonModule", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.python-version" => Some(("trainingInput.pythonVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.region" => Some(("trainingInput.region", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.runtime-version" => Some(("trainingInput.runtimeVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.scale-tier" => Some(("trainingInput.scaleTier", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.scheduling.max-running-time" => Some(("trainingInput.scheduling.maxRunningTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.scheduling.max-wait-time" => Some(("trainingInput.scheduling.maxWaitTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.service-account" => Some(("trainingInput.serviceAccount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.use-chief-in-tf-config" => Some(("trainingInput.useChiefInTfConfig", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "training-input.worker-config.accelerator-config.count" => Some(("trainingInput.workerConfig.acceleratorConfig.count", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.worker-config.accelerator-config.type" => Some(("trainingInput.workerConfig.acceleratorConfig.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.worker-config.container-args" => Some(("trainingInput.workerConfig.containerArgs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "training-input.worker-config.container-command" => Some(("trainingInput.workerConfig.containerCommand", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "training-input.worker-config.image-uri" => Some(("trainingInput.workerConfig.imageUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.worker-config.tpu-tf-version" => Some(("trainingInput.workerConfig.tpuTfVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-input.worker-count" => Some(("trainingInput.workerCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "training-input.worker-type" => Some(("trainingInput.workerType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-output.built-in-algorithm-output.framework" => Some(("trainingOutput.builtInAlgorithmOutput.framework", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-output.built-in-algorithm-output.model-path" => Some(("trainingOutput.builtInAlgorithmOutput.modelPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-output.built-in-algorithm-output.python-version" => Some(("trainingOutput.builtInAlgorithmOutput.pythonVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-output.built-in-algorithm-output.runtime-version" => Some(("trainingOutput.builtInAlgorithmOutput.runtimeVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-output.completed-trial-count" => Some(("trainingOutput.completedTrialCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "training-output.consumed-ml-units" => Some(("trainingOutput.consumedMLUnits", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "training-output.hyperparameter-metric-tag" => Some(("trainingOutput.hyperparameterMetricTag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "training-output.is-built-in-algorithm-job" => Some(("trainingOutput.isBuiltInAlgorithmJob", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "training-output.is-hyperparameter-tuning-job" => Some(("trainingOutput.isHyperparameterTuningJob", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["accelerator-config", "algorithm", "args", "batch-size", "built-in-algorithm-output", "completed-trial-count", "consumed-ml-units", "container-args", "container-command", "count", "create-time", "data-format", "enable-trial-early-stopping", "encryption-config", "end-time", "error-count", "error-message", "etag", "evaluator-config", "evaluator-count", "evaluator-type", "framework", "goal", "hyperparameter-metric-tag", "hyperparameters", "image-uri", "input-paths", "is-built-in-algorithm-job", "is-hyperparameter-tuning-job", "job-dir", "job-id", "kms-key-name", "labels", "master-config", "master-type", "max-failed-trials", "max-parallel-trials", "max-running-time", "max-trials", "max-wait-time", "max-worker-count", "model-name", "model-path", "network", "node-hours", "output-data-format", "output-path", "package-uris", "parameter-server-config", "parameter-server-count", "parameter-server-type", "prediction-count", "prediction-input", "prediction-output", "python-module", "python-version", "region", "resume-previous-job-id", "runtime-version", "scale-tier", "scheduling", "service-account", "signature-name", "start-time", "state", "tpu-tf-version", "training-input", "training-output", "type", "uri", "use-chief-in-tf-config", "version-name", "worker-config", "worker-count", "worker-type"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1031,7 +1033,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1192,13 +1194,13 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "inactive-reason" => Some(("inactiveReason", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inactive-reason" => Some(("inactiveReason", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "study-config.algorithm" => Some(("studyConfig.algorithm", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "study-config.automated-stopping-config.decay-curve-stopping-config.use-elapsed-time" => Some(("studyConfig.automatedStoppingConfig.decayCurveStoppingConfig.useElapsedTime", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "study-config.automated-stopping-config.median-automated-stopping-config.use-elapsed-time" => Some(("studyConfig.automatedStoppingConfig.medianAutomatedStoppingConfig.useElapsedTime", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "study-config.algorithm" => Some(("studyConfig.algorithm", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["algorithm", "automated-stopping-config", "create-time", "decay-curve-stopping-config", "inactive-reason", "median-automated-stopping-config", "name", "state", "study-config", "use-elapsed-time"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1613,9 +1615,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "infeasible-reason" => Some(("infeasibleReason", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "final-measurement.elapsed-time" => Some(("finalMeasurement.elapsedTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "final-measurement.step-count" => Some(("finalMeasurement.stepCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "infeasible-reason" => Some(("infeasibleReason", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "trial-infeasible" => Some(("trialInfeasible", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["elapsed-time", "final-measurement", "infeasible-reason", "step-count", "trial-infeasible"]);
@@ -1701,14 +1703,14 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "infeasible-reason" => Some(("infeasibleReason", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-id" => Some(("clientId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "end-time" => Some(("endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "final-measurement.elapsed-time" => Some(("finalMeasurement.elapsedTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "final-measurement.step-count" => Some(("finalMeasurement.stepCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "infeasible-reason" => Some(("infeasibleReason", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-id" => Some(("clientId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "start-time" => Some(("startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "end-time" => Some(("endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "trial-infeasible" => Some(("trialInfeasible", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["client-id", "elapsed-time", "end-time", "final-measurement", "infeasible-reason", "name", "start-time", "state", "step-count", "trial-infeasible"]);
@@ -2034,8 +2036,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "suggestion-count" => Some(("suggestionCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "client-id" => Some(("clientId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "suggestion-count" => Some(("suggestionCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["client-id", "suggestion-count"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2120,39 +2122,39 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "online-prediction-console-logging" => Some(("onlinePredictionConsoleLogging", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "regions" => Some(("regions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "default-version.accelerator-config.count" => Some(("defaultVersion.acceleratorConfig.count", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "default-version.accelerator-config.type" => Some(("defaultVersion.acceleratorConfig.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.labels" => Some(("defaultVersion.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "default-version.prediction-class" => Some(("defaultVersion.predictionClass", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.service-account" => Some(("defaultVersion.serviceAccount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.package-uris" => Some(("defaultVersion.packageUris", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "default-version.state" => Some(("defaultVersion.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.etag" => Some(("defaultVersion.etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.last-use-time" => Some(("defaultVersion.lastUseTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.deployment-uri" => Some(("defaultVersion.deploymentUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.explanation-config.xrai-attribution.num-integral-steps" => Some(("defaultVersion.explanationConfig.xraiAttribution.numIntegralSteps", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "default-version.explanation-config.sampled-shapley-attribution.num-paths" => Some(("defaultVersion.explanationConfig.sampledShapleyAttribution.numPaths", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "default-version.explanation-config.integrated-gradients-attribution.num-integral-steps" => Some(("defaultVersion.explanationConfig.integratedGradientsAttribution.numIntegralSteps", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "default-version.is-default" => Some(("defaultVersion.isDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "default-version.machine-type" => Some(("defaultVersion.machineType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.description" => Some(("defaultVersion.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.runtime-version" => Some(("defaultVersion.runtimeVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.manual-scaling.nodes" => Some(("defaultVersion.manualScaling.nodes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "default-version.error-message" => Some(("defaultVersion.errorMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.framework" => Some(("defaultVersion.framework", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.create-time" => Some(("defaultVersion.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.name" => Some(("defaultVersion.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "default-version.auto-scaling.min-nodes" => Some(("defaultVersion.autoScaling.minNodes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "default-version.create-time" => Some(("defaultVersion.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "default-version.deployment-uri" => Some(("defaultVersion.deploymentUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "default-version.description" => Some(("defaultVersion.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "default-version.error-message" => Some(("defaultVersion.errorMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "default-version.etag" => Some(("defaultVersion.etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "default-version.explanation-config.integrated-gradients-attribution.num-integral-steps" => Some(("defaultVersion.explanationConfig.integratedGradientsAttribution.numIntegralSteps", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "default-version.explanation-config.sampled-shapley-attribution.num-paths" => Some(("defaultVersion.explanationConfig.sampledShapleyAttribution.numPaths", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "default-version.explanation-config.xrai-attribution.num-integral-steps" => Some(("defaultVersion.explanationConfig.xraiAttribution.numIntegralSteps", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "default-version.framework" => Some(("defaultVersion.framework", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "default-version.is-default" => Some(("defaultVersion.isDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "default-version.labels" => Some(("defaultVersion.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "default-version.last-use-time" => Some(("defaultVersion.lastUseTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "default-version.machine-type" => Some(("defaultVersion.machineType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "default-version.manual-scaling.nodes" => Some(("defaultVersion.manualScaling.nodes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "default-version.name" => Some(("defaultVersion.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "default-version.package-uris" => Some(("defaultVersion.packageUris", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "default-version.prediction-class" => Some(("defaultVersion.predictionClass", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "default-version.python-version" => Some(("defaultVersion.pythonVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.request-logging-config.sampling-percentage" => Some(("defaultVersion.requestLoggingConfig.samplingPercentage", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "default-version.request-logging-config.bigquery-table-name" => Some(("defaultVersion.requestLoggingConfig.bigqueryTableName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "online-prediction-logging" => Some(("onlinePredictionLogging", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "default-version.request-logging-config.sampling-percentage" => Some(("defaultVersion.requestLoggingConfig.samplingPercentage", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "default-version.runtime-version" => Some(("defaultVersion.runtimeVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "default-version.service-account" => Some(("defaultVersion.serviceAccount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "default-version.state" => Some(("defaultVersion.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "online-prediction-console-logging" => Some(("onlinePredictionConsoleLogging", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "online-prediction-logging" => Some(("onlinePredictionLogging", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "regions" => Some(("regions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["accelerator-config", "auto-scaling", "bigquery-table-name", "count", "create-time", "default-version", "deployment-uri", "description", "error-message", "etag", "explanation-config", "framework", "integrated-gradients-attribution", "is-default", "labels", "last-use-time", "machine-type", "manual-scaling", "min-nodes", "name", "nodes", "num-integral-steps", "num-paths", "online-prediction-console-logging", "online-prediction-logging", "package-uris", "prediction-class", "python-version", "regions", "request-logging-config", "runtime-version", "sampled-shapley-attribution", "sampling-percentage", "service-account", "state", "type", "xrai-attribution"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2402,7 +2404,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2459,39 +2461,39 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "online-prediction-console-logging" => Some(("onlinePredictionConsoleLogging", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "regions" => Some(("regions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "default-version.accelerator-config.count" => Some(("defaultVersion.acceleratorConfig.count", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "default-version.accelerator-config.type" => Some(("defaultVersion.acceleratorConfig.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.labels" => Some(("defaultVersion.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "default-version.prediction-class" => Some(("defaultVersion.predictionClass", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.service-account" => Some(("defaultVersion.serviceAccount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.package-uris" => Some(("defaultVersion.packageUris", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "default-version.state" => Some(("defaultVersion.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.etag" => Some(("defaultVersion.etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.last-use-time" => Some(("defaultVersion.lastUseTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.deployment-uri" => Some(("defaultVersion.deploymentUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.explanation-config.xrai-attribution.num-integral-steps" => Some(("defaultVersion.explanationConfig.xraiAttribution.numIntegralSteps", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "default-version.explanation-config.sampled-shapley-attribution.num-paths" => Some(("defaultVersion.explanationConfig.sampledShapleyAttribution.numPaths", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "default-version.explanation-config.integrated-gradients-attribution.num-integral-steps" => Some(("defaultVersion.explanationConfig.integratedGradientsAttribution.numIntegralSteps", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "default-version.is-default" => Some(("defaultVersion.isDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "default-version.machine-type" => Some(("defaultVersion.machineType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.description" => Some(("defaultVersion.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.runtime-version" => Some(("defaultVersion.runtimeVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.manual-scaling.nodes" => Some(("defaultVersion.manualScaling.nodes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "default-version.error-message" => Some(("defaultVersion.errorMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.framework" => Some(("defaultVersion.framework", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.create-time" => Some(("defaultVersion.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.name" => Some(("defaultVersion.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "default-version.auto-scaling.min-nodes" => Some(("defaultVersion.autoScaling.minNodes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "default-version.create-time" => Some(("defaultVersion.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "default-version.deployment-uri" => Some(("defaultVersion.deploymentUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "default-version.description" => Some(("defaultVersion.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "default-version.error-message" => Some(("defaultVersion.errorMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "default-version.etag" => Some(("defaultVersion.etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "default-version.explanation-config.integrated-gradients-attribution.num-integral-steps" => Some(("defaultVersion.explanationConfig.integratedGradientsAttribution.numIntegralSteps", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "default-version.explanation-config.sampled-shapley-attribution.num-paths" => Some(("defaultVersion.explanationConfig.sampledShapleyAttribution.numPaths", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "default-version.explanation-config.xrai-attribution.num-integral-steps" => Some(("defaultVersion.explanationConfig.xraiAttribution.numIntegralSteps", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "default-version.framework" => Some(("defaultVersion.framework", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "default-version.is-default" => Some(("defaultVersion.isDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "default-version.labels" => Some(("defaultVersion.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "default-version.last-use-time" => Some(("defaultVersion.lastUseTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "default-version.machine-type" => Some(("defaultVersion.machineType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "default-version.manual-scaling.nodes" => Some(("defaultVersion.manualScaling.nodes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "default-version.name" => Some(("defaultVersion.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "default-version.package-uris" => Some(("defaultVersion.packageUris", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "default-version.prediction-class" => Some(("defaultVersion.predictionClass", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "default-version.python-version" => Some(("defaultVersion.pythonVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-version.request-logging-config.sampling-percentage" => Some(("defaultVersion.requestLoggingConfig.samplingPercentage", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "default-version.request-logging-config.bigquery-table-name" => Some(("defaultVersion.requestLoggingConfig.bigqueryTableName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "online-prediction-logging" => Some(("onlinePredictionLogging", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "default-version.request-logging-config.sampling-percentage" => Some(("defaultVersion.requestLoggingConfig.samplingPercentage", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "default-version.runtime-version" => Some(("defaultVersion.runtimeVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "default-version.service-account" => Some(("defaultVersion.serviceAccount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "default-version.state" => Some(("defaultVersion.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "online-prediction-console-logging" => Some(("onlinePredictionConsoleLogging", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "online-prediction-logging" => Some(("onlinePredictionLogging", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "regions" => Some(("regions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["accelerator-config", "auto-scaling", "bigquery-table-name", "count", "create-time", "default-version", "deployment-uri", "description", "error-message", "etag", "explanation-config", "framework", "integrated-gradients-attribution", "is-default", "labels", "last-use-time", "machine-type", "manual-scaling", "min-nodes", "name", "nodes", "num-integral-steps", "num-paths", "online-prediction-console-logging", "online-prediction-logging", "package-uris", "prediction-class", "python-version", "regions", "request-logging-config", "runtime-version", "sampled-shapley-attribution", "sampling-percentage", "service-account", "state", "type", "xrai-attribution"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2754,30 +2756,30 @@ impl<'n> Engine<'n> {
                 match &temp_cursor.to_string()[..] {
                     "accelerator-config.count" => Some(("acceleratorConfig.count", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "accelerator-config.type" => Some(("acceleratorConfig.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "prediction-class" => Some(("predictionClass", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-account" => Some(("serviceAccount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "package-uris" => Some(("packageUris", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "last-use-time" => Some(("lastUseTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deployment-uri" => Some(("deploymentUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "explanation-config.xrai-attribution.num-integral-steps" => Some(("explanationConfig.xraiAttribution.numIntegralSteps", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "explanation-config.sampled-shapley-attribution.num-paths" => Some(("explanationConfig.sampledShapleyAttribution.numPaths", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "explanation-config.integrated-gradients-attribution.num-integral-steps" => Some(("explanationConfig.integratedGradientsAttribution.numIntegralSteps", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "is-default" => Some(("isDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "machine-type" => Some(("machineType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "runtime-version" => Some(("runtimeVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "manual-scaling.nodes" => Some(("manualScaling.nodes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "error-message" => Some(("errorMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "framework" => Some(("framework", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "auto-scaling.min-nodes" => Some(("autoScaling.minNodes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deployment-uri" => Some(("deploymentUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "error-message" => Some(("errorMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "explanation-config.integrated-gradients-attribution.num-integral-steps" => Some(("explanationConfig.integratedGradientsAttribution.numIntegralSteps", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "explanation-config.sampled-shapley-attribution.num-paths" => Some(("explanationConfig.sampledShapleyAttribution.numPaths", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "explanation-config.xrai-attribution.num-integral-steps" => Some(("explanationConfig.xraiAttribution.numIntegralSteps", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "framework" => Some(("framework", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "is-default" => Some(("isDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "last-use-time" => Some(("lastUseTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "machine-type" => Some(("machineType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "manual-scaling.nodes" => Some(("manualScaling.nodes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "package-uris" => Some(("packageUris", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "prediction-class" => Some(("predictionClass", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "python-version" => Some(("pythonVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "request-logging-config.sampling-percentage" => Some(("requestLoggingConfig.samplingPercentage", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "request-logging-config.bigquery-table-name" => Some(("requestLoggingConfig.bigqueryTableName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "request-logging-config.sampling-percentage" => Some(("requestLoggingConfig.samplingPercentage", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "runtime-version" => Some(("runtimeVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-account" => Some(("serviceAccount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["accelerator-config", "auto-scaling", "bigquery-table-name", "count", "create-time", "deployment-uri", "description", "error-message", "etag", "explanation-config", "framework", "integrated-gradients-attribution", "is-default", "labels", "last-use-time", "machine-type", "manual-scaling", "min-nodes", "name", "nodes", "num-integral-steps", "num-paths", "package-uris", "prediction-class", "python-version", "request-logging-config", "runtime-version", "sampled-shapley-attribution", "sampling-percentage", "service-account", "state", "type", "xrai-attribution"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2971,7 +2973,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3030,30 +3032,30 @@ impl<'n> Engine<'n> {
                 match &temp_cursor.to_string()[..] {
                     "accelerator-config.count" => Some(("acceleratorConfig.count", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "accelerator-config.type" => Some(("acceleratorConfig.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "prediction-class" => Some(("predictionClass", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-account" => Some(("serviceAccount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "package-uris" => Some(("packageUris", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "last-use-time" => Some(("lastUseTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deployment-uri" => Some(("deploymentUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "explanation-config.xrai-attribution.num-integral-steps" => Some(("explanationConfig.xraiAttribution.numIntegralSteps", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "explanation-config.sampled-shapley-attribution.num-paths" => Some(("explanationConfig.sampledShapleyAttribution.numPaths", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "explanation-config.integrated-gradients-attribution.num-integral-steps" => Some(("explanationConfig.integratedGradientsAttribution.numIntegralSteps", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "is-default" => Some(("isDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "machine-type" => Some(("machineType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "runtime-version" => Some(("runtimeVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "manual-scaling.nodes" => Some(("manualScaling.nodes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "error-message" => Some(("errorMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "framework" => Some(("framework", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "auto-scaling.min-nodes" => Some(("autoScaling.minNodes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deployment-uri" => Some(("deploymentUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "error-message" => Some(("errorMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "explanation-config.integrated-gradients-attribution.num-integral-steps" => Some(("explanationConfig.integratedGradientsAttribution.numIntegralSteps", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "explanation-config.sampled-shapley-attribution.num-paths" => Some(("explanationConfig.sampledShapleyAttribution.numPaths", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "explanation-config.xrai-attribution.num-integral-steps" => Some(("explanationConfig.xraiAttribution.numIntegralSteps", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "framework" => Some(("framework", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "is-default" => Some(("isDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "last-use-time" => Some(("lastUseTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "machine-type" => Some(("machineType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "manual-scaling.nodes" => Some(("manualScaling.nodes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "package-uris" => Some(("packageUris", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "prediction-class" => Some(("predictionClass", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "python-version" => Some(("pythonVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "request-logging-config.sampling-percentage" => Some(("requestLoggingConfig.samplingPercentage", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "request-logging-config.bigquery-table-name" => Some(("requestLoggingConfig.bigqueryTableName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "request-logging-config.sampling-percentage" => Some(("requestLoggingConfig.samplingPercentage", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "runtime-version" => Some(("runtimeVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-account" => Some(("serviceAccount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["accelerator-config", "auto-scaling", "bigquery-table-name", "count", "create-time", "deployment-uri", "description", "error-message", "etag", "explanation-config", "framework", "integrated-gradients-attribution", "is-default", "labels", "last-use-time", "machine-type", "manual-scaling", "min-nodes", "name", "nodes", "num-integral-steps", "num-paths", "package-uris", "prediction-class", "python-version", "request-logging-config", "runtime-version", "sampled-shapley-attribution", "sampling-percentage", "service-account", "state", "type", "xrai-attribution"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3335,7 +3337,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3392,8 +3394,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "http-body.data" => Some(("httpBody.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "http-body.content-type" => Some(("httpBody.contentType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "http-body.data" => Some(("httpBody.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["content-type", "data", "http-body"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3622,12 +3624,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "ml1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "ml1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

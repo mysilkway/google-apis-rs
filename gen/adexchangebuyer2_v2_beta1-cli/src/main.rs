@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_adexchangebuyer2_v2_beta1 as api;
+extern crate google_adexchangebuyer2_v2_beta1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_adexchangebuyer2_v2_beta1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::AdExchangeBuyerII<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::AdExchangeBuyerII<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -69,15 +71,15 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "client-account-id" => Some(("clientAccountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "partner-client-id" => Some(("partnerClientId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-name" => Some(("clientName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "entity-id" => Some(("entityId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "entity-name" => Some(("entityName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "entity-type" => Some(("entityType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "partner-client-id" => Some(("partnerClientId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "role" => Some(("role", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "visible-to-seller" => Some(("visibleToSeller", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "entity-id" => Some(("entityId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-name" => Some(("clientName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["client-account-id", "client-name", "entity-id", "entity-name", "entity-type", "partner-client-id", "role", "status", "visible-to-seller"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -355,7 +357,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -417,7 +419,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "partner-client-id", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token", "partner-client-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -474,15 +476,15 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "client-account-id" => Some(("clientAccountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "partner-client-id" => Some(("partnerClientId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-name" => Some(("clientName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "entity-id" => Some(("entityId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "entity-name" => Some(("entityName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "entity-type" => Some(("entityType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "partner-client-id" => Some(("partnerClientId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "role" => Some(("role", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "visible-to-seller" => Some(("visibleToSeller", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "entity-id" => Some(("entityId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-name" => Some(("clientName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["client-account-id", "client-name", "entity-id", "entity-name", "entity-type", "partner-client-id", "role", "status", "visible-to-seller"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -621,7 +623,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -678,10 +680,10 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "client-account-id" => Some(("clientAccountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "user-id" => Some(("userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "email" => Some(("email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "user-id" => Some(("userId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["client-account-id", "email", "status", "user-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -766,52 +768,52 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "impression-tracking-urls" => Some(("impressionTrackingUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "version" => Some(("version", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "detected-languages" => Some(("detectedLanguages", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "advertiser-name" => Some(("advertiserName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "click-through-urls" => Some(("clickThroughUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "open-auction-status" => Some(("openAuctionStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "detected-sensitive-categories" => Some(("detectedSensitiveCategories", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
-                    "creative-id" => Some(("creativeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "detected-advertiser-ids" => Some(("detectedAdvertiserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "ad-choices-destination-url" => Some(("adChoicesDestinationUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "native.body" => Some(("native.body", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "native.video-url" => Some(("native.videoUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "native.headline" => Some(("native.headline", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "native.image.url" => Some(("native.image.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "native.image.width" => Some(("native.image.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "native.image.height" => Some(("native.image.height", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "native.star-rating" => Some(("native.starRating", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "native.store-url" => Some(("native.storeUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "native.advertiser-name" => Some(("native.advertiserName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "native.price-display-text" => Some(("native.priceDisplayText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "native.call-to-action" => Some(("native.callToAction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "native.logo.url" => Some(("native.logo.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "native.logo.width" => Some(("native.logo.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "native.logo.height" => Some(("native.logo.height", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "native.app-icon.url" => Some(("native.appIcon.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "native.app-icon.width" => Some(("native.appIcon.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "native.app-icon.height" => Some(("native.appIcon.height", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "native.click-tracking-url" => Some(("native.clickTrackingUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "native.click-link-url" => Some(("native.clickLinkUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vendor-ids" => Some(("vendorIds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
-                    "video.video-url" => Some(("video.videoUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "video.video-vast-xml" => Some(("video.videoVastXml", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "agency-id" => Some(("agencyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "html.snippet" => Some(("html.snippet", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "html.width" => Some(("html.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "html.height" => Some(("html.height", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "api-update-time" => Some(("apiUpdateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "account-id" => Some(("accountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "detected-product-categories" => Some(("detectedProductCategories", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
-                    "ad-technology-providers.has-unidentified-provider" => Some(("adTechnologyProviders.hasUnidentifiedProvider", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "ad-choices-destination-url" => Some(("adChoicesDestinationUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "ad-technology-providers.detected-provider-ids" => Some(("adTechnologyProviders.detectedProviderIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "detected-domains" => Some(("detectedDomains", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "ad-technology-providers.has-unidentified-provider" => Some(("adTechnologyProviders.hasUnidentifiedProvider", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "advertiser-name" => Some(("advertiserName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "agency-id" => Some(("agencyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "api-update-time" => Some(("apiUpdateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "attributes" => Some(("attributes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "click-through-urls" => Some(("clickThroughUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "creative-id" => Some(("creativeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "deals-status" => Some(("dealsStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "declared-click-through-urls" => Some(("declaredClickThroughUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "detected-advertiser-ids" => Some(("detectedAdvertiserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "detected-domains" => Some(("detectedDomains", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "detected-languages" => Some(("detectedLanguages", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "detected-product-categories" => Some(("detectedProductCategories", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
+                    "detected-sensitive-categories" => Some(("detectedSensitiveCategories", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
+                    "html.height" => Some(("html.height", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "html.snippet" => Some(("html.snippet", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "html.width" => Some(("html.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "impression-tracking-urls" => Some(("impressionTrackingUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "native.advertiser-name" => Some(("native.advertiserName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "native.app-icon.height" => Some(("native.appIcon.height", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "native.app-icon.url" => Some(("native.appIcon.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "native.app-icon.width" => Some(("native.appIcon.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "native.body" => Some(("native.body", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "native.call-to-action" => Some(("native.callToAction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "native.click-link-url" => Some(("native.clickLinkUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "native.click-tracking-url" => Some(("native.clickTrackingUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "native.headline" => Some(("native.headline", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "native.image.height" => Some(("native.image.height", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "native.image.url" => Some(("native.image.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "native.image.width" => Some(("native.image.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "native.logo.height" => Some(("native.logo.height", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "native.logo.url" => Some(("native.logo.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "native.logo.width" => Some(("native.logo.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "native.price-display-text" => Some(("native.priceDisplayText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "native.star-rating" => Some(("native.starRating", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "native.store-url" => Some(("native.storeUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "native.video-url" => Some(("native.videoUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "open-auction-status" => Some(("openAuctionStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "restricted-categories" => Some(("restrictedCategories", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "attributes" => Some(("attributes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "vendor-ids" => Some(("vendorIds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
+                    "version" => Some(("version", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "video.video-url" => Some(("video.videoUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "video.video-vast-xml" => Some(("video.videoVastXml", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["account-id", "ad-choices-destination-url", "ad-technology-providers", "advertiser-name", "agency-id", "api-update-time", "app-icon", "attributes", "body", "call-to-action", "click-link-url", "click-through-urls", "click-tracking-url", "creative-id", "deals-status", "declared-click-through-urls", "detected-advertiser-ids", "detected-domains", "detected-languages", "detected-product-categories", "detected-provider-ids", "detected-sensitive-categories", "has-unidentified-provider", "headline", "height", "html", "image", "impression-tracking-urls", "logo", "native", "open-auction-status", "price-display-text", "restricted-categories", "snippet", "star-rating", "store-url", "url", "vendor-ids", "version", "video", "video-url", "video-vast-xml", "width"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -900,9 +902,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "association.deals-id" => Some(("association.dealsId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "association.creative-id" => Some(("association.creativeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "association.account-id" => Some(("association.accountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "association.creative-id" => Some(("association.creativeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "association.deals-id" => Some(("association.dealsId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["account-id", "association", "creative-id", "deals-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -992,7 +994,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["query", "page-size", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "query", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1049,9 +1051,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "association.deals-id" => Some(("association.dealsId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "association.creative-id" => Some(("association.creativeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "association.account-id" => Some(("association.accountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "association.creative-id" => Some(("association.creativeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "association.deals-id" => Some(("association.dealsId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["account-id", "association", "creative-id", "deals-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1193,7 +1195,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["query", "page-size", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "query", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1334,52 +1336,52 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "impression-tracking-urls" => Some(("impressionTrackingUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "version" => Some(("version", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "detected-languages" => Some(("detectedLanguages", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "advertiser-name" => Some(("advertiserName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "click-through-urls" => Some(("clickThroughUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "open-auction-status" => Some(("openAuctionStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "detected-sensitive-categories" => Some(("detectedSensitiveCategories", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
-                    "creative-id" => Some(("creativeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "detected-advertiser-ids" => Some(("detectedAdvertiserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "ad-choices-destination-url" => Some(("adChoicesDestinationUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "native.body" => Some(("native.body", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "native.video-url" => Some(("native.videoUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "native.headline" => Some(("native.headline", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "native.image.url" => Some(("native.image.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "native.image.width" => Some(("native.image.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "native.image.height" => Some(("native.image.height", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "native.star-rating" => Some(("native.starRating", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "native.store-url" => Some(("native.storeUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "native.advertiser-name" => Some(("native.advertiserName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "native.price-display-text" => Some(("native.priceDisplayText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "native.call-to-action" => Some(("native.callToAction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "native.logo.url" => Some(("native.logo.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "native.logo.width" => Some(("native.logo.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "native.logo.height" => Some(("native.logo.height", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "native.app-icon.url" => Some(("native.appIcon.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "native.app-icon.width" => Some(("native.appIcon.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "native.app-icon.height" => Some(("native.appIcon.height", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "native.click-tracking-url" => Some(("native.clickTrackingUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "native.click-link-url" => Some(("native.clickLinkUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vendor-ids" => Some(("vendorIds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
-                    "video.video-url" => Some(("video.videoUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "video.video-vast-xml" => Some(("video.videoVastXml", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "agency-id" => Some(("agencyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "html.snippet" => Some(("html.snippet", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "html.width" => Some(("html.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "html.height" => Some(("html.height", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "api-update-time" => Some(("apiUpdateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "account-id" => Some(("accountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "detected-product-categories" => Some(("detectedProductCategories", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
-                    "ad-technology-providers.has-unidentified-provider" => Some(("adTechnologyProviders.hasUnidentifiedProvider", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "ad-choices-destination-url" => Some(("adChoicesDestinationUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "ad-technology-providers.detected-provider-ids" => Some(("adTechnologyProviders.detectedProviderIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "detected-domains" => Some(("detectedDomains", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "ad-technology-providers.has-unidentified-provider" => Some(("adTechnologyProviders.hasUnidentifiedProvider", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "advertiser-name" => Some(("advertiserName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "agency-id" => Some(("agencyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "api-update-time" => Some(("apiUpdateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "attributes" => Some(("attributes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "click-through-urls" => Some(("clickThroughUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "creative-id" => Some(("creativeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "deals-status" => Some(("dealsStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "declared-click-through-urls" => Some(("declaredClickThroughUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "detected-advertiser-ids" => Some(("detectedAdvertiserIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "detected-domains" => Some(("detectedDomains", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "detected-languages" => Some(("detectedLanguages", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "detected-product-categories" => Some(("detectedProductCategories", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
+                    "detected-sensitive-categories" => Some(("detectedSensitiveCategories", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
+                    "html.height" => Some(("html.height", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "html.snippet" => Some(("html.snippet", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "html.width" => Some(("html.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "impression-tracking-urls" => Some(("impressionTrackingUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "native.advertiser-name" => Some(("native.advertiserName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "native.app-icon.height" => Some(("native.appIcon.height", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "native.app-icon.url" => Some(("native.appIcon.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "native.app-icon.width" => Some(("native.appIcon.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "native.body" => Some(("native.body", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "native.call-to-action" => Some(("native.callToAction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "native.click-link-url" => Some(("native.clickLinkUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "native.click-tracking-url" => Some(("native.clickTrackingUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "native.headline" => Some(("native.headline", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "native.image.height" => Some(("native.image.height", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "native.image.url" => Some(("native.image.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "native.image.width" => Some(("native.image.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "native.logo.height" => Some(("native.logo.height", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "native.logo.url" => Some(("native.logo.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "native.logo.width" => Some(("native.logo.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "native.price-display-text" => Some(("native.priceDisplayText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "native.star-rating" => Some(("native.starRating", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "native.store-url" => Some(("native.storeUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "native.video-url" => Some(("native.videoUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "open-auction-status" => Some(("openAuctionStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "restricted-categories" => Some(("restrictedCategories", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "attributes" => Some(("attributes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "vendor-ids" => Some(("vendorIds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
+                    "version" => Some(("version", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "video.video-url" => Some(("video.videoUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "video.video-vast-xml" => Some(("video.videoVastXml", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["account-id", "ad-choices-destination-url", "ad-technology-providers", "advertiser-name", "agency-id", "api-update-time", "app-icon", "attributes", "body", "call-to-action", "click-link-url", "click-through-urls", "click-tracking-url", "creative-id", "deals-status", "declared-click-through-urls", "detected-advertiser-ids", "detected-domains", "detected-languages", "detected-product-categories", "detected-provider-ids", "detected-sensitive-categories", "has-unidentified-provider", "headline", "height", "html", "image", "impression-tracking-urls", "logo", "native", "open-auction-status", "price-display-text", "restricted-categories", "snippet", "star-rating", "store-url", "url", "vendor-ids", "version", "video", "video-url", "video-vast-xml", "width"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1557,7 +1559,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "filter-syntax", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "filter", "filter-syntax", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1671,7 +1673,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "filter", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1813,11 +1815,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "note.note" => Some(("note.note", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "note.creator-role" => Some(("note.creatorRole", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "note.proposal-revision" => Some(("note.proposalRevision", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "note.create-time" => Some(("note.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "note.creator-role" => Some(("note.creatorRole", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "note.note" => Some(("note.note", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "note.note-id" => Some(("note.noteId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "note.proposal-revision" => Some(("note.proposalRevision", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["create-time", "creator-role", "note", "note-id", "proposal-revision"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2070,21 +2072,21 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "proposal-revision" => Some(("proposalRevision", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "buyer-private-data.reference-id" => Some(("buyerPrivateData.referenceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "private-auction-id" => Some(("privateAuctionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "billed-buyer.account-id" => Some(("billedBuyer.accountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "originator-role" => Some(("originatorRole", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "seller.sub-account-id" => Some(("seller.subAccountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "seller.account-id" => Some(("seller.accountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "proposal-id" => Some(("proposalId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-renegotiating" => Some(("isRenegotiating", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "buyer.account-id" => Some(("buyer.accountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "proposal-state" => Some(("proposalState", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "buyer-private-data.reference-id" => Some(("buyerPrivateData.referenceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "is-renegotiating" => Some(("isRenegotiating", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "is-setup-complete" => Some(("isSetupComplete", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "last-updater-or-commentor-role" => Some(("lastUpdaterOrCommentorRole", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "originator-role" => Some(("originatorRole", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "private-auction-id" => Some(("privateAuctionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "proposal-id" => Some(("proposalId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "proposal-revision" => Some(("proposalRevision", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "proposal-state" => Some(("proposalState", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "seller.account-id" => Some(("seller.accountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "seller.sub-account-id" => Some(("seller.subAccountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["account-id", "billed-buyer", "buyer", "buyer-private-data", "display-name", "is-renegotiating", "is-setup-complete", "last-updater-or-commentor-role", "originator-role", "private-auction-id", "proposal-id", "proposal-revision", "proposal-state", "reference-id", "seller", "sub-account-id", "update-time"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2229,7 +2231,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "filter-syntax", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "filter", "filter-syntax", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2455,21 +2457,21 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "proposal-revision" => Some(("proposalRevision", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "buyer-private-data.reference-id" => Some(("buyerPrivateData.referenceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "private-auction-id" => Some(("privateAuctionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "billed-buyer.account-id" => Some(("billedBuyer.accountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "originator-role" => Some(("originatorRole", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "seller.sub-account-id" => Some(("seller.subAccountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "seller.account-id" => Some(("seller.accountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "proposal-id" => Some(("proposalId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-renegotiating" => Some(("isRenegotiating", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "buyer.account-id" => Some(("buyer.accountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "proposal-state" => Some(("proposalState", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "buyer-private-data.reference-id" => Some(("buyerPrivateData.referenceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "is-renegotiating" => Some(("isRenegotiating", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "is-setup-complete" => Some(("isSetupComplete", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "last-updater-or-commentor-role" => Some(("lastUpdaterOrCommentorRole", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "originator-role" => Some(("originatorRole", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "private-auction-id" => Some(("privateAuctionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "proposal-id" => Some(("proposalId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "proposal-revision" => Some(("proposalRevision", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "proposal-state" => Some(("proposalState", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "seller.account-id" => Some(("seller.accountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "seller.sub-account-id" => Some(("seller.subAccountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["account-id", "billed-buyer", "buyer", "buyer-private-data", "display-name", "is-renegotiating", "is-setup-complete", "last-updater-or-commentor-role", "originator-role", "private-auction-id", "proposal-id", "proposal-revision", "proposal-state", "reference-id", "seller", "sub-account-id", "update-time"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2608,7 +2610,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2667,7 +2669,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2726,7 +2728,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2785,7 +2787,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2842,26 +2844,26 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "time-series-granularity" => Some(("timeSeriesGranularity", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creative-id" => Some(("creativeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "format" => Some(("format", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "relative-date-range.duration-days" => Some(("relativeDateRange.durationDays", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "relative-date-range.offset-days" => Some(("relativeDateRange.offsetDays", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "publisher-identifiers" => Some(("publisherIdentifiers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "breakdown-dimensions" => Some(("breakdownDimensions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "deal-id" => Some(("dealId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "environment" => Some(("environment", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "platforms" => Some(("platforms", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "absolute-date-range.start-date.year" => Some(("absoluteDateRange.startDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "absolute-date-range.start-date.day" => Some(("absoluteDateRange.startDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "absolute-date-range.start-date.month" => Some(("absoluteDateRange.startDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "absolute-date-range.end-date.year" => Some(("absoluteDateRange.endDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "absolute-date-range.end-date.day" => Some(("absoluteDateRange.endDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "absolute-date-range.end-date.month" => Some(("absoluteDateRange.endDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "absolute-date-range.end-date.year" => Some(("absoluteDateRange.endDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "absolute-date-range.start-date.day" => Some(("absoluteDateRange.startDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "absolute-date-range.start-date.month" => Some(("absoluteDateRange.startDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "absolute-date-range.start-date.year" => Some(("absoluteDateRange.startDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "breakdown-dimensions" => Some(("breakdownDimensions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "creative-id" => Some(("creativeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deal-id" => Some(("dealId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "environment" => Some(("environment", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "format" => Some(("format", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "formats" => Some(("formats", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "platforms" => Some(("platforms", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "publisher-identifiers" => Some(("publisherIdentifiers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "realtime-time-range.start-timestamp" => Some(("realtimeTimeRange.startTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "relative-date-range.duration-days" => Some(("relativeDateRange.durationDays", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "relative-date-range.offset-days" => Some(("relativeDateRange.offsetDays", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "seller-network-ids" => Some(("sellerNetworkIds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
+                    "time-series-granularity" => Some(("timeSeriesGranularity", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["absolute-date-range", "breakdown-dimensions", "creative-id", "day", "deal-id", "duration-days", "end-date", "environment", "format", "formats", "month", "name", "offset-days", "platforms", "publisher-identifiers", "realtime-time-range", "relative-date-range", "seller-network-ids", "start-date", "start-timestamp", "time-series-granularity", "year"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3004,7 +3006,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3064,7 +3066,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3124,7 +3126,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3183,7 +3185,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3294,7 +3296,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3353,7 +3355,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3412,7 +3414,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3471,7 +3473,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3530,7 +3532,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3589,7 +3591,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3648,7 +3650,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3705,26 +3707,26 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "time-series-granularity" => Some(("timeSeriesGranularity", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creative-id" => Some(("creativeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "format" => Some(("format", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "relative-date-range.duration-days" => Some(("relativeDateRange.durationDays", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "relative-date-range.offset-days" => Some(("relativeDateRange.offsetDays", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "publisher-identifiers" => Some(("publisherIdentifiers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "breakdown-dimensions" => Some(("breakdownDimensions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "deal-id" => Some(("dealId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "environment" => Some(("environment", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "platforms" => Some(("platforms", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "absolute-date-range.start-date.year" => Some(("absoluteDateRange.startDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "absolute-date-range.start-date.day" => Some(("absoluteDateRange.startDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "absolute-date-range.start-date.month" => Some(("absoluteDateRange.startDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "absolute-date-range.end-date.year" => Some(("absoluteDateRange.endDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "absolute-date-range.end-date.day" => Some(("absoluteDateRange.endDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "absolute-date-range.end-date.month" => Some(("absoluteDateRange.endDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "absolute-date-range.end-date.year" => Some(("absoluteDateRange.endDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "absolute-date-range.start-date.day" => Some(("absoluteDateRange.startDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "absolute-date-range.start-date.month" => Some(("absoluteDateRange.startDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "absolute-date-range.start-date.year" => Some(("absoluteDateRange.startDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "breakdown-dimensions" => Some(("breakdownDimensions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "creative-id" => Some(("creativeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deal-id" => Some(("dealId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "environment" => Some(("environment", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "format" => Some(("format", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "formats" => Some(("formats", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "platforms" => Some(("platforms", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "publisher-identifiers" => Some(("publisherIdentifiers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "realtime-time-range.start-timestamp" => Some(("realtimeTimeRange.startTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "relative-date-range.duration-days" => Some(("relativeDateRange.durationDays", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "relative-date-range.offset-days" => Some(("relativeDateRange.offsetDays", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "seller-network-ids" => Some(("sellerNetworkIds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
+                    "time-series-granularity" => Some(("timeSeriesGranularity", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["absolute-date-range", "breakdown-dimensions", "creative-id", "day", "deal-id", "duration-days", "end-date", "environment", "format", "formats", "month", "name", "offset-days", "platforms", "publisher-identifiers", "realtime-time-range", "relative-date-range", "seller-network-ids", "start-date", "start-timestamp", "time-series-granularity", "year"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3867,7 +3869,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3927,7 +3929,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3987,7 +3989,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4046,7 +4048,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4157,7 +4159,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4216,7 +4218,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4275,7 +4277,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4334,7 +4336,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4594,12 +4596,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "adexchangebuyer2-v2-beta1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "adexchangebuyer2-v2-beta1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

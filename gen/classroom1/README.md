@@ -11,16 +11,16 @@ Everything else about the *classroom* *v1* API can be found at the
 [official documentation site](https://developers.google.com/classroom/).
 # Features
 
-Handle the following *Resources* with ease from the central [hub](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.Classroom.html) ... 
+Handle the following *Resources* with ease from the central [hub](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/Classroom) ... 
 
-* [courses](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.Course.html)
- * [*aliases create*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseAliaseCreateCall.html), [*aliases delete*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseAliaseDeleteCall.html), [*aliases list*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseAliaseListCall.html), [*announcements create*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseAnnouncementCreateCall.html), [*announcements delete*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseAnnouncementDeleteCall.html), [*announcements get*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseAnnouncementGetCall.html), [*announcements list*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseAnnouncementListCall.html), [*announcements modify assignees*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseAnnouncementModifyAssigneeCall.html), [*announcements patch*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseAnnouncementPatchCall.html), [*course work create*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseCourseWorkCreateCall.html), [*course work delete*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseCourseWorkDeleteCall.html), [*course work get*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseCourseWorkGetCall.html), [*course work list*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseCourseWorkListCall.html), [*course work modify assignees*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseCourseWorkModifyAssigneeCall.html), [*course work patch*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseCourseWorkPatchCall.html), [*course work student submissions get*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseCourseWorkStudentSubmissionGetCall.html), [*course work student submissions list*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseCourseWorkStudentSubmissionListCall.html), [*course work student submissions modify attachments*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseCourseWorkStudentSubmissionModifyAttachmentCall.html), [*course work student submissions patch*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseCourseWorkStudentSubmissionPatchCall.html), [*course work student submissions reclaim*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseCourseWorkStudentSubmissionReclaimCall.html), [*course work student submissions return*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseCourseWorkStudentSubmissionReturnCall.html), [*course work student submissions turn in*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseCourseWorkStudentSubmissionTurnInCall.html), [*create*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseCreateCall.html), [*delete*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseDeleteCall.html), [*get*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseGetCall.html), [*list*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseListCall.html), [*patch*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CoursePatchCall.html), [*students create*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseStudentCreateCall.html), [*students delete*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseStudentDeleteCall.html), [*students get*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseStudentGetCall.html), [*students list*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseStudentListCall.html), [*teachers create*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseTeacherCreateCall.html), [*teachers delete*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseTeacherDeleteCall.html), [*teachers get*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseTeacherGetCall.html), [*teachers list*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseTeacherListCall.html), [*topics create*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseTopicCreateCall.html), [*topics delete*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseTopicDeleteCall.html), [*topics get*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseTopicGetCall.html), [*topics list*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseTopicListCall.html), [*topics patch*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseTopicPatchCall.html) and [*update*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.CourseUpdateCall.html)
-* [invitations](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.Invitation.html)
- * [*accept*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.InvitationAcceptCall.html), [*create*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.InvitationCreateCall.html), [*delete*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.InvitationDeleteCall.html), [*get*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.InvitationGetCall.html) and [*list*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.InvitationListCall.html)
-* [registrations](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.Registration.html)
- * [*create*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.RegistrationCreateCall.html) and [*delete*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.RegistrationDeleteCall.html)
-* [user profiles](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.UserProfile.html)
- * [*get*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.UserProfileGetCall.html), [*guardian invitations create*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.UserProfileGuardianInvitationCreateCall.html), [*guardian invitations get*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.UserProfileGuardianInvitationGetCall.html), [*guardian invitations list*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.UserProfileGuardianInvitationListCall.html), [*guardian invitations patch*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.UserProfileGuardianInvitationPatchCall.html), [*guardians delete*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.UserProfileGuardianDeleteCall.html), [*guardians get*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.UserProfileGuardianGetCall.html) and [*guardians list*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.UserProfileGuardianListCall.html)
+* [courses](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::Course)
+ * [*aliases create*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseAliaseCreateCall), [*aliases delete*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseAliaseDeleteCall), [*aliases list*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseAliaseListCall), [*announcements create*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseAnnouncementCreateCall), [*announcements delete*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseAnnouncementDeleteCall), [*announcements get*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseAnnouncementGetCall), [*announcements list*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseAnnouncementListCall), [*announcements modify assignees*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseAnnouncementModifyAssigneeCall), [*announcements patch*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseAnnouncementPatchCall), [*course work create*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseCourseWorkCreateCall), [*course work delete*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseCourseWorkDeleteCall), [*course work get*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseCourseWorkGetCall), [*course work list*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseCourseWorkListCall), [*course work modify assignees*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseCourseWorkModifyAssigneeCall), [*course work patch*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseCourseWorkPatchCall), [*course work student submissions get*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseCourseWorkStudentSubmissionGetCall), [*course work student submissions list*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseCourseWorkStudentSubmissionListCall), [*course work student submissions modify attachments*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseCourseWorkStudentSubmissionModifyAttachmentCall), [*course work student submissions patch*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseCourseWorkStudentSubmissionPatchCall), [*course work student submissions reclaim*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseCourseWorkStudentSubmissionReclaimCall), [*course work student submissions return*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseCourseWorkStudentSubmissionReturnCall), [*course work student submissions turn in*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseCourseWorkStudentSubmissionTurnInCall), [*create*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseCreateCall), [*delete*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseDeleteCall), [*get*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseGetCall), [*list*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseListCall), [*patch*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CoursePatchCall), [*students create*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseStudentCreateCall), [*students delete*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseStudentDeleteCall), [*students get*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseStudentGetCall), [*students list*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseStudentListCall), [*teachers create*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseTeacherCreateCall), [*teachers delete*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseTeacherDeleteCall), [*teachers get*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseTeacherGetCall), [*teachers list*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseTeacherListCall), [*topics create*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseTopicCreateCall), [*topics delete*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseTopicDeleteCall), [*topics get*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseTopicGetCall), [*topics list*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseTopicListCall), [*topics patch*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseTopicPatchCall) and [*update*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::CourseUpdateCall)
+* [invitations](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::Invitation)
+ * [*accept*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::InvitationAcceptCall), [*create*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::InvitationCreateCall), [*delete*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::InvitationDeleteCall), [*get*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::InvitationGetCall) and [*list*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::InvitationListCall)
+* [registrations](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::Registration)
+ * [*create*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::RegistrationCreateCall) and [*delete*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::RegistrationDeleteCall)
+* [user profiles](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::UserProfile)
+ * [*get*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::UserProfileGetCall), [*guardian invitations create*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::UserProfileGuardianInvitationCreateCall), [*guardian invitations get*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::UserProfileGuardianInvitationGetCall), [*guardian invitations list*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::UserProfileGuardianInvitationListCall), [*guardian invitations patch*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::UserProfileGuardianInvitationPatchCall), [*guardians delete*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::UserProfileGuardianDeleteCall), [*guardians get*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::UserProfileGuardianGetCall) and [*guardians list*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/api::UserProfileGuardianListCall)
 
 
 
@@ -29,17 +29,17 @@ Handle the following *Resources* with ease from the central [hub](https://docs.r
 
 The API is structured into the following primary items:
 
-* **[Hub](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/struct.Classroom.html)**
+* **[Hub](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/Classroom)**
     * a central object to maintain state and allow accessing all *Activities*
-    * creates [*Method Builders*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/trait.MethodsBuilder.html) which in turn
-      allow access to individual [*Call Builders*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/trait.CallBuilder.html)
-* **[Resources](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/trait.Resource.html)**
+    * creates [*Method Builders*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/client::MethodsBuilder) which in turn
+      allow access to individual [*Call Builders*](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/client::CallBuilder)
+* **[Resources](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/client::Resource)**
     * primary types that you can apply *Activities* to
     * a collection of properties and *Parts*
-    * **[Parts](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/trait.Part.html)**
+    * **[Parts](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/client::Part)**
         * a collection of properties
         * never directly used in *Activities*
-* **[Activities](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/trait.CallBuilder.html)**
+* **[Activities](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/client::CallBuilder)**
     * operations to apply to *Resources*
 
 All *structures* are marked with applicable traits to further categorize them and ease browsing.
@@ -53,47 +53,47 @@ let r = hub.resource().activity(...).doit()
 Or specifically ...
 
 ```ignore
-let r = hub.courses().announcements_modify_assignees(...).doit()
-let r = hub.courses().course_work_student_submissions_patch(...).doit()
-let r = hub.courses().announcements_list(...).doit()
-let r = hub.courses().teachers_list(...).doit()
-let r = hub.courses().get(...).doit()
-let r = hub.courses().update(...).doit()
-let r = hub.courses().students_get(...).doit()
-let r = hub.courses().teachers_get(...).doit()
-let r = hub.courses().course_work_list(...).doit()
-let r = hub.courses().topics_list(...).doit()
-let r = hub.courses().course_work_student_submissions_reclaim(...).doit()
-let r = hub.courses().course_work_student_submissions_list(...).doit()
-let r = hub.courses().course_work_student_submissions_turn_in(...).doit()
-let r = hub.courses().course_work_student_submissions_modify_attachments(...).doit()
-let r = hub.courses().announcements_get(...).doit()
-let r = hub.courses().course_work_student_submissions_return(...).doit()
-let r = hub.courses().aliases_list(...).doit()
-let r = hub.courses().course_work_get(...).doit()
-let r = hub.courses().course_work_create(...).doit()
-let r = hub.courses().list(...).doit()
-let r = hub.courses().announcements_create(...).doit()
-let r = hub.courses().topics_patch(...).doit()
-let r = hub.courses().announcements_patch(...).doit()
 let r = hub.courses().aliases_create(...).doit()
-let r = hub.courses().students_create(...).doit()
-let r = hub.courses().course_work_modify_assignees(...).doit()
 let r = hub.courses().aliases_delete(...).doit()
-let r = hub.courses().course_work_delete(...).doit()
-let r = hub.courses().create(...).doit()
-let r = hub.courses().students_list(...).doit()
-let r = hub.courses().delete(...).doit()
-let r = hub.courses().course_work_patch(...).doit()
-let r = hub.courses().topics_delete(...).doit()
-let r = hub.courses().patch(...).doit()
-let r = hub.courses().students_delete(...).doit()
-let r = hub.courses().teachers_delete(...).doit()
-let r = hub.courses().teachers_create(...).doit()
-let r = hub.courses().course_work_student_submissions_get(...).doit()
-let r = hub.courses().topics_get(...).doit()
+let r = hub.courses().aliases_list(...).doit()
+let r = hub.courses().announcements_create(...).doit()
 let r = hub.courses().announcements_delete(...).doit()
+let r = hub.courses().announcements_get(...).doit()
+let r = hub.courses().announcements_list(...).doit()
+let r = hub.courses().announcements_modify_assignees(...).doit()
+let r = hub.courses().announcements_patch(...).doit()
+let r = hub.courses().course_work_student_submissions_get(...).doit()
+let r = hub.courses().course_work_student_submissions_list(...).doit()
+let r = hub.courses().course_work_student_submissions_modify_attachments(...).doit()
+let r = hub.courses().course_work_student_submissions_patch(...).doit()
+let r = hub.courses().course_work_student_submissions_reclaim(...).doit()
+let r = hub.courses().course_work_student_submissions_return(...).doit()
+let r = hub.courses().course_work_student_submissions_turn_in(...).doit()
+let r = hub.courses().course_work_create(...).doit()
+let r = hub.courses().course_work_delete(...).doit()
+let r = hub.courses().course_work_get(...).doit()
+let r = hub.courses().course_work_list(...).doit()
+let r = hub.courses().course_work_modify_assignees(...).doit()
+let r = hub.courses().course_work_patch(...).doit()
+let r = hub.courses().students_create(...).doit()
+let r = hub.courses().students_delete(...).doit()
+let r = hub.courses().students_get(...).doit()
+let r = hub.courses().students_list(...).doit()
+let r = hub.courses().teachers_create(...).doit()
+let r = hub.courses().teachers_delete(...).doit()
+let r = hub.courses().teachers_get(...).doit()
+let r = hub.courses().teachers_list(...).doit()
 let r = hub.courses().topics_create(...).doit()
+let r = hub.courses().topics_delete(...).doit()
+let r = hub.courses().topics_get(...).doit()
+let r = hub.courses().topics_list(...).doit()
+let r = hub.courses().topics_patch(...).doit()
+let r = hub.courses().create(...).doit()
+let r = hub.courses().delete(...).doit()
+let r = hub.courses().get(...).doit()
+let r = hub.courses().list(...).doit()
+let r = hub.courses().patch(...).doit()
+let r = hub.courses().update(...).doit()
 ```
 
 The `resource()` and `activity(...)` calls create [builders][builder-pattern]. The second one dealing with `Activities` 
@@ -148,11 +148,11 @@ let mut hub = Classroom::new(hyper::Client::with_connector(hyper::net::HttpsConn
 // execute the final call using `doit()`.
 // Values shown here are possibly random and not representative !
 let result = hub.courses().course_work_student_submissions_list("courseId", "courseWorkId")
-             .user_id("Stet")
-             .add_states("sed")
-             .page_token("et")
-             .page_size(-18)
-             .late("kasd")
+             .user_id("no")
+             .add_states("ipsum")
+             .page_token("voluptua.")
+             .page_size(-27)
+             .late("sanctus")
              .doit();
 
 match result {
@@ -175,17 +175,17 @@ match result {
 ```
 ## Handling Errors
 
-All errors produced by the system are provided either as [Result](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/enum.Result.html) enumeration as return value of 
+All errors produced by the system are provided either as [Result](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/client::Result) enumeration as return value of
 the doit() methods, or handed as possibly intermediate results to either the 
-[Hub Delegate](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/trait.Delegate.html), or the [Authenticator Delegate](https://docs.rs/yup-oauth2/*/yup_oauth2/trait.AuthenticatorDelegate.html).
+[Hub Delegate](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/client::Delegate), or the [Authenticator Delegate](https://docs.rs/yup-oauth2/*/yup_oauth2/trait.AuthenticatorDelegate.html).
 
 When delegates handle errors or intermediate values, they may have a chance to instruct the system to retry. This 
 makes the system potentially resilient to all kinds of errors.
 
 ## Uploads and Downloads
-If a method supports downloads, the response body, which is part of the [Result](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/enum.Result.html), should be
+If a method supports downloads, the response body, which is part of the [Result](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/client::Result), should be
 read by you to obtain the media.
-If such a method also supports a [Response Result](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/trait.ResponseResult.html), it will return that by default.
+If such a method also supports a [Response Result](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/client::ResponseResult), it will return that by default.
 You can see it as meta-data for the actual media. To trigger a media download, you will have to set up the builder by making
 this call: `.param("alt", "media")`.
 
@@ -195,29 +195,29 @@ Methods supporting uploads can do so using up to 2 different protocols:
 
 ## Customization and Callbacks
 
-You may alter the way an `doit()` method is called by providing a [delegate](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/trait.Delegate.html) to the 
-[Method Builder](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/trait.CallBuilder.html) before making the final `doit()` call. 
+You may alter the way an `doit()` method is called by providing a [delegate](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/client::Delegate) to the 
+[Method Builder](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/client::CallBuilder) before making the final `doit()` call. 
 Respective methods will be called to provide progress information, as well as determine whether the system should 
 retry on failure.
 
-The [delegate trait](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/trait.Delegate.html) is default-implemented, allowing you to customize it with minimal effort.
+The [delegate trait](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/client::Delegate) is default-implemented, allowing you to customize it with minimal effort.
 
 ## Optional Parts in Server-Requests
 
-All structures provided by this library are made to be [encodable](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/trait.RequestValue.html) and 
-[decodable](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/trait.ResponseResult.html) via *json*. Optionals are used to indicate that partial requests are responses 
+All structures provided by this library are made to be [encodable](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/client::RequestValue) and 
+[decodable](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/client::ResponseResult) via *json*. Optionals are used to indicate that partial requests are responses 
 are valid.
-Most optionals are are considered [Parts](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/trait.Part.html) which are identifiable by name, which will be sent to 
+Most optionals are are considered [Parts](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/client::Part) which are identifiable by name, which will be sent to 
 the server to indicate either the set parts of the request or the desired parts in the response.
 
 ## Builder Arguments
 
-Using [method builders](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/trait.CallBuilder.html), you are able to prepare an action call by repeatedly calling it's methods.
+Using [method builders](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/client::CallBuilder), you are able to prepare an action call by repeatedly calling it's methods.
 These will always take a single argument, for which the following statements are true.
 
 * [PODs][wiki-pod] are handed by copy
 * strings are passed as `&str`
-* [request values](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/trait.RequestValue.html) are moved
+* [request values](https://docs.rs/google-classroom1/1.0.14+20200708/google_classroom1/client::RequestValue) are moved
 
 Arguments will always be copied or cloned into the builder, to make them independent of their original life times.
 

@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_containeranalysis1_beta1 as api;
+extern crate google_containeranalysis1_beta1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_containeranalysis1_beta1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::ContainerAnalysis<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::ContainerAnalysis<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -153,44 +155,44 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "related-note-names" => Some(("relatedNoteNames", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "attestation-authority.hint.human-readable-name" => Some(("attestationAuthority.hint.humanReadableName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "base-image.fingerprint.v1-name" => Some(("baseImage.fingerprint.v1Name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "base-image.fingerprint.v2-blob" => Some(("baseImage.fingerprint.v2Blob", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "base-image.fingerprint.v2-name" => Some(("baseImage.fingerprint.v2Name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "base-image.resource-url" => Some(("baseImage.resourceUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.builder-version" => Some(("build.builderVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.signature.key-id" => Some(("build.signature.keyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.signature.key-type" => Some(("build.signature.keyType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.signature.public-key" => Some(("build.signature.publicKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.signature.signature" => Some(("build.signature.signature", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deployable.resource-uri" => Some(("deployable.resourceUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "discovery.analysis-kind" => Some(("discovery.analysisKind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "expiration-time" => Some(("expirationTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "intoto.expected-command" => Some(("intoto.expectedCommand", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "intoto.step-name" => Some(("intoto.stepName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "intoto.threshold" => Some(("intoto.threshold", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "long-description" => Some(("longDescription", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "package.name" => Some(("package.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "related-note-names" => Some(("relatedNoteNames", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "short-description" => Some(("shortDescription", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vulnerability.cvss-score" => Some(("vulnerability.cvssScore", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "vulnerability.cvss-v3.attack-complexity" => Some(("vulnerability.cvssV3.attackComplexity", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "vulnerability.cvss-v3.attack-vector" => Some(("vulnerability.cvssV3.attackVector", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vulnerability.cvss-v3.privileges-required" => Some(("vulnerability.cvssV3.privilegesRequired", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vulnerability.cvss-v3.user-interaction" => Some(("vulnerability.cvssV3.userInteraction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vulnerability.cvss-v3.base-score" => Some(("vulnerability.cvssV3.baseScore", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "vulnerability.cvss-v3.availability-impact" => Some(("vulnerability.cvssV3.availabilityImpact", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vulnerability.cvss-v3.impact-score" => Some(("vulnerability.cvssV3.impactScore", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "vulnerability.cvss-v3.exploitability-score" => Some(("vulnerability.cvssV3.exploitabilityScore", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "vulnerability.cvss-v3.scope" => Some(("vulnerability.cvssV3.scope", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vulnerability.cvss-v3.integrity-impact" => Some(("vulnerability.cvssV3.integrityImpact", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vulnerability.cvss-v3.base-score" => Some(("vulnerability.cvssV3.baseScore", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "vulnerability.cvss-v3.confidentiality-impact" => Some(("vulnerability.cvssV3.confidentialityImpact", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vulnerability.cvss-score" => Some(("vulnerability.cvssScore", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "vulnerability.cvss-v3.exploitability-score" => Some(("vulnerability.cvssV3.exploitabilityScore", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "vulnerability.cvss-v3.impact-score" => Some(("vulnerability.cvssV3.impactScore", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "vulnerability.cvss-v3.integrity-impact" => Some(("vulnerability.cvssV3.integrityImpact", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vulnerability.cvss-v3.privileges-required" => Some(("vulnerability.cvssV3.privilegesRequired", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vulnerability.cvss-v3.scope" => Some(("vulnerability.cvssV3.scope", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vulnerability.cvss-v3.user-interaction" => Some(("vulnerability.cvssV3.userInteraction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "vulnerability.severity" => Some(("vulnerability.severity", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "vulnerability.source-update-time" => Some(("vulnerability.sourceUpdateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deployable.resource-uri" => Some(("deployable.resourceUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "attestation-authority.hint.human-readable-name" => Some(("attestationAuthority.hint.humanReadableName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "intoto.threshold" => Some(("intoto.threshold", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "intoto.step-name" => Some(("intoto.stepName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "intoto.expected-command" => Some(("intoto.expectedCommand", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "build.builder-version" => Some(("build.builderVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.signature.public-key" => Some(("build.signature.publicKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.signature.key-type" => Some(("build.signature.keyType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.signature.key-id" => Some(("build.signature.keyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.signature.signature" => Some(("build.signature.signature", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "base-image.resource-url" => Some(("baseImage.resourceUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "base-image.fingerprint.v1-name" => Some(("baseImage.fingerprint.v1Name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "base-image.fingerprint.v2-name" => Some(("baseImage.fingerprint.v2Name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "base-image.fingerprint.v2-blob" => Some(("baseImage.fingerprint.v2Blob", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "expiration-time" => Some(("expirationTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "long-description" => Some(("longDescription", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "short-description" => Some(("shortDescription", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "discovery.analysis-kind" => Some(("discovery.analysisKind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["analysis-kind", "attack-complexity", "attack-vector", "attestation-authority", "availability-impact", "base-image", "base-score", "build", "builder-version", "confidentiality-impact", "create-time", "cvss-score", "cvss-v3", "deployable", "discovery", "expected-command", "expiration-time", "exploitability-score", "fingerprint", "hint", "human-readable-name", "impact-score", "integrity-impact", "intoto", "key-id", "key-type", "kind", "long-description", "name", "package", "privileges-required", "public-key", "related-note-names", "resource-uri", "resource-url", "scope", "severity", "short-description", "signature", "source-update-time", "step-name", "threshold", "update-time", "user-interaction", "v1-name", "v2-blob", "v2-name", "vulnerability"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -473,7 +475,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "filter", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -535,7 +537,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "filter", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -592,44 +594,44 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "related-note-names" => Some(("relatedNoteNames", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "attestation-authority.hint.human-readable-name" => Some(("attestationAuthority.hint.humanReadableName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "base-image.fingerprint.v1-name" => Some(("baseImage.fingerprint.v1Name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "base-image.fingerprint.v2-blob" => Some(("baseImage.fingerprint.v2Blob", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "base-image.fingerprint.v2-name" => Some(("baseImage.fingerprint.v2Name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "base-image.resource-url" => Some(("baseImage.resourceUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.builder-version" => Some(("build.builderVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.signature.key-id" => Some(("build.signature.keyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.signature.key-type" => Some(("build.signature.keyType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.signature.public-key" => Some(("build.signature.publicKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.signature.signature" => Some(("build.signature.signature", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deployable.resource-uri" => Some(("deployable.resourceUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "discovery.analysis-kind" => Some(("discovery.analysisKind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "expiration-time" => Some(("expirationTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "intoto.expected-command" => Some(("intoto.expectedCommand", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "intoto.step-name" => Some(("intoto.stepName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "intoto.threshold" => Some(("intoto.threshold", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "long-description" => Some(("longDescription", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "package.name" => Some(("package.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "related-note-names" => Some(("relatedNoteNames", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "short-description" => Some(("shortDescription", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vulnerability.cvss-score" => Some(("vulnerability.cvssScore", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "vulnerability.cvss-v3.attack-complexity" => Some(("vulnerability.cvssV3.attackComplexity", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "vulnerability.cvss-v3.attack-vector" => Some(("vulnerability.cvssV3.attackVector", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vulnerability.cvss-v3.privileges-required" => Some(("vulnerability.cvssV3.privilegesRequired", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vulnerability.cvss-v3.user-interaction" => Some(("vulnerability.cvssV3.userInteraction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vulnerability.cvss-v3.base-score" => Some(("vulnerability.cvssV3.baseScore", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "vulnerability.cvss-v3.availability-impact" => Some(("vulnerability.cvssV3.availabilityImpact", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vulnerability.cvss-v3.impact-score" => Some(("vulnerability.cvssV3.impactScore", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "vulnerability.cvss-v3.exploitability-score" => Some(("vulnerability.cvssV3.exploitabilityScore", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "vulnerability.cvss-v3.scope" => Some(("vulnerability.cvssV3.scope", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vulnerability.cvss-v3.integrity-impact" => Some(("vulnerability.cvssV3.integrityImpact", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vulnerability.cvss-v3.base-score" => Some(("vulnerability.cvssV3.baseScore", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "vulnerability.cvss-v3.confidentiality-impact" => Some(("vulnerability.cvssV3.confidentialityImpact", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vulnerability.cvss-score" => Some(("vulnerability.cvssScore", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "vulnerability.cvss-v3.exploitability-score" => Some(("vulnerability.cvssV3.exploitabilityScore", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "vulnerability.cvss-v3.impact-score" => Some(("vulnerability.cvssV3.impactScore", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "vulnerability.cvss-v3.integrity-impact" => Some(("vulnerability.cvssV3.integrityImpact", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vulnerability.cvss-v3.privileges-required" => Some(("vulnerability.cvssV3.privilegesRequired", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vulnerability.cvss-v3.scope" => Some(("vulnerability.cvssV3.scope", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vulnerability.cvss-v3.user-interaction" => Some(("vulnerability.cvssV3.userInteraction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "vulnerability.severity" => Some(("vulnerability.severity", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "vulnerability.source-update-time" => Some(("vulnerability.sourceUpdateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deployable.resource-uri" => Some(("deployable.resourceUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "attestation-authority.hint.human-readable-name" => Some(("attestationAuthority.hint.humanReadableName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "intoto.threshold" => Some(("intoto.threshold", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "intoto.step-name" => Some(("intoto.stepName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "intoto.expected-command" => Some(("intoto.expectedCommand", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "build.builder-version" => Some(("build.builderVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.signature.public-key" => Some(("build.signature.publicKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.signature.key-type" => Some(("build.signature.keyType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.signature.key-id" => Some(("build.signature.keyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.signature.signature" => Some(("build.signature.signature", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "base-image.resource-url" => Some(("baseImage.resourceUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "base-image.fingerprint.v1-name" => Some(("baseImage.fingerprint.v1Name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "base-image.fingerprint.v2-name" => Some(("baseImage.fingerprint.v2Name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "base-image.fingerprint.v2-blob" => Some(("baseImage.fingerprint.v2Blob", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "expiration-time" => Some(("expirationTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "long-description" => Some(("longDescription", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "short-description" => Some(("shortDescription", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "discovery.analysis-kind" => Some(("discovery.analysisKind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["analysis-kind", "attack-complexity", "attack-vector", "attestation-authority", "availability-impact", "base-image", "base-score", "build", "builder-version", "confidentiality-impact", "create-time", "cvss-score", "cvss-v3", "deployable", "discovery", "expected-command", "expiration-time", "exploitability-score", "fingerprint", "hint", "human-readable-name", "impact-score", "integrity-impact", "intoto", "key-id", "key-type", "kind", "long-description", "name", "package", "privileges-required", "public-key", "related-note-names", "resource-uri", "resource-url", "scope", "severity", "short-description", "signature", "source-update-time", "step-name", "threshold", "update-time", "user-interaction", "v1-name", "v2-blob", "v2-name", "vulnerability"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -973,74 +975,74 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "installation.installation.name" => Some(("installation.installation.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vulnerability.cvss-score" => Some(("vulnerability.cvssScore", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "vulnerability.severity" => Some(("vulnerability.severity", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vulnerability.type" => Some(("vulnerability.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vulnerability.effective-severity" => Some(("vulnerability.effectiveSeverity", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vulnerability.long-description" => Some(("vulnerability.longDescription", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vulnerability.short-description" => Some(("vulnerability.shortDescription", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "discovered.discovered.last-analysis-time" => Some(("discovered.discovered.lastAnalysisTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "discovered.discovered.analysis-status" => Some(("discovered.discovered.analysisStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "discovered.discovered.analysis-status-error.message" => Some(("discovered.discovered.analysisStatusError.message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "discovered.discovered.analysis-status-error.code" => Some(("discovered.discovered.analysisStatusError.code", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "discovered.discovered.continuous-analysis" => Some(("discovered.discovered.continuousAnalysis", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "attestation.attestation.pgp-signed-attestation.pgp-key-id" => Some(("attestation.attestation.pgpSignedAttestation.pgpKeyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "attestation.attestation.pgp-signed-attestation.content-type" => Some(("attestation.attestation.pgpSignedAttestation.contentType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "attestation.attestation.pgp-signed-attestation.signature" => Some(("attestation.attestation.pgpSignedAttestation.signature", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "attestation.attestation.generic-signed-attestation.content-type" => Some(("attestation.attestation.genericSignedAttestation.contentType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "attestation.attestation.generic-signed-attestation.serialized-payload" => Some(("attestation.attestation.genericSignedAttestation.serializedPayload", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "intoto.signed.environment.custom-values" => Some(("intoto.signed.environment.customValues", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "intoto.signed.command" => Some(("intoto.signed.command", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "intoto.signed.byproducts.custom-values" => Some(("intoto.signed.byproducts.customValues", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "build.provenance.start-time" => Some(("build.provenance.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "attestation.attestation.pgp-signed-attestation.content-type" => Some(("attestation.attestation.pgpSignedAttestation.contentType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "attestation.attestation.pgp-signed-attestation.pgp-key-id" => Some(("attestation.attestation.pgpSignedAttestation.pgpKeyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "attestation.attestation.pgp-signed-attestation.signature" => Some(("attestation.attestation.pgpSignedAttestation.signature", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance.build-options" => Some(("build.provenance.buildOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "build.provenance.creator" => Some(("build.provenance.creator", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.provenance.project-id" => Some(("build.provenance.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance.builder-version" => Some(("build.provenance.builderVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.provenance.create-time" => Some(("build.provenance.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.provenance.creator" => Some(("build.provenance.creator", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.provenance.end-time" => Some(("build.provenance.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance.id" => Some(("build.provenance.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.provenance.trigger-id" => Some(("build.provenance.triggerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.provenance.logs-uri" => Some(("build.provenance.logsUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.provenance.project-id" => Some(("build.provenance.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance.source-provenance.artifact-storage-source-uri" => Some(("build.provenance.sourceProvenance.artifactStorageSourceUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.provenance.source-provenance.context.labels" => Some(("build.provenance.sourceProvenance.context.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "build.provenance.source-provenance.context.cloud-repo.alias-context.kind" => Some(("build.provenance.sourceProvenance.context.cloudRepo.aliasContext.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance.source-provenance.context.cloud-repo.alias-context.name" => Some(("build.provenance.sourceProvenance.context.cloudRepo.aliasContext.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.provenance.source-provenance.context.cloud-repo.revision-id" => Some(("build.provenance.sourceProvenance.context.cloudRepo.revisionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance.source-provenance.context.cloud-repo.repo-id.project-repo-id.project-id" => Some(("build.provenance.sourceProvenance.context.cloudRepo.repoId.projectRepoId.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance.source-provenance.context.cloud-repo.repo-id.project-repo-id.repo-name" => Some(("build.provenance.sourceProvenance.context.cloudRepo.repoId.projectRepoId.repoName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance.source-provenance.context.cloud-repo.repo-id.uid" => Some(("build.provenance.sourceProvenance.context.cloudRepo.repoId.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.provenance.source-provenance.context.git.url" => Some(("build.provenance.sourceProvenance.context.git.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.provenance.source-provenance.context.git.revision-id" => Some(("build.provenance.sourceProvenance.context.git.revisionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.provenance.source-provenance.context.cloud-repo.revision-id" => Some(("build.provenance.sourceProvenance.context.cloudRepo.revisionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance.source-provenance.context.gerrit.alias-context.kind" => Some(("build.provenance.sourceProvenance.context.gerrit.aliasContext.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance.source-provenance.context.gerrit.alias-context.name" => Some(("build.provenance.sourceProvenance.context.gerrit.aliasContext.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.provenance.source-provenance.context.gerrit.revision-id" => Some(("build.provenance.sourceProvenance.context.gerrit.revisionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance.source-provenance.context.gerrit.gerrit-project" => Some(("build.provenance.sourceProvenance.context.gerrit.gerritProject", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance.source-provenance.context.gerrit.host-uri" => Some(("build.provenance.sourceProvenance.context.gerrit.hostUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.provenance.end-time" => Some(("build.provenance.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.provenance.create-time" => Some(("build.provenance.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.provenance.logs-uri" => Some(("build.provenance.logsUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.provenance.source-provenance.context.gerrit.revision-id" => Some(("build.provenance.sourceProvenance.context.gerrit.revisionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.provenance.source-provenance.context.git.revision-id" => Some(("build.provenance.sourceProvenance.context.git.revisionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.provenance.source-provenance.context.git.url" => Some(("build.provenance.sourceProvenance.context.git.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.provenance.source-provenance.context.labels" => Some(("build.provenance.sourceProvenance.context.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "build.provenance.start-time" => Some(("build.provenance.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.provenance.trigger-id" => Some(("build.provenance.triggerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance-bytes" => Some(("build.provenanceBytes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deployment.deployment.resource-uri" => Some(("deployment.deployment.resourceUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "deployment.deployment.user-email" => Some(("deployment.deployment.userEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "deployment.deployment.address" => Some(("deployment.deployment.address", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deployment.deployment.platform" => Some(("deployment.deployment.platform", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deployment.deployment.deploy-time" => Some(("deployment.deployment.deployTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deployment.deployment.undeploy-time" => Some(("deployment.deployment.undeployTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "deployment.deployment.config" => Some(("deployment.deployment.config", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deployment.deployment.deploy-time" => Some(("deployment.deployment.deployTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deployment.deployment.platform" => Some(("deployment.deployment.platform", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deployment.deployment.resource-uri" => Some(("deployment.deployment.resourceUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "deployment.deployment.undeploy-time" => Some(("deployment.deployment.undeployTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deployment.deployment.user-email" => Some(("deployment.deployment.userEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "derived-image.derived-image.base-resource-url" => Some(("derivedImage.derivedImage.baseResourceUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "derived-image.derived-image.distance" => Some(("derivedImage.derivedImage.distance", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "derived-image.derived-image.fingerprint.v1-name" => Some(("derivedImage.derivedImage.fingerprint.v1Name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "derived-image.derived-image.fingerprint.v2-blob" => Some(("derivedImage.derivedImage.fingerprint.v2Blob", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "derived-image.derived-image.fingerprint.v2-name" => Some(("derivedImage.derivedImage.fingerprint.v2Name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "discovered.discovered.analysis-status" => Some(("discovered.discovered.analysisStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "discovered.discovered.analysis-status-error.code" => Some(("discovered.discovered.analysisStatusError.code", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "discovered.discovered.analysis-status-error.message" => Some(("discovered.discovered.analysisStatusError.message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "discovered.discovered.continuous-analysis" => Some(("discovered.discovered.continuousAnalysis", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "discovered.discovered.last-analysis-time" => Some(("discovered.discovered.lastAnalysisTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "installation.installation.name" => Some(("installation.installation.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "intoto.signed.byproducts.custom-values" => Some(("intoto.signed.byproducts.customValues", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "intoto.signed.command" => Some(("intoto.signed.command", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "intoto.signed.environment.custom-values" => Some(("intoto.signed.environment.customValues", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "note-name" => Some(("noteName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "remediation" => Some(("remediation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "resource.content-hash.type" => Some(("resource.contentHash.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "resource.content-hash.value" => Some(("resource.contentHash.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "resource.name" => Some(("resource.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "resource.uri" => Some(("resource.uri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "derived-image.derived-image.distance" => Some(("derivedImage.derivedImage.distance", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "derived-image.derived-image.base-resource-url" => Some(("derivedImage.derivedImage.baseResourceUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "derived-image.derived-image.fingerprint.v1-name" => Some(("derivedImage.derivedImage.fingerprint.v1Name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "derived-image.derived-image.fingerprint.v2-name" => Some(("derivedImage.derivedImage.fingerprint.v2Name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "derived-image.derived-image.fingerprint.v2-blob" => Some(("derivedImage.derivedImage.fingerprint.v2Blob", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "note-name" => Some(("noteName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vulnerability.cvss-score" => Some(("vulnerability.cvssScore", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "vulnerability.effective-severity" => Some(("vulnerability.effectiveSeverity", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vulnerability.long-description" => Some(("vulnerability.longDescription", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vulnerability.severity" => Some(("vulnerability.severity", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vulnerability.short-description" => Some(("vulnerability.shortDescription", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vulnerability.type" => Some(("vulnerability.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["address", "alias-context", "analysis-status", "analysis-status-error", "artifact-storage-source-uri", "attestation", "base-resource-url", "build", "build-options", "builder-version", "byproducts", "cloud-repo", "code", "command", "config", "content-hash", "content-type", "context", "continuous-analysis", "create-time", "creator", "custom-values", "cvss-score", "deploy-time", "deployment", "derived-image", "discovered", "distance", "effective-severity", "end-time", "environment", "fingerprint", "generic-signed-attestation", "gerrit", "gerrit-project", "git", "host-uri", "id", "installation", "intoto", "kind", "labels", "last-analysis-time", "logs-uri", "long-description", "message", "name", "note-name", "pgp-key-id", "pgp-signed-attestation", "platform", "project-id", "project-repo-id", "provenance", "provenance-bytes", "remediation", "repo-id", "repo-name", "resource", "resource-uri", "revision-id", "serialized-payload", "severity", "short-description", "signature", "signed", "source-provenance", "start-time", "trigger-id", "type", "uid", "undeploy-time", "update-time", "uri", "url", "user-email", "v1-name", "v2-blob", "v2-name", "value", "vulnerability"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1427,7 +1429,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "filter", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1484,74 +1486,74 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "installation.installation.name" => Some(("installation.installation.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vulnerability.cvss-score" => Some(("vulnerability.cvssScore", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "vulnerability.severity" => Some(("vulnerability.severity", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vulnerability.type" => Some(("vulnerability.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vulnerability.effective-severity" => Some(("vulnerability.effectiveSeverity", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vulnerability.long-description" => Some(("vulnerability.longDescription", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vulnerability.short-description" => Some(("vulnerability.shortDescription", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "discovered.discovered.last-analysis-time" => Some(("discovered.discovered.lastAnalysisTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "discovered.discovered.analysis-status" => Some(("discovered.discovered.analysisStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "discovered.discovered.analysis-status-error.message" => Some(("discovered.discovered.analysisStatusError.message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "discovered.discovered.analysis-status-error.code" => Some(("discovered.discovered.analysisStatusError.code", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "discovered.discovered.continuous-analysis" => Some(("discovered.discovered.continuousAnalysis", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "attestation.attestation.pgp-signed-attestation.pgp-key-id" => Some(("attestation.attestation.pgpSignedAttestation.pgpKeyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "attestation.attestation.pgp-signed-attestation.content-type" => Some(("attestation.attestation.pgpSignedAttestation.contentType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "attestation.attestation.pgp-signed-attestation.signature" => Some(("attestation.attestation.pgpSignedAttestation.signature", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "attestation.attestation.generic-signed-attestation.content-type" => Some(("attestation.attestation.genericSignedAttestation.contentType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "attestation.attestation.generic-signed-attestation.serialized-payload" => Some(("attestation.attestation.genericSignedAttestation.serializedPayload", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "intoto.signed.environment.custom-values" => Some(("intoto.signed.environment.customValues", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "intoto.signed.command" => Some(("intoto.signed.command", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "intoto.signed.byproducts.custom-values" => Some(("intoto.signed.byproducts.customValues", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "build.provenance.start-time" => Some(("build.provenance.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "attestation.attestation.pgp-signed-attestation.content-type" => Some(("attestation.attestation.pgpSignedAttestation.contentType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "attestation.attestation.pgp-signed-attestation.pgp-key-id" => Some(("attestation.attestation.pgpSignedAttestation.pgpKeyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "attestation.attestation.pgp-signed-attestation.signature" => Some(("attestation.attestation.pgpSignedAttestation.signature", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance.build-options" => Some(("build.provenance.buildOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "build.provenance.creator" => Some(("build.provenance.creator", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.provenance.project-id" => Some(("build.provenance.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance.builder-version" => Some(("build.provenance.builderVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.provenance.create-time" => Some(("build.provenance.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.provenance.creator" => Some(("build.provenance.creator", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.provenance.end-time" => Some(("build.provenance.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance.id" => Some(("build.provenance.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.provenance.trigger-id" => Some(("build.provenance.triggerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.provenance.logs-uri" => Some(("build.provenance.logsUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.provenance.project-id" => Some(("build.provenance.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance.source-provenance.artifact-storage-source-uri" => Some(("build.provenance.sourceProvenance.artifactStorageSourceUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.provenance.source-provenance.context.labels" => Some(("build.provenance.sourceProvenance.context.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "build.provenance.source-provenance.context.cloud-repo.alias-context.kind" => Some(("build.provenance.sourceProvenance.context.cloudRepo.aliasContext.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance.source-provenance.context.cloud-repo.alias-context.name" => Some(("build.provenance.sourceProvenance.context.cloudRepo.aliasContext.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.provenance.source-provenance.context.cloud-repo.revision-id" => Some(("build.provenance.sourceProvenance.context.cloudRepo.revisionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance.source-provenance.context.cloud-repo.repo-id.project-repo-id.project-id" => Some(("build.provenance.sourceProvenance.context.cloudRepo.repoId.projectRepoId.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance.source-provenance.context.cloud-repo.repo-id.project-repo-id.repo-name" => Some(("build.provenance.sourceProvenance.context.cloudRepo.repoId.projectRepoId.repoName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance.source-provenance.context.cloud-repo.repo-id.uid" => Some(("build.provenance.sourceProvenance.context.cloudRepo.repoId.uid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.provenance.source-provenance.context.git.url" => Some(("build.provenance.sourceProvenance.context.git.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.provenance.source-provenance.context.git.revision-id" => Some(("build.provenance.sourceProvenance.context.git.revisionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.provenance.source-provenance.context.cloud-repo.revision-id" => Some(("build.provenance.sourceProvenance.context.cloudRepo.revisionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance.source-provenance.context.gerrit.alias-context.kind" => Some(("build.provenance.sourceProvenance.context.gerrit.aliasContext.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance.source-provenance.context.gerrit.alias-context.name" => Some(("build.provenance.sourceProvenance.context.gerrit.aliasContext.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.provenance.source-provenance.context.gerrit.revision-id" => Some(("build.provenance.sourceProvenance.context.gerrit.revisionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance.source-provenance.context.gerrit.gerrit-project" => Some(("build.provenance.sourceProvenance.context.gerrit.gerritProject", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance.source-provenance.context.gerrit.host-uri" => Some(("build.provenance.sourceProvenance.context.gerrit.hostUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.provenance.end-time" => Some(("build.provenance.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.provenance.create-time" => Some(("build.provenance.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "build.provenance.logs-uri" => Some(("build.provenance.logsUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.provenance.source-provenance.context.gerrit.revision-id" => Some(("build.provenance.sourceProvenance.context.gerrit.revisionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.provenance.source-provenance.context.git.revision-id" => Some(("build.provenance.sourceProvenance.context.git.revisionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.provenance.source-provenance.context.git.url" => Some(("build.provenance.sourceProvenance.context.git.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.provenance.source-provenance.context.labels" => Some(("build.provenance.sourceProvenance.context.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "build.provenance.start-time" => Some(("build.provenance.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "build.provenance.trigger-id" => Some(("build.provenance.triggerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "build.provenance-bytes" => Some(("build.provenanceBytes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deployment.deployment.resource-uri" => Some(("deployment.deployment.resourceUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "deployment.deployment.user-email" => Some(("deployment.deployment.userEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "deployment.deployment.address" => Some(("deployment.deployment.address", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deployment.deployment.platform" => Some(("deployment.deployment.platform", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deployment.deployment.deploy-time" => Some(("deployment.deployment.deployTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deployment.deployment.undeploy-time" => Some(("deployment.deployment.undeployTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "deployment.deployment.config" => Some(("deployment.deployment.config", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deployment.deployment.deploy-time" => Some(("deployment.deployment.deployTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deployment.deployment.platform" => Some(("deployment.deployment.platform", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deployment.deployment.resource-uri" => Some(("deployment.deployment.resourceUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "deployment.deployment.undeploy-time" => Some(("deployment.deployment.undeployTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deployment.deployment.user-email" => Some(("deployment.deployment.userEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "derived-image.derived-image.base-resource-url" => Some(("derivedImage.derivedImage.baseResourceUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "derived-image.derived-image.distance" => Some(("derivedImage.derivedImage.distance", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "derived-image.derived-image.fingerprint.v1-name" => Some(("derivedImage.derivedImage.fingerprint.v1Name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "derived-image.derived-image.fingerprint.v2-blob" => Some(("derivedImage.derivedImage.fingerprint.v2Blob", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "derived-image.derived-image.fingerprint.v2-name" => Some(("derivedImage.derivedImage.fingerprint.v2Name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "discovered.discovered.analysis-status" => Some(("discovered.discovered.analysisStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "discovered.discovered.analysis-status-error.code" => Some(("discovered.discovered.analysisStatusError.code", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "discovered.discovered.analysis-status-error.message" => Some(("discovered.discovered.analysisStatusError.message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "discovered.discovered.continuous-analysis" => Some(("discovered.discovered.continuousAnalysis", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "discovered.discovered.last-analysis-time" => Some(("discovered.discovered.lastAnalysisTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "installation.installation.name" => Some(("installation.installation.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "intoto.signed.byproducts.custom-values" => Some(("intoto.signed.byproducts.customValues", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "intoto.signed.command" => Some(("intoto.signed.command", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "intoto.signed.environment.custom-values" => Some(("intoto.signed.environment.customValues", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "note-name" => Some(("noteName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "remediation" => Some(("remediation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "resource.content-hash.type" => Some(("resource.contentHash.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "resource.content-hash.value" => Some(("resource.contentHash.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "resource.name" => Some(("resource.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "resource.uri" => Some(("resource.uri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "derived-image.derived-image.distance" => Some(("derivedImage.derivedImage.distance", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "derived-image.derived-image.base-resource-url" => Some(("derivedImage.derivedImage.baseResourceUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "derived-image.derived-image.fingerprint.v1-name" => Some(("derivedImage.derivedImage.fingerprint.v1Name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "derived-image.derived-image.fingerprint.v2-name" => Some(("derivedImage.derivedImage.fingerprint.v2Name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "derived-image.derived-image.fingerprint.v2-blob" => Some(("derivedImage.derivedImage.fingerprint.v2Blob", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "note-name" => Some(("noteName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vulnerability.cvss-score" => Some(("vulnerability.cvssScore", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "vulnerability.effective-severity" => Some(("vulnerability.effectiveSeverity", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vulnerability.long-description" => Some(("vulnerability.longDescription", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vulnerability.severity" => Some(("vulnerability.severity", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vulnerability.short-description" => Some(("vulnerability.shortDescription", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vulnerability.type" => Some(("vulnerability.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["address", "alias-context", "analysis-status", "analysis-status-error", "artifact-storage-source-uri", "attestation", "base-resource-url", "build", "build-options", "builder-version", "byproducts", "cloud-repo", "code", "command", "config", "content-hash", "content-type", "context", "continuous-analysis", "create-time", "creator", "custom-values", "cvss-score", "deploy-time", "deployment", "derived-image", "discovered", "distance", "effective-severity", "end-time", "environment", "fingerprint", "generic-signed-attestation", "gerrit", "gerrit-project", "git", "host-uri", "id", "installation", "intoto", "kind", "labels", "last-analysis-time", "logs-uri", "long-description", "message", "name", "note-name", "pgp-key-id", "pgp-signed-attestation", "platform", "project-id", "project-repo-id", "provenance", "provenance-bytes", "remediation", "repo-id", "repo-name", "resource", "resource-uri", "revision-id", "serialized-payload", "severity", "short-description", "signature", "signed", "source-provenance", "start-time", "trigger-id", "type", "uid", "undeploy-time", "update-time", "uri", "url", "user-email", "v1-name", "v2-blob", "v2-name", "value", "vulnerability"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1868,7 +1870,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "filter", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1925,11 +1927,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "enabled" => Some(("enabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "enabled" => Some(("enabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["create-time", "description", "enabled", "name", "update-time"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2095,12 +2097,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "containeranalysis1-beta1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "containeranalysis1-beta1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

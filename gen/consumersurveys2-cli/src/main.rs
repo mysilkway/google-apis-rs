@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_consumersurveys2 as api;
+extern crate google_consumersurveys2;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_consumersurveys2::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::ConsumerSurveys<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::ConsumerSurveys<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -126,7 +128,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["token", "start-index", "max-results"].iter().map(|v|*v));
+                                                                           v.extend(["start-index", "max-results", "token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -183,12 +185,12 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "owners" => Some(("owners", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "mobile-app-panel-id" => Some(("mobileAppPanelId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "language" => Some(("language", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "country" => Some(("country", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "is-public-panel" => Some(("isPublicPanel", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "language" => Some(("language", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mobile-app-panel-id" => Some(("mobileAppPanelId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "owners" => Some(("owners", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["country", "is-public-panel", "language", "mobile-app-panel-id", "name", "owners"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -471,26 +473,26 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "owners" => Some(("owners", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "title" => Some(("title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "customer-data" => Some(("customerData", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "audience.country-subdivision" => Some(("audience.countrySubdivision", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "audience.mobile-app-panel-id" => Some(("audience.mobileAppPanelId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "audience.country" => Some(("audience.country", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "audience.ages" => Some(("audience.ages", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "audience.population-source" => Some(("audience.populationSource", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "audience.languages" => Some(("audience.languages", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "audience.country" => Some(("audience.country", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "audience.country-subdivision" => Some(("audience.countrySubdivision", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "audience.gender" => Some(("audience.gender", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "cost.nanos" => Some(("cost.nanos", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "cost.currency-code" => Some(("cost.currencyCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "audience.languages" => Some(("audience.languages", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "audience.mobile-app-panel-id" => Some(("audience.mobileAppPanelId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "audience.population-source" => Some(("audience.populationSource", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "cost.cost-per-response-nanos" => Some(("cost.costPerResponseNanos", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "cost.currency-code" => Some(("cost.currencyCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "cost.max-cost-per-response-nanos" => Some(("cost.maxCostPerResponseNanos", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "survey-url-id" => Some(("surveyUrlId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "wanted-response-count" => Some(("wantedResponseCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "cost.nanos" => Some(("cost.nanos", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "customer-data" => Some(("customerData", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "owners" => Some(("owners", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "rejection-reason.explanation" => Some(("rejectionReason.explanation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "rejection-reason.type" => Some(("rejectionReason.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "survey-url-id" => Some(("surveyUrlId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "title" => Some(("title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "wanted-response-count" => Some(("wantedResponseCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["ages", "audience", "cost", "cost-per-response-nanos", "country", "country-subdivision", "currency-code", "customer-data", "description", "explanation", "gender", "languages", "max-cost-per-response-nanos", "mobile-app-panel-id", "nanos", "owners", "population-source", "rejection-reason", "state", "survey-url-id", "title", "type", "wanted-response-count"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -580,7 +582,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["token", "start-index", "max-results"].iter().map(|v|*v));
+                                                                           v.extend(["start-index", "max-results", "token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -774,26 +776,26 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "owners" => Some(("owners", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "title" => Some(("title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "customer-data" => Some(("customerData", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "audience.country-subdivision" => Some(("audience.countrySubdivision", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "audience.mobile-app-panel-id" => Some(("audience.mobileAppPanelId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "audience.country" => Some(("audience.country", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "audience.ages" => Some(("audience.ages", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "audience.population-source" => Some(("audience.populationSource", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "audience.languages" => Some(("audience.languages", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "audience.country" => Some(("audience.country", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "audience.country-subdivision" => Some(("audience.countrySubdivision", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "audience.gender" => Some(("audience.gender", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "cost.nanos" => Some(("cost.nanos", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "cost.currency-code" => Some(("cost.currencyCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "audience.languages" => Some(("audience.languages", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "audience.mobile-app-panel-id" => Some(("audience.mobileAppPanelId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "audience.population-source" => Some(("audience.populationSource", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "cost.cost-per-response-nanos" => Some(("cost.costPerResponseNanos", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "cost.currency-code" => Some(("cost.currencyCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "cost.max-cost-per-response-nanos" => Some(("cost.maxCostPerResponseNanos", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "survey-url-id" => Some(("surveyUrlId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "wanted-response-count" => Some(("wantedResponseCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "cost.nanos" => Some(("cost.nanos", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "customer-data" => Some(("customerData", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "owners" => Some(("owners", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "rejection-reason.explanation" => Some(("rejectionReason.explanation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "rejection-reason.type" => Some(("rejectionReason.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "survey-url-id" => Some(("surveyUrlId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "title" => Some(("title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "wanted-response-count" => Some(("wantedResponseCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["ages", "audience", "cost", "cost-per-response-nanos", "country", "country-subdivision", "currency-code", "customer-data", "description", "explanation", "gender", "languages", "max-cost-per-response-nanos", "mobile-app-panel-id", "nanos", "owners", "population-source", "rejection-reason", "state", "survey-url-id", "title", "type", "wanted-response-count"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -936,12 +938,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "consumersurveys2-secret.json",
+            match client::application_secret_from_directory(&config_dir, "consumersurveys2-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))
