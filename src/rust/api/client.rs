@@ -112,7 +112,7 @@ pub trait Delegate {
     /// The matching `finished()` call will always be made, no matter whether or not the API
     /// request was successful. That way, the delegate may easily maintain a clean state
     /// between various API calls.
-    fn begin(&mut self, info: MethodInfo) {}
+    fn begin(&mut self, _info: MethodInfo) {}
 
     /// Called whenever there is an [HttpError](hyper::Error), usually if there are network problems.
     ///
@@ -120,7 +120,7 @@ pub trait Delegate {
     /// [exponential backoff algorithm](http://en.wikipedia.org/wiki/Exponential_backoff).
     ///
     /// Return retry information.
-    fn http_error(&mut self, err: &hyper::Error) -> Retry {
+    fn http_error(&mut self, _err: &hyper::Error) -> Retry {
         Retry::Abort
     }
 
@@ -190,7 +190,7 @@ pub trait Delegate {
     fn http_failure(
         &mut self,
         _: &hyper::Response<hyper::body::Body>,
-        err: Option<JsonServerError>,
+        _err: Option<JsonServerError>,
         _: Option<ServerError>,
     ) -> Retry {
         Retry::Abort
@@ -569,8 +569,8 @@ impl ContentRange {
         format!(
             "bytes {}/{}",
             match self.range {
-                Some(ref c) => &format!("{}", c),
-                None => "*",
+                Some(ref c) => format!("{}", c),
+                None => "*".to_string(),
             },
             self.total_length
         )
@@ -593,7 +593,7 @@ impl RangeResponseHeader {
             }
         }
 
-        panic!(&format!("Unable to parse Range header {:?}", raw))
+        panic!(format!("Unable to parse Range header {:?}", raw))
     }
 }
 
@@ -695,7 +695,7 @@ impl<'a, A> ResumableUploadHelper<'a, A> {
 
             let mut section_reader = self.reader.take(request_size);
             let mut req_bytes = vec![];
-            section_reader.read_to_end(&mut req_bytes);
+            section_reader.read_to_end(&mut req_bytes).unwrap();
             let range_header = ContentRange {
                 range: Some(Chunk {
                     first: start,

@@ -702,8 +702,9 @@ else {
 
         loop {
             % if default_scope:
-            let token = match ${auth_call}.token(&self.${api.properties.scopes}.keys().collect::<Vec<_>>()[..]).await {
-                Ok(token) => token,
+            let authenticator = ${auth_call};
+            let token = match authenticator.token(&self.${api.properties.scopes}.keys().collect::<Vec<_>>()[..]).await {
+                Ok(token) => token.clone(),
                 Err(err) => {
                     match  dlg.token(&err) {
                         Some(token) => token,
@@ -748,7 +749,7 @@ else {
             % endif
                 let mut client = &mut *self.hub.client.borrow_mut();
                 dlg.pre_request();
-                let mut req_builder = hyper::Request::builder().method(${method_name_to_variant(m.httpMethod)}).uri(url.into_string())
+                let mut req_builder = hyper::Request::builder().method(${method_name_to_variant(m.httpMethod)}).uri(url.clone().into_string())
                         .header(USER_AGENT, self.hub._user_agent.clone())\
                         % if default_scope:
 
@@ -759,11 +760,11 @@ else {
 
                         .header(CONTENT_TYPE, format!("{}", json_mime_type))
                         .header(CONTENT_LENGTH, request_size as u64)
-                        .body(hyper::body::Body::from(request_value_reader.into_inner()))\
+                        .body(hyper::body::Body::from(request_value_reader.get_ref().clone()))\
                         % else:
 
                         .header(content_type.0, content_type.1)
-                        .body(hyper::body::Body::from(body_reader.into_inner()))\
+                        .body(hyper::body::Body::from(body_reader.get_ref().clone()))\
                         % endif ## not simple_media_param
                         % else:
                         .body(hyper::body::Body::empty())\

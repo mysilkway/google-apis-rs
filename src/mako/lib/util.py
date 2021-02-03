@@ -110,7 +110,7 @@ data_unit_multipliers = {
     '%': 1,
 }
 
-HUB_TYPE_PARAMETERS = ('C', 'A')
+HUB_TYPE_PARAMETERS = ('C',)
 
 def items(p):
     if isinstance(p, dict):
@@ -899,8 +899,7 @@ def hub_type_params_s():
 
 # return a list of where statements to server as bounds for the hub.
 def hub_type_bounds():
-    return ['C: BorrowMut<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>',
-            'A: hyper::client::connect::Connect + Clone + Send + Sync']
+    return ['C: BorrowMut<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>']
 
 # Returns True if this API has particular authentication scopes to choose from
 def supports_scopes(auth):
