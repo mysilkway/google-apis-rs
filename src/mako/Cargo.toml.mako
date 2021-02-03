@@ -35,6 +35,7 @@ serde_json = "^ 1.0"
 serde_derive = "^ 1.0"
 yup-oauth2 = "^ 5.0"
 tokio = "^ 1.0"
+itertools = "^ 0.10"
 % for dep in cargo.get('dependencies', list()):
 ${dep}
 % endfor

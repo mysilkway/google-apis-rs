@@ -741,9 +741,9 @@ else {
                         mp_reader.add_part(&mut request_value_reader, request_size, json_mime_type.clone())
                                  .add_part(&mut reader, size, reader_mime_type.clone());
                         let mime_type = mp_reader.mime_type();
-                        (&mut mp_reader as &mut dyn io::Read, (CONTENT_TYPE, mime_type))
+                        (&mut mp_reader as &mut dyn io::Read, (CONTENT_TYPE, format!("{}", mime_type)))
                     },
-                    _ => (&mut request_value_reader as &mut dyn io::Read, (CONTENT_TYPE, json_mime_type.clone())),
+                    _ => (&mut request_value_reader as &mut dyn io::Read, (CONTENT_TYPE, format!("{}", json_mime_type))),
                 };
             % endif
                 let mut client = &mut *self.hub.client.borrow_mut();
@@ -757,13 +757,13 @@ else {
                         % if request_value:
                         % if not simple_media_param:
 
-                        .header(CONTENT_TYPE, json_mime_type.clone())
+                        .header(CONTENT_TYPE, format!("{}", json_mime_type))
                         .header(CONTENT_LENGTH, request_size as u64)
-                        .body(&mut request_value_reader)\
+                        .body(hyper::body::Body::from(request_value_reader.into_inner()))\
                         % else:
 
                         .header(content_type.0, content_type.1)
-                        .body(&mut body_reader)\
+                        .body(hyper::body::Body::from(body_reader.into_inner()))\
                         % endif ## not simple_media_param
                         % else:
                         .body(hyper::body::Body::empty())\
