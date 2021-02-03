@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_gmail1 as api;
+extern crate google_gmail1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_gmail1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Gmail<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::Gmail<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -69,21 +71,21 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "message.internal-date" => Some(("message.internalDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.history-id" => Some(("message.historyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.payload.body.data" => Some(("message.payload.body.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.id" => Some(("message.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.internal-date" => Some(("message.internalDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.label-ids" => Some(("message.labelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "message.payload.body.attachment-id" => Some(("message.payload.body.attachmentId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.payload.body.data" => Some(("message.payload.body.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.payload.body.size" => Some(("message.payload.body.size", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "message.payload.filename" => Some(("message.payload.filename", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.payload.mime-type" => Some(("message.payload.mimeType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.payload.part-id" => Some(("message.payload.partId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.payload.filename" => Some(("message.payload.filename", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.snippet" => Some(("message.snippet", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.raw" => Some(("message.raw", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.size-estimate" => Some(("message.sizeEstimate", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "message.snippet" => Some(("message.snippet", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.thread-id" => Some(("message.threadId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.label-ids" => Some(("message.labelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "message.id" => Some(("message.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["attachment-id", "body", "data", "filename", "history-id", "id", "internal-date", "label-ids", "message", "mime-type", "part-id", "payload", "raw", "size", "size-estimate", "snippet", "thread-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -118,7 +120,7 @@ impl<'n> Engine<'n> {
             }
         }
         let vals = opt.values_of("mode").unwrap().collect::<Vec<&str>>();
-        let protocol = calltype_from_str(vals[0], ["simple", "resumable"].iter().map(|&v| v.to_string()).collect(), err);
+        let protocol = calltype_from_str(vals[0], ["resumable", "simple"].iter().map(|&v| v.to_string()).collect(), err);
         let mut input_file = input_file_from_opts(vals[1], err);
         let mime_type = input_mime_from_opts(opt.value_of("mime").unwrap_or("application/octet-stream"), err);
         if dry_run {
@@ -133,8 +135,8 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Upload(UploadProtocol::Simple) => call.upload(input_file.unwrap(), mime_type.unwrap()),
                 CallType::Upload(UploadProtocol::Resumable) => call.upload_resumable(input_file.unwrap(), mime_type.unwrap()),
+                CallType::Upload(UploadProtocol::Simple) => call.upload(input_file.unwrap(), mime_type.unwrap()),
                 CallType::Standard => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -280,7 +282,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["q", "page-token", "max-results", "include-spam-trash"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "q", "max-results", "include-spam-trash"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -337,21 +339,21 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "message.internal-date" => Some(("message.internalDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.history-id" => Some(("message.historyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.payload.body.data" => Some(("message.payload.body.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.id" => Some(("message.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.internal-date" => Some(("message.internalDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.label-ids" => Some(("message.labelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "message.payload.body.attachment-id" => Some(("message.payload.body.attachmentId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.payload.body.data" => Some(("message.payload.body.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.payload.body.size" => Some(("message.payload.body.size", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "message.payload.filename" => Some(("message.payload.filename", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.payload.mime-type" => Some(("message.payload.mimeType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.payload.part-id" => Some(("message.payload.partId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.payload.filename" => Some(("message.payload.filename", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.snippet" => Some(("message.snippet", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.raw" => Some(("message.raw", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.size-estimate" => Some(("message.sizeEstimate", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "message.snippet" => Some(("message.snippet", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.thread-id" => Some(("message.threadId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.label-ids" => Some(("message.labelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "message.id" => Some(("message.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["attachment-id", "body", "data", "filename", "history-id", "id", "internal-date", "label-ids", "message", "mime-type", "part-id", "payload", "raw", "size", "size-estimate", "snippet", "thread-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -386,7 +388,7 @@ impl<'n> Engine<'n> {
             }
         }
         let vals = opt.values_of("mode").unwrap().collect::<Vec<&str>>();
-        let protocol = calltype_from_str(vals[0], ["simple", "resumable"].iter().map(|&v| v.to_string()).collect(), err);
+        let protocol = calltype_from_str(vals[0], ["resumable", "simple"].iter().map(|&v| v.to_string()).collect(), err);
         let mut input_file = input_file_from_opts(vals[1], err);
         let mime_type = input_mime_from_opts(opt.value_of("mime").unwrap_or("application/octet-stream"), err);
         if dry_run {
@@ -401,8 +403,8 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Upload(UploadProtocol::Simple) => call.upload(input_file.unwrap(), mime_type.unwrap()),
                 CallType::Upload(UploadProtocol::Resumable) => call.upload_resumable(input_file.unwrap(), mime_type.unwrap()),
+                CallType::Upload(UploadProtocol::Simple) => call.upload(input_file.unwrap(), mime_type.unwrap()),
                 CallType::Standard => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -440,21 +442,21 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "message.internal-date" => Some(("message.internalDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.history-id" => Some(("message.historyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.payload.body.data" => Some(("message.payload.body.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.id" => Some(("message.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.internal-date" => Some(("message.internalDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.label-ids" => Some(("message.labelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "message.payload.body.attachment-id" => Some(("message.payload.body.attachmentId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.payload.body.data" => Some(("message.payload.body.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.payload.body.size" => Some(("message.payload.body.size", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "message.payload.filename" => Some(("message.payload.filename", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.payload.mime-type" => Some(("message.payload.mimeType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.payload.part-id" => Some(("message.payload.partId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.payload.filename" => Some(("message.payload.filename", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.snippet" => Some(("message.snippet", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.raw" => Some(("message.raw", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.size-estimate" => Some(("message.sizeEstimate", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "message.snippet" => Some(("message.snippet", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.thread-id" => Some(("message.threadId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.label-ids" => Some(("message.labelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "message.id" => Some(("message.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["attachment-id", "body", "data", "filename", "history-id", "id", "internal-date", "label-ids", "message", "mime-type", "part-id", "payload", "raw", "size", "size-estimate", "snippet", "thread-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -489,7 +491,7 @@ impl<'n> Engine<'n> {
             }
         }
         let vals = opt.values_of("mode").unwrap().collect::<Vec<&str>>();
-        let protocol = calltype_from_str(vals[0], ["simple", "resumable"].iter().map(|&v| v.to_string()).collect(), err);
+        let protocol = calltype_from_str(vals[0], ["resumable", "simple"].iter().map(|&v| v.to_string()).collect(), err);
         let mut input_file = input_file_from_opts(vals[1], err);
         let mime_type = input_mime_from_opts(opt.value_of("mime").unwrap_or("application/octet-stream"), err);
         if dry_run {
@@ -504,8 +506,8 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Upload(UploadProtocol::Simple) => call.upload(input_file.unwrap(), mime_type.unwrap()),
                 CallType::Upload(UploadProtocol::Resumable) => call.upload_resumable(input_file.unwrap(), mime_type.unwrap()),
+                CallType::Upload(UploadProtocol::Simple) => call.upload(input_file.unwrap(), mime_type.unwrap()),
                 CallType::Standard => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -606,7 +608,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "label-id", "start-history-id", "max-results", "history-types"].iter().map(|v|*v));
+                                                                           v.extend(["label-id", "start-history-id", "history-types", "page-token", "max-results"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -663,17 +665,17 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "messages-total" => Some(("messagesTotal", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "color.text-color" => Some(("color.textColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "color.background-color" => Some(("color.backgroundColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "threads-total" => Some(("threadsTotal", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "label-list-visibility" => Some(("labelListVisibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "threads-unread" => Some(("threadsUnread", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "message-list-visibility" => Some(("messageListVisibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "color.text-color" => Some(("color.textColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "label-list-visibility" => Some(("labelListVisibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message-list-visibility" => Some(("messageListVisibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "messages-total" => Some(("messagesTotal", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "messages-unread" => Some(("messagesUnread", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "threads-total" => Some(("threadsTotal", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "threads-unread" => Some(("threadsUnread", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["background-color", "color", "id", "label-list-visibility", "message-list-visibility", "messages-total", "messages-unread", "name", "text-color", "threads-total", "threads-unread", "type"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -906,17 +908,17 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "messages-total" => Some(("messagesTotal", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "color.text-color" => Some(("color.textColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "color.background-color" => Some(("color.backgroundColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "threads-total" => Some(("threadsTotal", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "label-list-visibility" => Some(("labelListVisibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "threads-unread" => Some(("threadsUnread", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "message-list-visibility" => Some(("messageListVisibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "color.text-color" => Some(("color.textColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "label-list-visibility" => Some(("labelListVisibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message-list-visibility" => Some(("messageListVisibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "messages-total" => Some(("messagesTotal", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "messages-unread" => Some(("messagesUnread", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "threads-total" => Some(("threadsTotal", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "threads-unread" => Some(("threadsUnread", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["background-color", "color", "id", "label-list-visibility", "message-list-visibility", "messages-total", "messages-unread", "name", "text-color", "threads-total", "threads-unread", "type"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1001,17 +1003,17 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "messages-total" => Some(("messagesTotal", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "color.text-color" => Some(("color.textColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "color.background-color" => Some(("color.backgroundColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "threads-total" => Some(("threadsTotal", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "label-list-visibility" => Some(("labelListVisibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "threads-unread" => Some(("threadsUnread", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "message-list-visibility" => Some(("messageListVisibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "color.text-color" => Some(("color.textColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "label-list-visibility" => Some(("labelListVisibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message-list-visibility" => Some(("messageListVisibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "messages-total" => Some(("messagesTotal", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "messages-unread" => Some(("messagesUnread", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "threads-total" => Some(("threadsTotal", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "threads-unread" => Some(("threadsUnread", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["background-color", "color", "id", "label-list-visibility", "message-list-visibility", "messages-total", "messages-unread", "name", "text-color", "threads-total", "threads-unread", "type"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1225,9 +1227,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "remove-label-ids" => Some(("removeLabelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "ids" => Some(("ids", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "add-label-ids" => Some(("addLabelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "ids" => Some(("ids", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "remove-label-ids" => Some(("removeLabelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["add-label-ids", "ids", "remove-label-ids"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1350,7 +1352,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["metadata-headers", "format"].iter().map(|v|*v));
+                                                                           v.extend(["format", "metadata-headers"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1407,20 +1409,20 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "internal-date" => Some(("internalDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "history-id" => Some(("historyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "payload.body.data" => Some(("payload.body.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "internal-date" => Some(("internalDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "label-ids" => Some(("labelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "payload.body.attachment-id" => Some(("payload.body.attachmentId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "payload.body.data" => Some(("payload.body.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "payload.body.size" => Some(("payload.body.size", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "payload.filename" => Some(("payload.filename", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "payload.mime-type" => Some(("payload.mimeType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "payload.part-id" => Some(("payload.partId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "payload.filename" => Some(("payload.filename", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "snippet" => Some(("snippet", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "raw" => Some(("raw", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "size-estimate" => Some(("sizeEstimate", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "snippet" => Some(("snippet", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "thread-id" => Some(("threadId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "label-ids" => Some(("labelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["attachment-id", "body", "data", "filename", "history-id", "id", "internal-date", "label-ids", "mime-type", "part-id", "payload", "raw", "size", "size-estimate", "snippet", "thread-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1461,14 +1463,14 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["process-for-calendar", "deleted", "internal-date-source", "never-mark-spam"].iter().map(|v|*v));
+                                                                           v.extend(["never-mark-spam", "internal-date-source", "process-for-calendar", "deleted"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
             }
         }
         let vals = opt.values_of("mode").unwrap().collect::<Vec<&str>>();
-        let protocol = calltype_from_str(vals[0], ["simple", "resumable"].iter().map(|&v| v.to_string()).collect(), err);
+        let protocol = calltype_from_str(vals[0], ["resumable", "simple"].iter().map(|&v| v.to_string()).collect(), err);
         let mut input_file = input_file_from_opts(vals[1], err);
         let mime_type = input_mime_from_opts(opt.value_of("mime").unwrap_or("application/octet-stream"), err);
         if dry_run {
@@ -1483,8 +1485,8 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Upload(UploadProtocol::Simple) => call.upload(input_file.unwrap(), mime_type.unwrap()),
                 CallType::Upload(UploadProtocol::Resumable) => call.upload_resumable(input_file.unwrap(), mime_type.unwrap()),
+                CallType::Upload(UploadProtocol::Simple) => call.upload(input_file.unwrap(), mime_type.unwrap()),
                 CallType::Standard => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1522,20 +1524,20 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "internal-date" => Some(("internalDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "history-id" => Some(("historyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "payload.body.data" => Some(("payload.body.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "internal-date" => Some(("internalDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "label-ids" => Some(("labelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "payload.body.attachment-id" => Some(("payload.body.attachmentId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "payload.body.data" => Some(("payload.body.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "payload.body.size" => Some(("payload.body.size", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "payload.filename" => Some(("payload.filename", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "payload.mime-type" => Some(("payload.mimeType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "payload.part-id" => Some(("payload.partId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "payload.filename" => Some(("payload.filename", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "snippet" => Some(("snippet", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "raw" => Some(("raw", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "size-estimate" => Some(("sizeEstimate", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "snippet" => Some(("snippet", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "thread-id" => Some(("threadId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "label-ids" => Some(("labelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["attachment-id", "body", "data", "filename", "history-id", "id", "internal-date", "label-ids", "mime-type", "part-id", "payload", "raw", "size", "size-estimate", "snippet", "thread-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1570,14 +1572,14 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["deleted", "internal-date-source"].iter().map(|v|*v));
+                                                                           v.extend(["internal-date-source", "deleted"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
             }
         }
         let vals = opt.values_of("mode").unwrap().collect::<Vec<&str>>();
-        let protocol = calltype_from_str(vals[0], ["simple", "resumable"].iter().map(|&v| v.to_string()).collect(), err);
+        let protocol = calltype_from_str(vals[0], ["resumable", "simple"].iter().map(|&v| v.to_string()).collect(), err);
         let mut input_file = input_file_from_opts(vals[1], err);
         let mime_type = input_mime_from_opts(opt.value_of("mime").unwrap_or("application/octet-stream"), err);
         if dry_run {
@@ -1592,8 +1594,8 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Upload(UploadProtocol::Simple) => call.upload(input_file.unwrap(), mime_type.unwrap()),
                 CallType::Upload(UploadProtocol::Resumable) => call.upload_resumable(input_file.unwrap(), mime_type.unwrap()),
+                CallType::Upload(UploadProtocol::Simple) => call.upload(input_file.unwrap(), mime_type.unwrap()),
                 CallType::Standard => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1642,7 +1644,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["q", "page-token", "include-spam-trash", "max-results", "label-ids"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "max-results", "include-spam-trash", "q", "label-ids"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1699,8 +1701,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "remove-label-ids" => Some(("removeLabelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "add-label-ids" => Some(("addLabelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "remove-label-ids" => Some(("removeLabelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["add-label-ids", "remove-label-ids"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1785,20 +1787,20 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "internal-date" => Some(("internalDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "history-id" => Some(("historyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "payload.body.data" => Some(("payload.body.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "internal-date" => Some(("internalDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "label-ids" => Some(("labelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "payload.body.attachment-id" => Some(("payload.body.attachmentId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "payload.body.data" => Some(("payload.body.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "payload.body.size" => Some(("payload.body.size", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "payload.filename" => Some(("payload.filename", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "payload.mime-type" => Some(("payload.mimeType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "payload.part-id" => Some(("payload.partId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "payload.filename" => Some(("payload.filename", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "snippet" => Some(("snippet", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "raw" => Some(("raw", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "size-estimate" => Some(("sizeEstimate", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "snippet" => Some(("snippet", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "thread-id" => Some(("threadId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "label-ids" => Some(("labelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["attachment-id", "body", "data", "filename", "history-id", "id", "internal-date", "label-ids", "mime-type", "part-id", "payload", "raw", "size", "size-estimate", "snippet", "thread-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1833,7 +1835,7 @@ impl<'n> Engine<'n> {
             }
         }
         let vals = opt.values_of("mode").unwrap().collect::<Vec<&str>>();
-        let protocol = calltype_from_str(vals[0], ["simple", "resumable"].iter().map(|&v| v.to_string()).collect(), err);
+        let protocol = calltype_from_str(vals[0], ["resumable", "simple"].iter().map(|&v| v.to_string()).collect(), err);
         let mut input_file = input_file_from_opts(vals[1], err);
         let mime_type = input_mime_from_opts(opt.value_of("mime").unwrap_or("application/octet-stream"), err);
         if dry_run {
@@ -1848,8 +1850,8 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Upload(UploadProtocol::Simple) => call.upload(input_file.unwrap(), mime_type.unwrap()),
                 CallType::Upload(UploadProtocol::Resumable) => call.upload_resumable(input_file.unwrap(), mime_type.unwrap()),
+                CallType::Upload(UploadProtocol::Simple) => call.upload(input_file.unwrap(), mime_type.unwrap()),
                 CallType::Standard => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2225,19 +2227,19 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "action.add-label-ids" => Some(("action.addLabelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "action.forward" => Some(("action.forward", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "action.remove-label-ids" => Some(("action.removeLabelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "action.add-label-ids" => Some(("action.addLabelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "criteria.exclude-chats" => Some(("criteria.excludeChats", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "criteria.from" => Some(("criteria.from", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "criteria.has-attachment" => Some(("criteria.hasAttachment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "criteria.subject" => Some(("criteria.subject", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "criteria.size-comparison" => Some(("criteria.sizeComparison", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "criteria.to" => Some(("criteria.to", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "criteria.query" => Some(("criteria.query", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "criteria.exclude-chats" => Some(("criteria.excludeChats", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "criteria.negated-query" => Some(("criteria.negatedQuery", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "criteria.query" => Some(("criteria.query", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "criteria.size" => Some(("criteria.size", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "criteria.size-comparison" => Some(("criteria.sizeComparison", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "criteria.subject" => Some(("criteria.subject", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "criteria.to" => Some(("criteria.to", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["action", "add-label-ids", "criteria", "exclude-chats", "forward", "from", "has-attachment", "id", "negated-query", "query", "remove-label-ids", "size", "size-comparison", "subject", "to"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2785,6 +2787,58 @@ impl<'n> Engine<'n> {
         }
     }
 
+    fn _users_settings_get_language(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+                                                    -> Result<(), DoitError> {
+        let mut call = self.hub.users().settings_get_language(opt.value_of("user-id").unwrap_or(""));
+        for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
+            let (key, value) = parse_kv_arg(&*parg, err, false);
+            match key {
+                _ => {
+                    let mut found = false;
+                    for param in &self.gp {
+                        if key == *param {
+                            found = true;
+                            call = call.param(self.gpm.iter().find(|t| t.0 == key).unwrap_or(&("", key)).1, value.unwrap_or("unset"));
+                            break;
+                        }
+                    }
+                    if !found {
+                        err.issues.push(CLIError::UnknownParameter(key.to_string(),
+                                                                  {let mut v = Vec::new();
+                                                                           v.extend(self.gp.iter().map(|v|*v));
+                                                                           v } ));
+                    }
+                }
+            }
+        }
+        let protocol = CallType::Standard;
+        if dry_run {
+            Ok(())
+        } else {
+            assert!(err.issues.len() == 0);
+            for scope in self.opt.values_of("url").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
+                call = call.add_scope(scope);
+            }
+            let mut ostream = match writer_from_opts(opt.value_of("out")) {
+                Ok(mut f) => f,
+                Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
+            };
+            match match protocol {
+                CallType::Standard => call.doit(),
+                _ => unreachable!()
+            } {
+                Err(api_err) => Err(DoitError::ApiError(api_err)),
+                Ok((mut response, output_schema)) => {
+                    let mut value = json::value::to_value(&output_schema).expect("serde to work");
+                    remove_json_null_values(&mut value);
+                    json::to_writer_pretty(&mut ostream, &value).unwrap();
+                    ostream.flush().unwrap();
+                    Ok(())
+                }
+            }
+        }
+    }
+
     fn _users_settings_get_pop(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().settings_get_pop(opt.value_of("user-id").unwrap_or(""));
@@ -2912,19 +2966,19 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "smtp-msa.username" => Some(("smtpMsa.username", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "is-default" => Some(("isDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "is-primary" => Some(("isPrimary", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "reply-to-address" => Some(("replyToAddress", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "send-as-email" => Some(("sendAsEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "signature" => Some(("signature", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "smtp-msa.host" => Some(("smtpMsa.host", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "smtp-msa.password" => Some(("smtpMsa.password", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "smtp-msa.security-mode" => Some(("smtpMsa.securityMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "smtp-msa.port" => Some(("smtpMsa.port", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "reply-to-address" => Some(("replyToAddress", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "signature" => Some(("signature", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "smtp-msa.security-mode" => Some(("smtpMsa.securityMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "smtp-msa.username" => Some(("smtpMsa.username", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "treat-as-alias" => Some(("treatAsAlias", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "send-as-email" => Some(("sendAsEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-primary" => Some(("isPrimary", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "verification-status" => Some(("verificationStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-default" => Some(("isDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["display-name", "host", "is-default", "is-primary", "password", "port", "reply-to-address", "security-mode", "send-as-email", "signature", "smtp-msa", "treat-as-alias", "username", "verification-status"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3157,19 +3211,19 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "smtp-msa.username" => Some(("smtpMsa.username", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "is-default" => Some(("isDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "is-primary" => Some(("isPrimary", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "reply-to-address" => Some(("replyToAddress", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "send-as-email" => Some(("sendAsEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "signature" => Some(("signature", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "smtp-msa.host" => Some(("smtpMsa.host", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "smtp-msa.password" => Some(("smtpMsa.password", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "smtp-msa.security-mode" => Some(("smtpMsa.securityMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "smtp-msa.port" => Some(("smtpMsa.port", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "reply-to-address" => Some(("replyToAddress", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "signature" => Some(("signature", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "smtp-msa.security-mode" => Some(("smtpMsa.securityMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "smtp-msa.username" => Some(("smtpMsa.username", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "treat-as-alias" => Some(("treatAsAlias", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "send-as-email" => Some(("sendAsEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-primary" => Some(("isPrimary", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "verification-status" => Some(("verificationStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-default" => Some(("isDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["display-name", "host", "is-default", "is-primary", "password", "port", "reply-to-address", "security-mode", "send-as-email", "signature", "smtp-msa", "treat-as-alias", "username", "verification-status"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3350,13 +3404,13 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "pkcs12" => Some(("pkcs12", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "pem" => Some(("pem", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "expiration" => Some(("expiration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "encrypted-key-password" => Some(("encryptedKeyPassword", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "expiration" => Some(("expiration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "issuer-cn" => Some(("issuerCn", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "is-default" => Some(("isDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "issuer-cn" => Some(("issuerCn", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "pem" => Some(("pem", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "pkcs12" => Some(("pkcs12", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["encrypted-key-password", "expiration", "id", "is-default", "issuer-cn", "pem", "pkcs12"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3537,19 +3591,19 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "smtp-msa.username" => Some(("smtpMsa.username", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "is-default" => Some(("isDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "is-primary" => Some(("isPrimary", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "reply-to-address" => Some(("replyToAddress", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "send-as-email" => Some(("sendAsEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "signature" => Some(("signature", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "smtp-msa.host" => Some(("smtpMsa.host", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "smtp-msa.password" => Some(("smtpMsa.password", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "smtp-msa.security-mode" => Some(("smtpMsa.securityMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "smtp-msa.port" => Some(("smtpMsa.port", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "reply-to-address" => Some(("replyToAddress", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "signature" => Some(("signature", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "smtp-msa.security-mode" => Some(("smtpMsa.securityMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "smtp-msa.username" => Some(("smtpMsa.username", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "treat-as-alias" => Some(("treatAsAlias", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "send-as-email" => Some(("sendAsEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-primary" => Some(("isPrimary", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "verification-status" => Some(("verificationStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-default" => Some(("isDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["display-name", "host", "is-default", "is-primary", "password", "port", "reply-to-address", "security-mode", "send-as-email", "signature", "smtp-msa", "treat-as-alias", "username", "verification-status"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3678,9 +3732,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "enabled" => Some(("enabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "email-address" => Some(("emailAddress", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "disposition" => Some(("disposition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "email-address" => Some(("emailAddress", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "enabled" => Some(("enabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["disposition", "email-address", "enabled"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3766,8 +3820,8 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "auto-expunge" => Some(("autoExpunge", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "expunge-behavior" => Some(("expungeBehavior", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "enabled" => Some(("enabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "expunge-behavior" => Some(("expungeBehavior", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "max-folder-size" => Some(("maxFolderSize", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["auto-expunge", "enabled", "expunge-behavior", "max-folder-size"]);
@@ -3781,6 +3835,91 @@ impl<'n> Engine<'n> {
         }
         let mut request: api::ImapSettings = json::value::from_value(object).unwrap();
         let mut call = self.hub.users().settings_update_imap(request, opt.value_of("user-id").unwrap_or(""));
+        for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
+            let (key, value) = parse_kv_arg(&*parg, err, false);
+            match key {
+                _ => {
+                    let mut found = false;
+                    for param in &self.gp {
+                        if key == *param {
+                            found = true;
+                            call = call.param(self.gpm.iter().find(|t| t.0 == key).unwrap_or(&("", key)).1, value.unwrap_or("unset"));
+                            break;
+                        }
+                    }
+                    if !found {
+                        err.issues.push(CLIError::UnknownParameter(key.to_string(),
+                                                                  {let mut v = Vec::new();
+                                                                           v.extend(self.gp.iter().map(|v|*v));
+                                                                           v } ));
+                    }
+                }
+            }
+        }
+        let protocol = CallType::Standard;
+        if dry_run {
+            Ok(())
+        } else {
+            assert!(err.issues.len() == 0);
+            for scope in self.opt.values_of("url").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
+                call = call.add_scope(scope);
+            }
+            let mut ostream = match writer_from_opts(opt.value_of("out")) {
+                Ok(mut f) => f,
+                Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
+            };
+            match match protocol {
+                CallType::Standard => call.doit(),
+                _ => unreachable!()
+            } {
+                Err(api_err) => Err(DoitError::ApiError(api_err)),
+                Ok((mut response, output_schema)) => {
+                    let mut value = json::value::to_value(&output_schema).expect("serde to work");
+                    remove_json_null_values(&mut value);
+                    json::to_writer_pretty(&mut ostream, &value).unwrap();
+                    ostream.flush().unwrap();
+                    Ok(())
+                }
+            }
+        }
+    }
+
+    fn _users_settings_update_language(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+                                                    -> Result<(), DoitError> {
+        
+        let mut field_cursor = FieldCursor::default();
+        let mut object = json::value::Value::Object(Default::default());
+        
+        for kvarg in opt.values_of("kv").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
+            let last_errc = err.issues.len();
+            let (key, value) = parse_kv_arg(&*kvarg, err, false);
+            let mut temp_cursor = field_cursor.clone();
+            if let Err(field_err) = temp_cursor.set(&*key) {
+                err.issues.push(field_err);
+            }
+            if value.is_none() {
+                field_cursor = temp_cursor.clone();
+                if err.issues.len() > last_errc {
+                    err.issues.remove(last_errc);
+                }
+                continue;
+            }
+        
+            let type_info: Option<(&'static str, JsonTypeInfo)> =
+                match &temp_cursor.to_string()[..] {
+                    "display-language" => Some(("displayLanguage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    _ => {
+                        let suggestion = FieldCursor::did_you_mean(key, &vec!["display-language"]);
+                        err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
+                        None
+                    }
+                };
+            if let Some((field_cursor_str, type_info)) = type_info {
+                FieldCursor::from(field_cursor_str).set_json_value(&mut object, value.unwrap(), type_info, err, &temp_cursor);
+            }
+        }
+        let mut request: api::LanguageSettings = json::value::from_value(object).unwrap();
+        let mut call = self.hub.users().settings_update_language(request, opt.value_of("user-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
             let (key, value) = parse_kv_arg(&*parg, err, false);
             match key {
@@ -3853,8 +3992,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "disposition" => Some(("disposition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "access-window" => Some(("accessWindow", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "disposition" => Some(("disposition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["access-window", "disposition"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3939,14 +4078,14 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "response-subject" => Some(("responseSubject", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "response-body-plain-text" => Some(("responseBodyPlainText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "restrict-to-contacts" => Some(("restrictToContacts", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "enable-auto-reply" => Some(("enableAutoReply", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "start-time" => Some(("startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "end-time" => Some(("endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "response-body-html" => Some(("responseBodyHtml", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "response-body-plain-text" => Some(("responseBodyPlainText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "response-subject" => Some(("responseSubject", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "restrict-to-contacts" => Some(("restrictToContacts", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "restrict-to-domain" => Some(("restrictToDomain", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "start-time" => Some(("startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["enable-auto-reply", "end-time", "response-body-html", "response-body-plain-text", "response-subject", "restrict-to-contacts", "restrict-to-domain", "start-time"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -4121,7 +4260,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["metadata-headers", "format"].iter().map(|v|*v));
+                                                                           v.extend(["format", "metadata-headers"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4189,7 +4328,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["q", "page-token", "include-spam-trash", "max-results", "label-ids"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "max-results", "include-spam-trash", "q", "label-ids"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4246,8 +4385,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "remove-label-ids" => Some(("removeLabelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "add-label-ids" => Some(("addLabelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "remove-label-ids" => Some(("removeLabelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["add-label-ids", "remove-label-ids"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -4436,9 +4575,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "label-filter-action" => Some(("labelFilterAction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "label-ids" => Some(("labelIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "topic-name" => Some(("topicName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "label-filter-action" => Some(("labelFilterAction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["label-filter-action", "label-ids", "topic-name"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -4627,6 +4766,9 @@ impl<'n> Engine<'n> {
                     ("settings-get-imap", Some(opt)) => {
                         call_result = self._users_settings_get_imap(opt, dry_run, &mut err);
                     },
+                    ("settings-get-language", Some(opt)) => {
+                        call_result = self._users_settings_get_language(opt, dry_run, &mut err);
+                    },
                     ("settings-get-pop", Some(opt)) => {
                         call_result = self._users_settings_get_pop(opt, dry_run, &mut err);
                     },
@@ -4674,6 +4816,9 @@ impl<'n> Engine<'n> {
                     },
                     ("settings-update-imap", Some(opt)) => {
                         call_result = self._users_settings_update_imap(opt, dry_run, &mut err);
+                    },
+                    ("settings-update-language", Some(opt)) => {
+                        call_result = self._users_settings_update_language(opt, dry_run, &mut err);
                     },
                     ("settings-update-pop", Some(opt)) => {
                         call_result = self._users_settings_update_pop(opt, dry_run, &mut err);
@@ -4730,12 +4875,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "gmail1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "gmail1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))
@@ -4766,12 +4911,15 @@ impl<'n> Engine<'n> {
         let engine = Engine {
             opt: opt,
             hub: api::Gmail::new(client, auth),
-            gp: vec!["alt", "fields", "key", "oauth-token", "pretty-print", "quota-user", "user-ip"],
+            gp: vec!["$-xgafv", "access-token", "alt", "callback", "fields", "key", "oauth-token", "pretty-print", "quota-user", "upload-type", "upload-protocol"],
             gpm: vec![
+                    ("$-xgafv", "$.xgafv"),
+                    ("access-token", "access_token"),
                     ("oauth-token", "oauth_token"),
                     ("pretty-print", "prettyPrint"),
                     ("quota-user", "quotaUser"),
-                    ("user-ip", "userIp"),
+                    ("upload-type", "uploadType"),
+                    ("upload-protocol", "upload_protocol"),
                 ]
         };
 
@@ -4794,14 +4942,15 @@ fn main() {
     let mut exit_status = 0i32;
     let upload_value_names = ["mode", "file"];
     let arg_data = [
-        ("users", "methods: 'drafts-create', 'drafts-delete', 'drafts-get', 'drafts-list', 'drafts-send', 'drafts-update', 'get-profile', 'history-list', 'labels-create', 'labels-delete', 'labels-get', 'labels-list', 'labels-patch', 'labels-update', 'messages-attachments-get', 'messages-batch-delete', 'messages-batch-modify', 'messages-delete', 'messages-get', 'messages-import', 'messages-insert', 'messages-list', 'messages-modify', 'messages-send', 'messages-trash', 'messages-untrash', 'settings-delegates-create', 'settings-delegates-delete', 'settings-delegates-get', 'settings-delegates-list', 'settings-filters-create', 'settings-filters-delete', 'settings-filters-get', 'settings-filters-list', 'settings-forwarding-addresses-create', 'settings-forwarding-addresses-delete', 'settings-forwarding-addresses-get', 'settings-forwarding-addresses-list', 'settings-get-auto-forwarding', 'settings-get-imap', 'settings-get-pop', 'settings-get-vacation', 'settings-send-as-create', 'settings-send-as-delete', 'settings-send-as-get', 'settings-send-as-list', 'settings-send-as-patch', 'settings-send-as-smime-info-delete', 'settings-send-as-smime-info-get', 'settings-send-as-smime-info-insert', 'settings-send-as-smime-info-list', 'settings-send-as-smime-info-set-default', 'settings-send-as-update', 'settings-send-as-verify', 'settings-update-auto-forwarding', 'settings-update-imap', 'settings-update-pop', 'settings-update-vacation', 'stop', 'threads-delete', 'threads-get', 'threads-list', 'threads-modify', 'threads-trash', 'threads-untrash' and 'watch'", vec![
+        ("users", "methods: 'drafts-create', 'drafts-delete', 'drafts-get', 'drafts-list', 'drafts-send', 'drafts-update', 'get-profile', 'history-list', 'labels-create', 'labels-delete', 'labels-get', 'labels-list', 'labels-patch', 'labels-update', 'messages-attachments-get', 'messages-batch-delete', 'messages-batch-modify', 'messages-delete', 'messages-get', 'messages-import', 'messages-insert', 'messages-list', 'messages-modify', 'messages-send', 'messages-trash', 'messages-untrash', 'settings-delegates-create', 'settings-delegates-delete', 'settings-delegates-get', 'settings-delegates-list', 'settings-filters-create', 'settings-filters-delete', 'settings-filters-get', 'settings-filters-list', 'settings-forwarding-addresses-create', 'settings-forwarding-addresses-delete', 'settings-forwarding-addresses-get', 'settings-forwarding-addresses-list', 'settings-get-auto-forwarding', 'settings-get-imap', 'settings-get-language', 'settings-get-pop', 'settings-get-vacation', 'settings-send-as-create', 'settings-send-as-delete', 'settings-send-as-get', 'settings-send-as-list', 'settings-send-as-patch', 'settings-send-as-smime-info-delete', 'settings-send-as-smime-info-get', 'settings-send-as-smime-info-insert', 'settings-send-as-smime-info-list', 'settings-send-as-smime-info-set-default', 'settings-send-as-update', 'settings-send-as-verify', 'settings-update-auto-forwarding', 'settings-update-imap', 'settings-update-language', 'settings-update-pop', 'settings-update-vacation', 'stop', 'threads-delete', 'threads-get', 'threads-list', 'threads-modify', 'threads-trash', 'threads-untrash' and 'watch'", vec![
             ("drafts-create",
-                    Some(r##"Creates a new draft with the DRAFT label."##),
+                    Some(r##"Creates a new draft with the <code>DRAFT</code> label."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_drafts-create",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -4813,7 +4962,7 @@ fn main() {
         
                     (Some(r##"mode"##),
                      Some(r##"u"##),
-                     Some(r##"Specify the upload protocol (simple|resumable) and the file to upload"##),
+                     Some(r##"Specify the upload protocol (resumable|simple) and the file to upload"##),
                      Some(true),
                      Some(true)),
         
@@ -4830,12 +4979,14 @@ fn main() {
                      Some(false)),
                   ]),
             ("drafts-delete",
-                    Some(r##"Immediately and permanently deletes the specified draft. Does not simply trash it."##),
+                    Some(r##"Immediately and permanently deletes the specified draft.
+        Does not simply trash it."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_drafts-delete",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -4857,7 +5008,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -4885,7 +5037,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -4902,12 +5055,14 @@ fn main() {
                      Some(false)),
                   ]),
             ("drafts-send",
-                    Some(r##"Sends the specified, existing draft to the recipients in the To, Cc, and Bcc headers."##),
+                    Some(r##"Sends the specified, existing draft to the recipients in the
+        <code>To</code>, <code>Cc</code>, and <code>Bcc</code> headers."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_drafts-send",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -4919,7 +5074,7 @@ fn main() {
         
                     (Some(r##"mode"##),
                      Some(r##"u"##),
-                     Some(r##"Specify the upload protocol (simple|resumable) and the file to upload"##),
+                     Some(r##"Specify the upload protocol (resumable|simple) and the file to upload"##),
                      Some(true),
                      Some(true)),
         
@@ -4941,7 +5096,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -4959,7 +5115,7 @@ fn main() {
         
                     (Some(r##"mode"##),
                      Some(r##"u"##),
-                     Some(r##"Specify the upload protocol (simple|resumable) and the file to upload"##),
+                     Some(r##"Specify the upload protocol (resumable|simple) and the file to upload"##),
                      Some(true),
                      Some(true)),
         
@@ -4981,7 +5137,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -4998,12 +5155,14 @@ fn main() {
                      Some(false)),
                   ]),
             ("history-list",
-                    Some(r##"Lists the history of all changes to the given mailbox. History results are returned in chronological order (increasing historyId)."##),
+                    Some(r##"Lists the history of all changes to the given mailbox. History results are
+        returned in chronological order (increasing <code>historyId</code>)."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_history-list",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5025,7 +5184,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5048,12 +5208,14 @@ fn main() {
                      Some(false)),
                   ]),
             ("labels-delete",
-                    Some(r##"Immediately and permanently deletes the specified label and removes it from any messages and threads that it is applied to."##),
+                    Some(r##"Immediately and permanently deletes the specified label and removes it from
+        any messages and threads that it is applied to."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_labels-delete",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5075,7 +5237,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5103,7 +5266,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5120,12 +5284,13 @@ fn main() {
                      Some(false)),
                   ]),
             ("labels-patch",
-                    Some(r##"Updates the specified label. This method supports patch semantics."##),
+                    Some(r##"Patch the specified label."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_labels-patch",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5159,7 +5324,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5193,7 +5359,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5222,12 +5389,14 @@ fn main() {
                      Some(false)),
                   ]),
             ("messages-batch-delete",
-                    Some(r##"Deletes many messages by message ID. Provides no guarantees that messages were not already deleted or even existed at all."##),
+                    Some(r##"Deletes many messages by message ID.  Provides no guarantees that messages
+        were not already deleted or even existed at all."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_messages-batch-delete",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5249,7 +5418,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5266,12 +5436,14 @@ fn main() {
                      Some(true)),
                   ]),
             ("messages-delete",
-                    Some(r##"Immediately and permanently deletes the specified message. This operation cannot be undone. Prefer messages.trash instead."##),
+                    Some(r##"Immediately and permanently deletes the specified message. This operation
+        cannot be undone.  Prefer <code>messages.trash</code> instead."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_messages-delete",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5293,7 +5465,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5316,12 +5489,15 @@ fn main() {
                      Some(false)),
                   ]),
             ("messages-import",
-                    Some(r##"Imports a message into only this user's mailbox, with standard email delivery scanning and classification similar to receiving via SMTP. Does not send a message."##),
+                    Some(r##"Imports a message into only this user's mailbox, with standard
+        email delivery scanning and classification similar to receiving via SMTP.
+        Does not send a message."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_messages-import",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5333,7 +5509,7 @@ fn main() {
         
                     (Some(r##"mode"##),
                      Some(r##"u"##),
-                     Some(r##"Specify the upload protocol (simple|resumable) and the file to upload"##),
+                     Some(r##"Specify the upload protocol (resumable|simple) and the file to upload"##),
                      Some(true),
                      Some(true)),
         
@@ -5350,12 +5526,15 @@ fn main() {
                      Some(false)),
                   ]),
             ("messages-insert",
-                    Some(r##"Directly inserts a message into only this user's mailbox similar to IMAP APPEND, bypassing most scanning and classification. Does not send a message."##),
+                    Some(r##"Directly inserts a message into only this user's mailbox similar to
+        <code>IMAP APPEND</code>, bypassing most scanning and classification.
+        Does not send a message."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_messages-insert",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5367,7 +5546,7 @@ fn main() {
         
                     (Some(r##"mode"##),
                      Some(r##"u"##),
-                     Some(r##"Specify the upload protocol (simple|resumable) and the file to upload"##),
+                     Some(r##"Specify the upload protocol (resumable|simple) and the file to upload"##),
                      Some(true),
                      Some(true)),
         
@@ -5389,7 +5568,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5411,7 +5591,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5440,12 +5621,14 @@ fn main() {
                      Some(false)),
                   ]),
             ("messages-send",
-                    Some(r##"Sends the specified message to the recipients in the To, Cc, and Bcc headers."##),
+                    Some(r##"Sends the specified message to the recipients in the
+        <code>To</code>, <code>Cc</code>, and <code>Bcc</code> headers."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_messages-send",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5457,7 +5640,7 @@ fn main() {
         
                     (Some(r##"mode"##),
                      Some(r##"u"##),
-                     Some(r##"Specify the upload protocol (simple|resumable) and the file to upload"##),
+                     Some(r##"Specify the upload protocol (resumable|simple) and the file to upload"##),
                      Some(true),
                      Some(true)),
         
@@ -5479,7 +5662,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5507,7 +5691,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5530,20 +5715,30 @@ fn main() {
                      Some(false)),
                   ]),
             ("settings-delegates-create",
-                    Some(r##"Adds a delegate with its verification status set directly to accepted, without sending any verification email. The delegate user must be a member of the same G Suite organization as the delegator user.
+                    Some(r##"Adds a delegate with its verification status set directly to
+        <code>accepted</code>, without sending any verification email.  The
+        delegate user must be a member of the same G Suite organization as the
+        delegator user.
         
-        Gmail imposes limtations on the number of delegates and delegators each user in a G Suite organization can have. These limits depend on your organization, but in general each user can have up to 25 delegates and up to 10 delegators.
+        Gmail imposes limitations on the number of delegates and delegators each
+        user in a G Suite organization can have. These limits depend on your
+        organization, but in general each user can have up to 25 delegates and
+        up to 10 delegators.
         
-        Note that a delegate user must be referred to by their primary email address, and not an email alias.
+        Note that a delegate user must be referred to by their primary email
+        address, and not an email alias.
         
-        Also note that when a new delegate is created, there may be up to a one minute delay before the new delegate is available for use.
+        Also note that when a new delegate is created, there may be up to a one
+        minute delay before the new delegate is available for use.
         
-        This method is only available to service account clients that have been delegated domain-wide authority."##),
+        This method is only available to service account clients that have been
+        delegated domain-wide authority."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_settings-delegates-create",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5566,16 +5761,20 @@ fn main() {
                      Some(false)),
                   ]),
             ("settings-delegates-delete",
-                    Some(r##"Removes the specified delegate (which can be of any verification status), and revokes any verification that may have been required for using it.
+                    Some(r##"Removes the specified delegate (which can be of any verification status),
+        and revokes any verification that may have been required for using it.
         
-        Note that a delegate user must be referred to by their primary email address, and not an email alias.
+        Note that a delegate user must be referred to by their primary email
+        address, and not an email alias.
         
-        This method is only available to service account clients that have been delegated domain-wide authority."##),
+        This method is only available to service account clients that have been
+        delegated domain-wide authority."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_settings-delegates-delete",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5594,20 +5793,24 @@ fn main() {
             ("settings-delegates-get",
                     Some(r##"Gets the specified delegate.
         
-        Note that a delegate user must be referred to by their primary email address, and not an email alias.
+        Note that a delegate user must be referred to by their primary email
+        address, and not an email alias.
         
-        This method is only available to service account clients that have been delegated domain-wide authority."##),
+        This method is only available to service account clients that have been
+        delegated domain-wide authority."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_settings-delegates-get",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
                     (Some(r##"delegate-email"##),
                      None,
-                     Some(r##"The email address of the user whose delegate relationship is to be retrieved."##),
+                     Some(r##"The email address of the user whose delegate relationship is to be
+        retrieved."##),
                      Some(true),
                      Some(false)),
         
@@ -5626,12 +5829,14 @@ fn main() {
             ("settings-delegates-list",
                     Some(r##"Lists the delegates for the specified account.
         
-        This method is only available to service account clients that have been delegated domain-wide authority."##),
+        This method is only available to service account clients that have been
+        delegated domain-wide authority."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_settings-delegates-list",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5653,7 +5858,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address. The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5681,7 +5887,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address. The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5703,7 +5910,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address. The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5731,7 +5939,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address. The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5748,14 +5957,19 @@ fn main() {
                      Some(false)),
                   ]),
             ("settings-forwarding-addresses-create",
-                    Some(r##"Creates a forwarding address. If ownership verification is required, a message will be sent to the recipient and the resource's verification status will be set to pending; otherwise, the resource will be created with verification status set to accepted.
+                    Some(r##"Creates a forwarding address.  If ownership verification is required, a
+        message will be sent to the recipient and the resource's verification
+        status will be set to <code>pending</code>; otherwise, the resource will be
+        created with verification status set to <code>accepted</code>.
         
-        This method is only available to service account clients that have been delegated domain-wide authority."##),
+        This method is only available to service account clients that have been
+        delegated domain-wide authority."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_settings-forwarding-addresses-create",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5778,14 +5992,17 @@ fn main() {
                      Some(false)),
                   ]),
             ("settings-forwarding-addresses-delete",
-                    Some(r##"Deletes the specified forwarding address and revokes any verification that may have been required.
+                    Some(r##"Deletes the specified forwarding address and revokes any verification that
+        may have been required.
         
-        This method is only available to service account clients that have been delegated domain-wide authority."##),
+        This method is only available to service account clients that have been
+        delegated domain-wide authority."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_settings-forwarding-addresses-delete",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5807,7 +6024,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5835,7 +6053,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5857,7 +6076,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5879,7 +6099,31 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
+                     Some(true),
+                     Some(false)),
+        
+                    (Some(r##"v"##),
+                     Some(r##"p"##),
+                     Some(r##"Set various optional parameters, matching the key=value form"##),
+                     Some(false),
+                     Some(true)),
+        
+                    (Some(r##"out"##),
+                     Some(r##"o"##),
+                     Some(r##"Specify the file into which to write the program's output"##),
+                     Some(false),
+                     Some(false)),
+                  ]),
+            ("settings-get-language",
+                    Some(r##"Gets language settings."##),
+                    "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_settings-get-language",
+                  vec![
+                    (Some(r##"user-id"##),
+                     None,
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5901,7 +6145,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5923,7 +6168,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5940,14 +6186,23 @@ fn main() {
                      Some(false)),
                   ]),
             ("settings-send-as-create",
-                    Some(r##"Creates a custom "from" send-as alias. If an SMTP MSA is specified, Gmail will attempt to connect to the SMTP service to validate the configuration before creating the alias. If ownership verification is required for the alias, a message will be sent to the email address and the resource's verification status will be set to pending; otherwise, the resource will be created with verification status set to accepted. If a signature is provided, Gmail will sanitize the HTML before saving it with the alias.
+                    Some(r##"Creates a custom "from" send-as alias.  If an SMTP MSA is specified, Gmail
+        will attempt to connect to the SMTP service to validate the configuration
+        before creating the alias.  If ownership verification is required for the
+        alias, a message will be sent to the email address and the resource's
+        verification status will be set to <code>pending</code>; otherwise, the
+        resource will be created with verification status set to
+        <code>accepted</code>.  If a signature is provided, Gmail will sanitize the
+        HTML before saving it with the alias.
         
-        This method is only available to service account clients that have been delegated domain-wide authority."##),
+        This method is only available to service account clients that have been
+        delegated domain-wide authority."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_settings-send-as-create",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5970,14 +6225,17 @@ fn main() {
                      Some(false)),
                   ]),
             ("settings-send-as-delete",
-                    Some(r##"Deletes the specified send-as alias. Revokes any verification that may have been required for using it.
+                    Some(r##"Deletes the specified send-as alias.  Revokes any verification that may
+        have been required for using it.
         
-        This method is only available to service account clients that have been delegated domain-wide authority."##),
+        This method is only available to service account clients that have been
+        delegated domain-wide authority."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_settings-send-as-delete",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -5994,12 +6252,14 @@ fn main() {
                      Some(true)),
                   ]),
             ("settings-send-as-get",
-                    Some(r##"Gets the specified send-as alias. Fails with an HTTP 404 error if the specified address is not a member of the collection."##),
+                    Some(r##"Gets the specified send-as alias.  Fails with an HTTP 404 error if the
+        specified address is not a member of the collection."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_settings-send-as-get",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -6022,12 +6282,15 @@ fn main() {
                      Some(false)),
                   ]),
             ("settings-send-as-list",
-                    Some(r##"Lists the send-as aliases for the specified account. The result includes the primary send-as address associated with the account as well as any custom "from" aliases."##),
+                    Some(r##"Lists the send-as aliases for the specified account.  The result includes
+        the primary send-as address associated with the account as well as any
+        custom "from" aliases."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_settings-send-as-list",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -6044,14 +6307,13 @@ fn main() {
                      Some(false)),
                   ]),
             ("settings-send-as-patch",
-                    Some(r##"Updates a send-as alias. If a signature is provided, Gmail will sanitize the HTML before saving it with the alias.
-        
-        Addresses other than the primary address for the account can only be updated by service account clients that have been delegated domain-wide authority. This method supports patch semantics."##),
+                    Some(r##"Patch the specified send-as alias."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_settings-send-as-patch",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -6085,13 +6347,15 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
                     (Some(r##"send-as-email"##),
                      None,
-                     Some(r##"The email address that appears in the "From:" header for mail sent using this alias."##),
+                     Some(r##"The email address that appears in the "From:" header for mail sent using
+        this alias."##),
                      Some(true),
                      Some(false)),
         
@@ -6113,13 +6377,15 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
                     (Some(r##"send-as-email"##),
                      None,
-                     Some(r##"The email address that appears in the "From:" header for mail sent using this alias."##),
+                     Some(r##"The email address that appears in the "From:" header for mail sent using
+        this alias."##),
                      Some(true),
                      Some(false)),
         
@@ -6142,18 +6408,21 @@ fn main() {
                      Some(false)),
                   ]),
             ("settings-send-as-smime-info-insert",
-                    Some(r##"Insert (upload) the given S/MIME config for the specified send-as alias. Note that pkcs12 format is required for the key."##),
+                    Some(r##"Insert (upload) the given S/MIME config for the specified send-as alias.
+        Note that pkcs12 format is required for the key."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_settings-send-as-smime-info-insert",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
                     (Some(r##"send-as-email"##),
                      None,
-                     Some(r##"The email address that appears in the "From:" header for mail sent using this alias."##),
+                     Some(r##"The email address that appears in the "From:" header for mail sent using
+        this alias."##),
                      Some(true),
                      Some(false)),
         
@@ -6181,13 +6450,15 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
                     (Some(r##"send-as-email"##),
                      None,
-                     Some(r##"The email address that appears in the "From:" header for mail sent using this alias."##),
+                     Some(r##"The email address that appears in the "From:" header for mail sent using
+        this alias."##),
                      Some(true),
                      Some(false)),
         
@@ -6209,13 +6480,15 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
                     (Some(r##"send-as-email"##),
                      None,
-                     Some(r##"The email address that appears in the "From:" header for mail sent using this alias."##),
+                     Some(r##"The email address that appears in the "From:" header for mail sent using
+        this alias."##),
                      Some(true),
                      Some(false)),
         
@@ -6232,14 +6505,18 @@ fn main() {
                      Some(true)),
                   ]),
             ("settings-send-as-update",
-                    Some(r##"Updates a send-as alias. If a signature is provided, Gmail will sanitize the HTML before saving it with the alias.
+                    Some(r##"Updates a send-as alias.  If a signature is provided, Gmail will sanitize
+        the HTML before saving it with the alias.
         
-        Addresses other than the primary address for the account can only be updated by service account clients that have been delegated domain-wide authority."##),
+        Addresses other than the primary address for the account can only be
+        updated by service account clients that have been delegated domain-wide
+        authority."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_settings-send-as-update",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -6268,14 +6545,17 @@ fn main() {
                      Some(false)),
                   ]),
             ("settings-send-as-verify",
-                    Some(r##"Sends a verification email to the specified send-as alias address. The verification status must be pending.
+                    Some(r##"Sends a verification email to the specified send-as alias address.
+        The verification status must be <code>pending</code>.
         
-        This method is only available to service account clients that have been delegated domain-wide authority."##),
+        This method is only available to service account clients that have been
+        delegated domain-wide authority."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_settings-send-as-verify",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -6292,14 +6572,17 @@ fn main() {
                      Some(true)),
                   ]),
             ("settings-update-auto-forwarding",
-                    Some(r##"Updates the auto-forwarding setting for the specified account. A verified forwarding address must be specified when auto-forwarding is enabled.
+                    Some(r##"Updates the auto-forwarding setting for the specified account.  A verified
+        forwarding address must be specified when auto-forwarding is enabled.
         
-        This method is only available to service account clients that have been delegated domain-wide authority."##),
+        This method is only available to service account clients that have been
+        delegated domain-wide authority."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_settings-update-auto-forwarding",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -6327,7 +6610,43 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
+                     Some(true),
+                     Some(false)),
+        
+                    (Some(r##"kv"##),
+                     Some(r##"r"##),
+                     Some(r##"Set various fields of the request structure, matching the key=value form"##),
+                     Some(true),
+                     Some(true)),
+        
+                    (Some(r##"v"##),
+                     Some(r##"p"##),
+                     Some(r##"Set various optional parameters, matching the key=value form"##),
+                     Some(false),
+                     Some(true)),
+        
+                    (Some(r##"out"##),
+                     Some(r##"o"##),
+                     Some(r##"Specify the file into which to write the program's output"##),
+                     Some(false),
+                     Some(false)),
+                  ]),
+            ("settings-update-language",
+                    Some(r##"Updates language settings.
+        
+        If successful, the return object contains the <code>displayLanguage</code>
+        that was saved for the user, which may differ from the value passed into
+        the request. This is because the requested <code>displayLanguage</code> may
+        not be directly supported by Gmail but have a close variant that is, and so
+        the variant may be chosen and saved instead."##),
+                    "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_settings-update-language",
+                  vec![
+                    (Some(r##"user-id"##),
+                     None,
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -6355,7 +6674,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -6383,7 +6703,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"User's email address. The special value "me" can be used to indicate the authenticated user."##),
+                     Some(r##"User's email address.  The special value "me"
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -6411,7 +6732,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -6422,12 +6744,14 @@ fn main() {
                      Some(true)),
                   ]),
             ("threads-delete",
-                    Some(r##"Immediately and permanently deletes the specified thread. This operation cannot be undone. Prefer threads.trash instead."##),
+                    Some(r##"Immediately and permanently deletes the specified thread. This operation
+        cannot be undone. Prefer <code>threads.trash</code> instead."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_threads-delete",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -6449,7 +6773,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -6477,7 +6802,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -6494,12 +6820,14 @@ fn main() {
                      Some(false)),
                   ]),
             ("threads-modify",
-                    Some(r##"Modifies the labels applied to the thread. This applies to all messages in the thread."##),
+                    Some(r##"Modifies the labels applied to the thread. This applies to all messages
+        in the thread."##),
                     "Details at http://byron.github.io/google-apis-rs/google_gmail1_cli/users_threads-modify",
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -6533,7 +6861,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -6561,7 +6890,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -6589,7 +6919,8 @@ fn main() {
                   vec![
                     (Some(r##"user-id"##),
                      None,
-                     Some(r##"The user's email address. The special value me can be used to indicate the authenticated user."##),
+                     Some(r##"The user's email address. The special value <code>me</code>
+        can be used to indicate the authenticated user."##),
                      Some(true),
                      Some(false)),
         
@@ -6617,8 +6948,9 @@ fn main() {
     
     let mut app = App::new("gmail1")
            .author("Sebastian Thiel <byronimo@gmail.com>")
-           .version("1.0.7+20180904")
-           .about("Access Gmail mailboxes including sending user email.")
+           .version("1.0.14+20200706")
+           .about("The Gmail API lets you view and manage Gmail mailbox data like
+               threads, messages, and labels.")
            .after_help("All documentation details can be found at http://byron.github.io/google-apis-rs/google_gmail1_cli")
            .arg(Arg::with_name("url")
                    .long("scope")

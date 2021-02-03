@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_healthcare1_beta1 as api;
+extern crate google_healthcare1_beta1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_healthcare1_beta1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::CloudHealthcare<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::CloudHealthcare<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -70,10 +72,10 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "annotation-source.cloud-healthcare-source.name" => Some(("annotationSource.cloudHealthcareSource.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "resource-annotation.label" => Some(("resourceAnnotation.label", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "custom-data" => Some(("customData", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "image-annotation.frame-index" => Some(("imageAnnotation.frameIndex", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "resource-annotation.label" => Some(("resourceAnnotation.label", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["annotation-source", "cloud-healthcare-source", "custom-data", "frame-index", "image-annotation", "label", "name", "resource-annotation"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -270,7 +272,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size", "view"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "view", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -328,10 +330,10 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "annotation-source.cloud-healthcare-source.name" => Some(("annotationSource.cloudHealthcareSource.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "resource-annotation.label" => Some(("resourceAnnotation.label", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "custom-data" => Some(("customData", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "image-annotation.frame-index" => Some(("imageAnnotation.frameIndex", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "resource-annotation.label" => Some(("resourceAnnotation.label", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["annotation-source", "cloud-healthcare-source", "custom-data", "frame-index", "image-annotation", "label", "name", "resource-annotation"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -562,15 +564,15 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "bigquery-destination.force" => Some(("bigqueryDestination.force", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "bigquery-destination.schema-type" => Some(("bigqueryDestination.schemaType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "bigquery-destination.table-uri" => Some(("bigqueryDestination.tableUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "eval-info-type-mapping" => Some(("evalInfoTypeMapping", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "golden-info-type-mapping" => Some(("goldenInfoTypeMapping", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "golden-store" => Some(("goldenStore", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "info-type-config.evaluate-list.info-types" => Some(("infoTypeConfig.evaluateList.infoTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "info-type-config.ignore-list.info-types" => Some(("infoTypeConfig.ignoreList.infoTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "info-type-config.strict-matching" => Some(("infoTypeConfig.strictMatching", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "info-type-config.evaluate-list.info-types" => Some(("infoTypeConfig.evaluateList.infoTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "bigquery-destination.table-uri" => Some(("bigqueryDestination.tableUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "bigquery-destination.schema-type" => Some(("bigqueryDestination.schemaType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "bigquery-destination.force" => Some(("bigqueryDestination.force", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "golden-info-type-mapping" => Some(("goldenInfoTypeMapping", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "eval-info-type-mapping" => Some(("evalInfoTypeMapping", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "golden-store" => Some(("goldenStore", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["bigquery-destination", "eval-info-type-mapping", "evaluate-list", "force", "golden-info-type-mapping", "golden-store", "ignore-list", "info-type-config", "info-types", "schema-type", "strict-matching", "table-uri"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -655,9 +657,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "bigquery-destination.table-uri" => Some(("bigqueryDestination.tableUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "bigquery-destination.schema-type" => Some(("bigqueryDestination.schemaType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "bigquery-destination.force" => Some(("bigqueryDestination.force", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "bigquery-destination.schema-type" => Some(("bigqueryDestination.schemaType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "bigquery-destination.table-uri" => Some(("bigqueryDestination.tableUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "gcs-destination.uri-prefix" => Some(("gcsDestination.uriPrefix", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["bigquery-destination", "force", "gcs-destination", "schema-type", "table-uri", "uri-prefix"]);
@@ -941,7 +943,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1260,8 +1262,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "time-zone" => Some(("timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "time-zone" => Some(("timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["name", "time-zone"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1350,14 +1352,14 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "destination-dataset" => Some(("destinationDataset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.annotation.annotation-store-name" => Some(("config.annotation.annotationStoreName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.annotation.store-quote" => Some(("config.annotation.storeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "config.dicom.filter-profile" => Some(("config.dicom.filterProfile", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.dicom.keep-list.tags" => Some(("config.dicom.keepList.tags", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "config.dicom.remove-list.tags" => Some(("config.dicom.removeList.tags", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "config.dicom.skip-id-redaction" => Some(("config.dicom.skipIdRedaction", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "config.dicom.keep-list.tags" => Some(("config.dicom.keepList.tags", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "config.image.text-redaction-mode" => Some(("config.image.textRedactionMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.annotation.store-quote" => Some(("config.annotation.storeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "config.annotation.annotation-store-name" => Some(("config.annotation.annotationStoreName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "destination-dataset" => Some(("destinationDataset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["annotation", "annotation-store-name", "config", "destination-dataset", "dicom", "filter-profile", "image", "keep-list", "remove-list", "skip-id-redaction", "store-quote", "tags", "text-redaction-mode"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1585,15 +1587,15 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "filter-config.resource-paths-gcs-uri" => Some(("filterConfig.resourcePathsGcsUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "destination-store" => Some(("destinationStore", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.annotation.annotation-store-name" => Some(("config.annotation.annotationStoreName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.annotation.store-quote" => Some(("config.annotation.storeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "config.dicom.filter-profile" => Some(("config.dicom.filterProfile", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.dicom.keep-list.tags" => Some(("config.dicom.keepList.tags", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "config.dicom.remove-list.tags" => Some(("config.dicom.removeList.tags", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "config.dicom.skip-id-redaction" => Some(("config.dicom.skipIdRedaction", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "config.dicom.keep-list.tags" => Some(("config.dicom.keepList.tags", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "config.image.text-redaction-mode" => Some(("config.image.textRedactionMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.annotation.store-quote" => Some(("config.annotation.storeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "config.annotation.annotation-store-name" => Some(("config.annotation.annotationStoreName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "destination-store" => Some(("destinationStore", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "filter-config.resource-paths-gcs-uri" => Some(("filterConfig.resourcePathsGcsUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["annotation", "annotation-store-name", "config", "destination-store", "dicom", "filter-config", "filter-profile", "image", "keep-list", "remove-list", "resource-paths-gcs-uri", "skip-id-redaction", "store-quote", "tags", "text-redaction-mode"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1730,8 +1732,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "bigquery-destination.table-uri" => Some(("bigqueryDestination.tableUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "bigquery-destination.force" => Some(("bigqueryDestination.force", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "bigquery-destination.table-uri" => Some(("bigqueryDestination.tableUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "gcs-destination.mime-type" => Some(("gcsDestination.mimeType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "gcs-destination.uri-prefix" => Some(("gcsDestination.uriPrefix", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
@@ -2016,7 +2018,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2407,8 +2409,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "content-type" => Some(("contentType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["content-type", "data"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3273,8 +3275,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "content-type" => Some(("contentType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["content-type", "data"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3444,14 +3446,14 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "enable-update-create" => Some(("enableUpdateCreate", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "notification-config.pubsub-topic" => Some(("notificationConfig.pubsubTopic", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version" => Some(("version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "default-search-handling-strict" => Some(("defaultSearchHandlingStrict", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "disable-referential-integrity" => Some(("disableReferentialIntegrity", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "disable-resource-versioning" => Some(("disableResourceVersioning", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "enable-update-create" => Some(("enableUpdateCreate", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notification-config.pubsub-topic" => Some(("notificationConfig.pubsubTopic", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version" => Some(("version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["default-search-handling-strict", "disable-referential-integrity", "disable-resource-versioning", "enable-update-create", "labels", "name", "notification-config", "pubsub-topic", "version"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3540,15 +3542,15 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "resource-filter.resources.resources" => Some(("resourceFilter.resources.resources", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "destination-store" => Some(("destinationStore", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.annotation.annotation-store-name" => Some(("config.annotation.annotationStoreName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.annotation.store-quote" => Some(("config.annotation.storeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "config.dicom.filter-profile" => Some(("config.dicom.filterProfile", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.dicom.keep-list.tags" => Some(("config.dicom.keepList.tags", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "config.dicom.remove-list.tags" => Some(("config.dicom.removeList.tags", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "config.dicom.skip-id-redaction" => Some(("config.dicom.skipIdRedaction", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "config.dicom.keep-list.tags" => Some(("config.dicom.keepList.tags", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "config.image.text-redaction-mode" => Some(("config.image.textRedactionMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.annotation.store-quote" => Some(("config.annotation.storeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "config.annotation.annotation-store-name" => Some(("config.annotation.annotationStoreName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "destination-store" => Some(("destinationStore", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "resource-filter.resources.resources" => Some(("resourceFilter.resources.resources", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["annotation", "annotation-store-name", "config", "destination-store", "dicom", "filter-profile", "image", "keep-list", "remove-list", "resource-filter", "resources", "skip-id-redaction", "store-quote", "tags", "text-redaction-mode"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3685,10 +3687,10 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "bigquery-destination.force" => Some(("bigqueryDestination.force", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "bigquery-destination.dataset-uri" => Some(("bigqueryDestination.datasetUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "bigquery-destination.schema-config.schema-type" => Some(("bigqueryDestination.schemaConfig.schemaType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "bigquery-destination.force" => Some(("bigqueryDestination.force", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "bigquery-destination.schema-config.recursive-structure-depth" => Some(("bigqueryDestination.schemaConfig.recursiveStructureDepth", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "bigquery-destination.schema-config.schema-type" => Some(("bigqueryDestination.schemaConfig.schemaType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "gcs-destination.uri-prefix" => Some(("gcsDestination.uriPrefix", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["bigquery-destination", "dataset-uri", "force", "gcs-destination", "recursive-structure-depth", "schema-config", "schema-type", "uri-prefix"]);
@@ -3788,7 +3790,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["code", "target", "url", "system", "source", "concept-map-version"].iter().map(|v|*v));
+                                                                           v.extend(["target", "system", "source", "code", "concept-map-version", "url"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3967,7 +3969,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["start", "-count", "-page-token", "end"].iter().map(|v|*v));
+                                                                           v.extend(["-page-token", "start", "end", "-count"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4180,8 +4182,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "content-type" => Some(("contentType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["content-type", "data"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -4266,8 +4268,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "content-type" => Some(("contentType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["content-type", "data"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -4352,8 +4354,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "content-type" => Some(("contentType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["content-type", "data"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -4490,8 +4492,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "content-type" => Some(("contentType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["content-type", "data"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -4584,7 +4586,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["-since", "-count", "-page-token", "-at"].iter().map(|v|*v));
+                                                                           v.extend(["-page-token", "-since", "-count", "-at"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4641,8 +4643,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "content-type" => Some(("contentType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["content-type", "data"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -4864,8 +4866,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "content-type" => Some(("contentType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["content-type", "data"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -5201,7 +5203,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -5258,14 +5260,14 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "enable-update-create" => Some(("enableUpdateCreate", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "notification-config.pubsub-topic" => Some(("notificationConfig.pubsubTopic", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version" => Some(("version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "default-search-handling-strict" => Some(("defaultSearchHandlingStrict", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "disable-referential-integrity" => Some(("disableReferentialIntegrity", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "disable-resource-versioning" => Some(("disableResourceVersioning", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "enable-update-create" => Some(("enableUpdateCreate", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notification-config.pubsub-topic" => Some(("notificationConfig.pubsubTopic", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version" => Some(("version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["default-search-handling-strict", "disable-referential-integrity", "disable-resource-versioning", "enable-update-create", "labels", "name", "notification-config", "pubsub-topic", "version"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -5635,12 +5637,12 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "parser-config.allow-null-header" => Some(("parserConfig.allowNullHeader", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "parser-config.segment-terminator" => Some(("parserConfig.segmentTerminator", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "parser-config.schema.schematized-parsing-type" => Some(("parserConfig.schema.schematizedParsingType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "parser-config.schema.ignore-min-occurs" => Some(("parserConfig.schema.ignoreMinOccurs", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "notification-config.pubsub-topic" => Some(("notificationConfig.pubsubTopic", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notification-config.pubsub-topic" => Some(("notificationConfig.pubsubTopic", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "parser-config.allow-null-header" => Some(("parserConfig.allowNullHeader", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "parser-config.schema.ignore-min-occurs" => Some(("parserConfig.schema.ignoreMinOccurs", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "parser-config.schema.schematized-parsing-type" => Some(("parserConfig.schema.schematizedParsingType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "parser-config.segment-terminator" => Some(("parserConfig.segmentTerminator", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "reject-duplicate-message" => Some(("rejectDuplicateMessage", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["allow-null-header", "ignore-min-occurs", "labels", "name", "notification-config", "parser-config", "pubsub-topic", "reject-duplicate-message", "schema", "schematized-parsing-type", "segment-terminator"]);
@@ -5895,7 +5897,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -5952,15 +5954,15 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "message.name" => Some(("message.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.create-time" => Some(("message.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.data" => Some(("message.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.labels" => Some(("message.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "message.message-type" => Some(("message.messageType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.send-facility" => Some(("message.sendFacility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.send-time" => Some(("message.sendTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.name" => Some(("message.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.schematized-data.data" => Some(("message.schematizedData.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.schematized-data.error" => Some(("message.schematizedData.error", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.data" => Some(("message.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.create-time" => Some(("message.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.send-facility" => Some(("message.sendFacility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.send-time" => Some(("message.sendTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["create-time", "data", "error", "labels", "message", "message-type", "name", "schematized-data", "send-facility", "send-time"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -6153,15 +6155,15 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "message.name" => Some(("message.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.create-time" => Some(("message.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.data" => Some(("message.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.labels" => Some(("message.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "message.message-type" => Some(("message.messageType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.send-facility" => Some(("message.sendFacility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.send-time" => Some(("message.sendTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.name" => Some(("message.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.schematized-data.data" => Some(("message.schematizedData.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.schematized-data.error" => Some(("message.schematizedData.error", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.data" => Some(("message.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.create-time" => Some(("message.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.send-facility" => Some(("message.sendFacility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.send-time" => Some(("message.sendTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["create-time", "data", "error", "labels", "message", "message-type", "name", "schematized-data", "send-facility", "send-time"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -6257,7 +6259,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "filter", "page-size", "view"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token", "filter", "order-by", "view"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -6314,15 +6316,15 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "message-type" => Some(("messageType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "send-facility" => Some(("sendFacility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "send-time" => Some(("sendTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "schematized-data.data" => Some(("schematizedData.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "schematized-data.error" => Some(("schematizedData.error", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "send-facility" => Some(("sendFacility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "send-time" => Some(("sendTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["create-time", "data", "error", "labels", "message-type", "name", "schematized-data", "send-facility", "send-time"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -6412,12 +6414,12 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "parser-config.allow-null-header" => Some(("parserConfig.allowNullHeader", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "parser-config.segment-terminator" => Some(("parserConfig.segmentTerminator", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "parser-config.schema.schematized-parsing-type" => Some(("parserConfig.schema.schematizedParsingType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "parser-config.schema.ignore-min-occurs" => Some(("parserConfig.schema.ignoreMinOccurs", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "notification-config.pubsub-topic" => Some(("notificationConfig.pubsubTopic", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notification-config.pubsub-topic" => Some(("notificationConfig.pubsubTopic", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "parser-config.allow-null-header" => Some(("parserConfig.allowNullHeader", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "parser-config.schema.ignore-min-occurs" => Some(("parserConfig.schema.ignoreMinOccurs", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "parser-config.schema.schematized-parsing-type" => Some(("parserConfig.schema.schematizedParsingType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "parser-config.segment-terminator" => Some(("parserConfig.segmentTerminator", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "reject-duplicate-message" => Some(("rejectDuplicateMessage", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["allow-null-header", "ignore-min-occurs", "labels", "name", "notification-config", "parser-config", "pubsub-topic", "reject-duplicate-message", "schema", "schematized-parsing-type", "segment-terminator"]);
@@ -6879,7 +6881,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -6936,8 +6938,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "time-zone" => Some(("timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "time-zone" => Some(("timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["name", "time-zone"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -7255,7 +7257,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -7633,12 +7635,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "healthcare1-beta1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "healthcare1-beta1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

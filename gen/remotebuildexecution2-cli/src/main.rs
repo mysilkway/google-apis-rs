@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_remotebuildexecution2 as api;
+extern crate google_remotebuildexecution2;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_remotebuildexecution2::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::RemoteBuildExecution<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::RemoteBuildExecution<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -74,7 +76,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["inline-output-files", "inline-stderr", "inline-stdout"].iter().map(|v|*v));
+                                                                           v.extend(["inline-stderr", "inline-output-files", "inline-stdout"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -131,23 +133,23 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "execution-metadata.execution-completed-timestamp" => Some(("executionMetadata.executionCompletedTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "execution-metadata.execution-start-timestamp" => Some(("executionMetadata.executionStartTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "execution-metadata.input-fetch-completed-timestamp" => Some(("executionMetadata.inputFetchCompletedTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "execution-metadata.input-fetch-start-timestamp" => Some(("executionMetadata.inputFetchStartTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "execution-metadata.output-upload-completed-timestamp" => Some(("executionMetadata.outputUploadCompletedTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "execution-metadata.output-upload-start-timestamp" => Some(("executionMetadata.outputUploadStartTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "execution-metadata.worker-completed-timestamp" => Some(("executionMetadata.workerCompletedTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "execution-metadata.queued-timestamp" => Some(("executionMetadata.queuedTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "execution-metadata.worker" => Some(("executionMetadata.worker", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "execution-metadata.execution-start-timestamp" => Some(("executionMetadata.executionStartTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "execution-metadata.input-fetch-start-timestamp" => Some(("executionMetadata.inputFetchStartTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "execution-metadata.worker-completed-timestamp" => Some(("executionMetadata.workerCompletedTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "execution-metadata.worker-start-timestamp" => Some(("executionMetadata.workerStartTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "execution-metadata.output-upload-completed-timestamp" => Some(("executionMetadata.outputUploadCompletedTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "execution-metadata.execution-completed-timestamp" => Some(("executionMetadata.executionCompletedTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "execution-metadata.input-fetch-completed-timestamp" => Some(("executionMetadata.inputFetchCompletedTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "stderr-digest.size-bytes" => Some(("stderrDigest.sizeBytes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "stderr-digest.hash" => Some(("stderrDigest.hash", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "stdout-raw" => Some(("stdoutRaw", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "stderr-raw" => Some(("stderrRaw", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "stdout-digest.size-bytes" => Some(("stdoutDigest.sizeBytes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "stdout-digest.hash" => Some(("stdoutDigest.hash", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "exit-code" => Some(("exitCode", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "stderr-digest.hash" => Some(("stderrDigest.hash", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "stderr-digest.size-bytes" => Some(("stderrDigest.sizeBytes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "stderr-raw" => Some(("stderrRaw", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "stdout-digest.hash" => Some(("stdoutDigest.hash", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "stdout-digest.size-bytes" => Some(("stdoutDigest.sizeBytes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "stdout-raw" => Some(("stdoutRaw", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["execution-completed-timestamp", "execution-metadata", "execution-start-timestamp", "exit-code", "hash", "input-fetch-completed-timestamp", "input-fetch-start-timestamp", "output-upload-completed-timestamp", "output-upload-start-timestamp", "queued-timestamp", "size-bytes", "stderr-digest", "stderr-raw", "stdout-digest", "stdout-raw", "worker", "worker-completed-timestamp", "worker-start-timestamp"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -236,11 +238,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "action-digest.hash" => Some(("actionDigest.hash", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "action-digest.size-bytes" => Some(("actionDigest.sizeBytes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "execution-policy.priority" => Some(("executionPolicy.priority", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "results-cache-policy.priority" => Some(("resultsCachePolicy.priority", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "skip-cache-lookup" => Some(("skipCacheLookup", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "action-digest.size-bytes" => Some(("actionDigest.sizeBytes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "action-digest.hash" => Some(("actionDigest.hash", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "execution-policy.priority" => Some(("executionPolicy.priority", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["action-digest", "execution-policy", "hash", "priority", "results-cache-policy", "size-bytes", "skip-cache-lookup"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -579,7 +581,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -840,12 +842,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "remotebuildexecution2-secret.json",
+            match client::application_secret_from_directory(&config_dir, "remotebuildexecution2-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

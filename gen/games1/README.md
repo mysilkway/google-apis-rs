@@ -11,30 +11,30 @@ Everything else about the *Games* *v1* API can be found at the
 [official documentation site](https://developers.google.com/games/).
 # Features
 
-Handle the following *Resources* with ease from the central [hub](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.Games.html) ... 
+Handle the following *Resources* with ease from the central [hub](https://docs.rs/google-games1/1.0.14+20200701/google_games1/Games) ... 
 
-* [achievement definitions](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.AchievementDefinition.html)
- * [*list*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.AchievementDefinitionListCall.html)
+* [achievement definitions](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::AchievementDefinition)
+ * [*list*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::AchievementDefinitionListCall)
 * achievements
- * [*increment*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.AchievementIncrementCall.html), [*list*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.AchievementListCall.html), [*reveal*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.AchievementRevealCall.html), [*set steps at least*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.AchievementSetStepsAtLeastCall.html), [*unlock*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.AchievementUnlockCall.html) and [*update multiple*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.AchievementUpdateMultipleCall.html)
-* [applications](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.Application.html)
- * [*get*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.ApplicationGetCall.html), [*played*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.ApplicationPlayedCall.html) and [*verify*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.ApplicationVerifyCall.html)
+ * [*increment*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::AchievementIncrementCall), [*list*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::AchievementListCall), [*reveal*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::AchievementRevealCall), [*set steps at least*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::AchievementSetStepsAtLeastCall), [*unlock*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::AchievementUnlockCall) and [*update multiple*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::AchievementUpdateMultipleCall)
+* [applications](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::Application)
+ * [*get*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::ApplicationGetCall), [*played*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::ApplicationPlayedCall) and [*verify*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::ApplicationVerifyCall)
 * events
- * [*list by player*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.EventListByPlayerCall.html), [*list definitions*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.EventListDefinitionCall.html) and [*record*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.EventRecordCall.html)
-* [leaderboards](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.Leaderboard.html)
- * [*get*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.LeaderboardGetCall.html) and [*list*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.LeaderboardListCall.html)
+ * [*list by player*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::EventListByPlayerCall), [*list definitions*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::EventListDefinitionCall) and [*record*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::EventRecordCall)
+* [leaderboards](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::Leaderboard)
+ * [*get*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::LeaderboardGetCall) and [*list*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::LeaderboardListCall)
 * metagame
- * [*get metagame config*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.MetagameGetMetagameConfigCall.html) and [*list categories by player*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.MetagameListCategoriesByPlayerCall.html)
-* [players](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.Player.html)
- * [*get*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.PlayerGetCall.html) and [*list*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.PlayerListCall.html)
+ * [*get metagame config*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::MetagameGetMetagameConfigCall) and [*list categories by player*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::MetagameListCategoriesByPlayerCall)
+* [players](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::Player)
+ * [*get*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::PlayerGetCall) and [*list*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::PlayerListCall)
 * revisions
- * [*check*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.RevisionCheckCall.html)
+ * [*check*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::RevisionCheckCall)
 * scores
- * [*get*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.ScoreGetCall.html), [*list*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.ScoreListCall.html), [*list window*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.ScoreListWindowCall.html), [*submit*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.ScoreSubmitCall.html) and [*submit multiple*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.ScoreSubmitMultipleCall.html)
-* [snapshots](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.Snapshot.html)
- * [*get*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.SnapshotGetCall.html) and [*list*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.SnapshotListCall.html)
+ * [*get*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::ScoreGetCall), [*list*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::ScoreListCall), [*list window*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::ScoreListWindowCall), [*submit*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::ScoreSubmitCall) and [*submit multiple*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::ScoreSubmitMultipleCall)
+* [snapshots](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::Snapshot)
+ * [*get*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::SnapshotGetCall) and [*list*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::SnapshotListCall)
 * stats
- * [*get*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.StatGetCall.html)
+ * [*get*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/api::StatGetCall)
 
 
 
@@ -43,17 +43,17 @@ Handle the following *Resources* with ease from the central [hub](https://docs.r
 
 The API is structured into the following primary items:
 
-* **[Hub](https://docs.rs/google-games1/1.0.14+20200701/google_games1/struct.Games.html)**
+* **[Hub](https://docs.rs/google-games1/1.0.14+20200701/google_games1/Games)**
     * a central object to maintain state and allow accessing all *Activities*
-    * creates [*Method Builders*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/trait.MethodsBuilder.html) which in turn
-      allow access to individual [*Call Builders*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/trait.CallBuilder.html)
-* **[Resources](https://docs.rs/google-games1/1.0.14+20200701/google_games1/trait.Resource.html)**
+    * creates [*Method Builders*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/client::MethodsBuilder) which in turn
+      allow access to individual [*Call Builders*](https://docs.rs/google-games1/1.0.14+20200701/google_games1/client::CallBuilder)
+* **[Resources](https://docs.rs/google-games1/1.0.14+20200701/google_games1/client::Resource)**
     * primary types that you can apply *Activities* to
     * a collection of properties and *Parts*
-    * **[Parts](https://docs.rs/google-games1/1.0.14+20200701/google_games1/trait.Part.html)**
+    * **[Parts](https://docs.rs/google-games1/1.0.14+20200701/google_games1/client::Part)**
         * a collection of properties
         * never directly used in *Activities*
-* **[Activities](https://docs.rs/google-games1/1.0.14+20200701/google_games1/trait.CallBuilder.html)**
+* **[Activities](https://docs.rs/google-games1/1.0.14+20200701/google_games1/client::CallBuilder)**
     * operations to apply to *Resources*
 
 All *structures* are marked with applicable traits to further categorize them and ease browsing.
@@ -124,8 +124,8 @@ let mut hub = Games::new(hyper::Client::with_connector(hyper::net::HttpsConnecto
 // execute the final call using `doit()`.
 // Values shown here are possibly random and not representative !
 let result = hub.applications().get("applicationId")
-             .platform_type("sit")
-             .language("Stet")
+             .platform_type("magna")
+             .language("no")
              .doit();
 
 match result {
@@ -148,17 +148,17 @@ match result {
 ```
 ## Handling Errors
 
-All errors produced by the system are provided either as [Result](https://docs.rs/google-games1/1.0.14+20200701/google_games1/enum.Result.html) enumeration as return value of 
+All errors produced by the system are provided either as [Result](https://docs.rs/google-games1/1.0.14+20200701/google_games1/client::Result) enumeration as return value of
 the doit() methods, or handed as possibly intermediate results to either the 
-[Hub Delegate](https://docs.rs/google-games1/1.0.14+20200701/google_games1/trait.Delegate.html), or the [Authenticator Delegate](https://docs.rs/yup-oauth2/*/yup_oauth2/trait.AuthenticatorDelegate.html).
+[Hub Delegate](https://docs.rs/google-games1/1.0.14+20200701/google_games1/client::Delegate), or the [Authenticator Delegate](https://docs.rs/yup-oauth2/*/yup_oauth2/trait.AuthenticatorDelegate.html).
 
 When delegates handle errors or intermediate values, they may have a chance to instruct the system to retry. This 
 makes the system potentially resilient to all kinds of errors.
 
 ## Uploads and Downloads
-If a method supports downloads, the response body, which is part of the [Result](https://docs.rs/google-games1/1.0.14+20200701/google_games1/enum.Result.html), should be
+If a method supports downloads, the response body, which is part of the [Result](https://docs.rs/google-games1/1.0.14+20200701/google_games1/client::Result), should be
 read by you to obtain the media.
-If such a method also supports a [Response Result](https://docs.rs/google-games1/1.0.14+20200701/google_games1/trait.ResponseResult.html), it will return that by default.
+If such a method also supports a [Response Result](https://docs.rs/google-games1/1.0.14+20200701/google_games1/client::ResponseResult), it will return that by default.
 You can see it as meta-data for the actual media. To trigger a media download, you will have to set up the builder by making
 this call: `.param("alt", "media")`.
 
@@ -168,29 +168,29 @@ Methods supporting uploads can do so using up to 2 different protocols:
 
 ## Customization and Callbacks
 
-You may alter the way an `doit()` method is called by providing a [delegate](https://docs.rs/google-games1/1.0.14+20200701/google_games1/trait.Delegate.html) to the 
-[Method Builder](https://docs.rs/google-games1/1.0.14+20200701/google_games1/trait.CallBuilder.html) before making the final `doit()` call. 
+You may alter the way an `doit()` method is called by providing a [delegate](https://docs.rs/google-games1/1.0.14+20200701/google_games1/client::Delegate) to the 
+[Method Builder](https://docs.rs/google-games1/1.0.14+20200701/google_games1/client::CallBuilder) before making the final `doit()` call. 
 Respective methods will be called to provide progress information, as well as determine whether the system should 
 retry on failure.
 
-The [delegate trait](https://docs.rs/google-games1/1.0.14+20200701/google_games1/trait.Delegate.html) is default-implemented, allowing you to customize it with minimal effort.
+The [delegate trait](https://docs.rs/google-games1/1.0.14+20200701/google_games1/client::Delegate) is default-implemented, allowing you to customize it with minimal effort.
 
 ## Optional Parts in Server-Requests
 
-All structures provided by this library are made to be [encodable](https://docs.rs/google-games1/1.0.14+20200701/google_games1/trait.RequestValue.html) and 
-[decodable](https://docs.rs/google-games1/1.0.14+20200701/google_games1/trait.ResponseResult.html) via *json*. Optionals are used to indicate that partial requests are responses 
+All structures provided by this library are made to be [encodable](https://docs.rs/google-games1/1.0.14+20200701/google_games1/client::RequestValue) and 
+[decodable](https://docs.rs/google-games1/1.0.14+20200701/google_games1/client::ResponseResult) via *json*. Optionals are used to indicate that partial requests are responses 
 are valid.
-Most optionals are are considered [Parts](https://docs.rs/google-games1/1.0.14+20200701/google_games1/trait.Part.html) which are identifiable by name, which will be sent to 
+Most optionals are are considered [Parts](https://docs.rs/google-games1/1.0.14+20200701/google_games1/client::Part) which are identifiable by name, which will be sent to 
 the server to indicate either the set parts of the request or the desired parts in the response.
 
 ## Builder Arguments
 
-Using [method builders](https://docs.rs/google-games1/1.0.14+20200701/google_games1/trait.CallBuilder.html), you are able to prepare an action call by repeatedly calling it's methods.
+Using [method builders](https://docs.rs/google-games1/1.0.14+20200701/google_games1/client::CallBuilder), you are able to prepare an action call by repeatedly calling it's methods.
 These will always take a single argument, for which the following statements are true.
 
 * [PODs][wiki-pod] are handed by copy
 * strings are passed as `&str`
-* [request values](https://docs.rs/google-games1/1.0.14+20200701/google_games1/trait.RequestValue.html) are moved
+* [request values](https://docs.rs/google-games1/1.0.14+20200701/google_games1/client::RequestValue) are moved
 
 Arguments will always be copied or cloned into the builder, to make them independent of their original life times.
 

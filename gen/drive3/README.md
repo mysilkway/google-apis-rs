@@ -11,49 +11,49 @@ Everything else about the *drive* *v3* API can be found at the
 [official documentation site](https://developers.google.com/drive/).
 # Features
 
-Handle the following *Resources* with ease from the central [hub](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.DriveHub.html) ... 
+Handle the following *Resources* with ease from the central [hub](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/DriveHub) ... 
 
-* [about](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.About.html)
- * [*get*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.AboutGetCall.html)
-* [changes](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.Change.html)
- * [*get start page token*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.ChangeGetStartPageTokenCall.html), [*list*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.ChangeListCall.html) and [*watch*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.ChangeWatchCall.html)
-* [channels](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.Channel.html)
- * [*stop*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.ChannelStopCall.html)
-* [comments](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.Comment.html)
- * [*create*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.CommentCreateCall.html), [*delete*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.CommentDeleteCall.html), [*get*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.CommentGetCall.html), [*list*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.CommentListCall.html) and [*update*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.CommentUpdateCall.html)
-* [drives](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.Drive.html)
- * [*create*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.DriveCreateCall.html), [*delete*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.DriveDeleteCall.html), [*get*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.DriveGetCall.html), [*hide*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.DriveHideCall.html), [*list*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.DriveListCall.html), [*unhide*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.DriveUnhideCall.html) and [*update*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.DriveUpdateCall.html)
-* [files](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.File.html)
- * [*copy*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.FileCopyCall.html), [*create*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.FileCreateCall.html), [*delete*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.FileDeleteCall.html), [*empty trash*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.FileEmptyTrashCall.html), [*export*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.FileExportCall.html), [*generate ids*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.FileGenerateIdCall.html), [*get*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.FileGetCall.html), [*list*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.FileListCall.html), [*update*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.FileUpdateCall.html) and [*watch*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.FileWatchCall.html)
-* [permissions](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.Permission.html)
- * [*create*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.PermissionCreateCall.html), [*delete*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.PermissionDeleteCall.html), [*get*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.PermissionGetCall.html), [*list*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.PermissionListCall.html) and [*update*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.PermissionUpdateCall.html)
-* [replies](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.Reply.html)
- * [*create*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.ReplyCreateCall.html), [*delete*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.ReplyDeleteCall.html), [*get*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.ReplyGetCall.html), [*list*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.ReplyListCall.html) and [*update*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.ReplyUpdateCall.html)
-* [revisions](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.Revision.html)
- * [*delete*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.RevisionDeleteCall.html), [*get*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.RevisionGetCall.html), [*list*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.RevisionListCall.html) and [*update*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.RevisionUpdateCall.html)
+* [about](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::About)
+ * [*get*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::AboutGetCall)
+* [changes](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::Change)
+ * [*get start page token*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::ChangeGetStartPageTokenCall), [*list*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::ChangeListCall) and [*watch*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::ChangeWatchCall)
+* [channels](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::Channel)
+ * [*stop*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::ChannelStopCall)
+* [comments](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::Comment)
+ * [*create*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::CommentCreateCall), [*delete*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::CommentDeleteCall), [*get*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::CommentGetCall), [*list*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::CommentListCall) and [*update*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::CommentUpdateCall)
+* [drives](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::Drive)
+ * [*create*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::DriveCreateCall), [*delete*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::DriveDeleteCall), [*get*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::DriveGetCall), [*hide*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::DriveHideCall), [*list*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::DriveListCall), [*unhide*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::DriveUnhideCall) and [*update*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::DriveUpdateCall)
+* [files](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::File)
+ * [*copy*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::FileCopyCall), [*create*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::FileCreateCall), [*delete*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::FileDeleteCall), [*empty trash*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::FileEmptyTrashCall), [*export*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::FileExportCall), [*generate ids*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::FileGenerateIdCall), [*get*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::FileGetCall), [*list*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::FileListCall), [*update*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::FileUpdateCall) and [*watch*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::FileWatchCall)
+* [permissions](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::Permission)
+ * [*create*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::PermissionCreateCall), [*delete*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::PermissionDeleteCall), [*get*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::PermissionGetCall), [*list*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::PermissionListCall) and [*update*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::PermissionUpdateCall)
+* [replies](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::Reply)
+ * [*create*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::ReplyCreateCall), [*delete*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::ReplyDeleteCall), [*get*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::ReplyGetCall), [*list*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::ReplyListCall) and [*update*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::ReplyUpdateCall)
+* [revisions](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::Revision)
+ * [*delete*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::RevisionDeleteCall), [*get*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::RevisionGetCall), [*list*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::RevisionListCall) and [*update*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::RevisionUpdateCall)
 * teamdrives
- * [*create*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.TeamdriveCreateCall.html), [*delete*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.TeamdriveDeleteCall.html), [*get*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.TeamdriveGetCall.html), [*list*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.TeamdriveListCall.html) and [*update*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.TeamdriveUpdateCall.html)
+ * [*create*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::TeamdriveCreateCall), [*delete*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::TeamdriveDeleteCall), [*get*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::TeamdriveGetCall), [*list*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::TeamdriveListCall) and [*update*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::TeamdriveUpdateCall)
 
 
 Upload supported by ...
 
-* [*update files*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.FileUpdateCall.html)
-* [*create files*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.FileCreateCall.html)
+* [*create files*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::FileCreateCall)
+* [*update files*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::FileUpdateCall)
 
 Download supported by ...
 
-* [*watch files*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.FileWatchCall.html)
-* [*export files*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.FileExportCall.html)
-* [*get revisions*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.RevisionGetCall.html)
-* [*get files*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.FileGetCall.html)
+* [*export files*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::FileExportCall)
+* [*get files*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::FileGetCall)
+* [*watch files*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::FileWatchCall)
+* [*get revisions*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::RevisionGetCall)
 
 Subscription supported by ...
 
-* [*watch files*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.FileWatchCall.html)
-* [*list changes*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.ChangeListCall.html)
-* [*create files*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.FileCreateCall.html)
-* [*get files*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.FileGetCall.html)
-* [*watch changes*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.ChangeWatchCall.html)
+* [*list changes*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::ChangeListCall)
+* [*watch changes*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::ChangeWatchCall)
+* [*create files*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::FileCreateCall)
+* [*get files*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::FileGetCall)
+* [*watch files*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/api::FileWatchCall)
 
 
 
@@ -61,17 +61,17 @@ Subscription supported by ...
 
 The API is structured into the following primary items:
 
-* **[Hub](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/struct.DriveHub.html)**
+* **[Hub](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/DriveHub)**
     * a central object to maintain state and allow accessing all *Activities*
-    * creates [*Method Builders*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/trait.MethodsBuilder.html) which in turn
-      allow access to individual [*Call Builders*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/trait.CallBuilder.html)
-* **[Resources](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/trait.Resource.html)**
+    * creates [*Method Builders*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/client::MethodsBuilder) which in turn
+      allow access to individual [*Call Builders*](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/client::CallBuilder)
+* **[Resources](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/client::Resource)**
     * primary types that you can apply *Activities* to
     * a collection of properties and *Parts*
-    * **[Parts](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/trait.Part.html)**
+    * **[Parts](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/client::Part)**
         * a collection of properties
         * never directly used in *Activities*
-* **[Activities](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/trait.CallBuilder.html)**
+* **[Activities](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/client::CallBuilder)**
     * operations to apply to *Resources*
 
 All *structures* are marked with applicable traits to further categorize them and ease browsing.
@@ -85,16 +85,16 @@ let r = hub.resource().activity(...).doit()
 Or specifically ...
 
 ```ignore
-let r = hub.files().watch(...).doit()
-let r = hub.files().empty_trash(...).doit()
-let r = hub.files().generate_ids(...).doit()
 let r = hub.files().copy(...).doit()
 let r = hub.files().create(...).doit()
-let r = hub.files().list(...).doit()
 let r = hub.files().delete(...).doit()
-let r = hub.files().update(...).doit()
-let r = hub.files().get(...).doit()
+let r = hub.files().empty_trash(...).doit()
 let r = hub.files().export(...).doit()
+let r = hub.files().generate_ids(...).doit()
+let r = hub.files().get(...).doit()
+let r = hub.files().list(...).doit()
+let r = hub.files().update(...).doit()
+let r = hub.files().watch(...).doit()
 ```
 
 The `resource()` and `activity(...)` calls create [builders][builder-pattern]. The second one dealing with `Activities` 
@@ -149,19 +149,19 @@ let mut hub = DriveHub::new(hyper::Client::with_connector(hyper::net::HttpsConne
 // execute the final call using `doit()`.
 // Values shown here are possibly random and not representative !
 let result = hub.files().list()
-             .team_drive_id("eirmod")
+             .team_drive_id("et")
              .supports_team_drives(true)
              .supports_all_drives(false)
-             .spaces("sed")
-             .q("et")
-             .page_token("dolores")
-             .page_size(-63)
-             .order_by("accusam")
+             .spaces("amet.")
+             .q("takimata")
+             .page_token("amet.")
+             .page_size(-20)
+             .order_by("ipsum")
              .include_team_drive_items(true)
-             .include_items_from_all_drives(false)
-             .drive_id("amet.")
-             .corpus("erat")
-             .corpora("labore")
+             .include_items_from_all_drives(true)
+             .drive_id("gubergren")
+             .corpus("eos")
+             .corpora("dolor")
              .doit();
 
 match result {
@@ -184,17 +184,17 @@ match result {
 ```
 ## Handling Errors
 
-All errors produced by the system are provided either as [Result](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/enum.Result.html) enumeration as return value of 
+All errors produced by the system are provided either as [Result](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/client::Result) enumeration as return value of
 the doit() methods, or handed as possibly intermediate results to either the 
-[Hub Delegate](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/trait.Delegate.html), or the [Authenticator Delegate](https://docs.rs/yup-oauth2/*/yup_oauth2/trait.AuthenticatorDelegate.html).
+[Hub Delegate](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/client::Delegate), or the [Authenticator Delegate](https://docs.rs/yup-oauth2/*/yup_oauth2/trait.AuthenticatorDelegate.html).
 
 When delegates handle errors or intermediate values, they may have a chance to instruct the system to retry. This 
 makes the system potentially resilient to all kinds of errors.
 
 ## Uploads and Downloads
-If a method supports downloads, the response body, which is part of the [Result](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/enum.Result.html), should be
+If a method supports downloads, the response body, which is part of the [Result](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/client::Result), should be
 read by you to obtain the media.
-If such a method also supports a [Response Result](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/trait.ResponseResult.html), it will return that by default.
+If such a method also supports a [Response Result](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/client::ResponseResult), it will return that by default.
 You can see it as meta-data for the actual media. To trigger a media download, you will have to set up the builder by making
 this call: `.param("alt", "media")`.
 
@@ -204,29 +204,29 @@ Methods supporting uploads can do so using up to 2 different protocols:
 
 ## Customization and Callbacks
 
-You may alter the way an `doit()` method is called by providing a [delegate](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/trait.Delegate.html) to the 
-[Method Builder](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/trait.CallBuilder.html) before making the final `doit()` call. 
+You may alter the way an `doit()` method is called by providing a [delegate](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/client::Delegate) to the 
+[Method Builder](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/client::CallBuilder) before making the final `doit()` call. 
 Respective methods will be called to provide progress information, as well as determine whether the system should 
 retry on failure.
 
-The [delegate trait](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/trait.Delegate.html) is default-implemented, allowing you to customize it with minimal effort.
+The [delegate trait](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/client::Delegate) is default-implemented, allowing you to customize it with minimal effort.
 
 ## Optional Parts in Server-Requests
 
-All structures provided by this library are made to be [encodable](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/trait.RequestValue.html) and 
-[decodable](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/trait.ResponseResult.html) via *json*. Optionals are used to indicate that partial requests are responses 
+All structures provided by this library are made to be [encodable](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/client::RequestValue) and 
+[decodable](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/client::ResponseResult) via *json*. Optionals are used to indicate that partial requests are responses 
 are valid.
-Most optionals are are considered [Parts](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/trait.Part.html) which are identifiable by name, which will be sent to 
+Most optionals are are considered [Parts](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/client::Part) which are identifiable by name, which will be sent to 
 the server to indicate either the set parts of the request or the desired parts in the response.
 
 ## Builder Arguments
 
-Using [method builders](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/trait.CallBuilder.html), you are able to prepare an action call by repeatedly calling it's methods.
+Using [method builders](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/client::CallBuilder), you are able to prepare an action call by repeatedly calling it's methods.
 These will always take a single argument, for which the following statements are true.
 
 * [PODs][wiki-pod] are handed by copy
 * strings are passed as `&str`
-* [request values](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/trait.RequestValue.html) are moved
+* [request values](https://docs.rs/google-drive3/1.0.14+20200618/google_drive3/client::RequestValue) are moved
 
 Arguments will always be copied or cloned into the builder, to make them independent of their original life times.
 

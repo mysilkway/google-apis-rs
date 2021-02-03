@@ -40,7 +40,7 @@ plusdomains1 [options]
                 get <comment-id> [-p <v>]... [-o <out>]
                 list <activity-id> [-p <v>]... [-o <out>]
         media
-                insert <user-id> <collection> (-r <kv>)... (-u (simple|resumable) -f <file> [-m <mime>]) [-p <v>]... [-o <out>]
+                insert <user-id> <collection> (-r <kv>)... (-u (resumable|simple) -f <file> [-m <mime>]) [-p <v>]... [-o <out>]
         people
                 get <user-id> [-p <v>]... [-o <out>]
                 list <user-id> <collection> [-p <v>]... [-o <out>]

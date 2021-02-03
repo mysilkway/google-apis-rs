@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_servicecontrol1 as api;
+extern crate google_servicecontrol1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_servicecontrol1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::ServiceControl<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::ServiceControl<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -69,12 +71,12 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "service-config-id" => Some(("serviceConfigId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "allocate-operation.quota-mode" => Some(("allocateOperation.quotaMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "allocate-operation.consumer-id" => Some(("allocateOperation.consumerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "allocate-operation.labels" => Some(("allocateOperation.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "allocate-operation.method-name" => Some(("allocateOperation.methodName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "allocate-operation.operation-id" => Some(("allocateOperation.operationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "allocate-operation.quota-mode" => Some(("allocateOperation.quotaMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-config-id" => Some(("serviceConfigId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["allocate-operation", "consumer-id", "labels", "method-name", "operation-id", "quota-mode", "service-config-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -159,18 +161,18 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "skip-activation-check" => Some(("skipActivationCheck", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "operation.operation-name" => Some(("operation.operationName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.consumer-id" => Some(("operation.consumerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.end-time" => Some(("operation.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation.importance" => Some(("operation.importance", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation.labels" => Some(("operation.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "operation.quota-properties.quota-mode" => Some(("operation.quotaProperties.quotaMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.consumer-id" => Some(("operation.consumerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.user-labels" => Some(("operation.userLabels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "operation.start-time" => Some(("operation.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.end-time" => Some(("operation.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation.operation-id" => Some(("operation.operationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-config-id" => Some(("serviceConfigId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.operation-name" => Some(("operation.operationName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.quota-properties.quota-mode" => Some(("operation.quotaProperties.quotaMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.start-time" => Some(("operation.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.user-labels" => Some(("operation.userLabels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "request-project-settings" => Some(("requestProjectSettings", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "service-config-id" => Some(("serviceConfigId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "skip-activation-check" => Some(("skipActivationCheck", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["consumer-id", "end-time", "importance", "labels", "operation", "operation-id", "operation-name", "quota-mode", "quota-properties", "request-project-settings", "service-config-id", "skip-activation-check", "start-time", "user-labels"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -358,12 +360,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "servicecontrol1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "servicecontrol1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

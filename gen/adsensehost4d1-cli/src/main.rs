@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_adsensehost4d1 as api;
+extern crate google_adsensehost4d1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_adsensehost4d1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::AdSenseHost<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::AdSenseHost<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -340,29 +342,29 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "code" => Some(("code", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "content-ads-settings.type" => Some(("contentAdsSettings.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "content-ads-settings.backup-option.color" => Some(("contentAdsSettings.backupOption.color", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "content-ads-settings.backup-option.url" => Some(("contentAdsSettings.backupOption.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "content-ads-settings.backup-option.type" => Some(("contentAdsSettings.backupOption.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "content-ads-settings.backup-option.url" => Some(("contentAdsSettings.backupOption.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "content-ads-settings.size" => Some(("contentAdsSettings.size", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "mobile-content-ads-settings.scripting-language" => Some(("mobileContentAdsSettings.scriptingLanguage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "mobile-content-ads-settings.type" => Some(("mobileContentAdsSettings.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "mobile-content-ads-settings.markup-language" => Some(("mobileContentAdsSettings.markupLanguage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "mobile-content-ads-settings.size" => Some(("mobileContentAdsSettings.size", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "custom-style.corners" => Some(("customStyle.corners", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "custom-style.colors.url" => Some(("customStyle.colors.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "custom-style.colors.text" => Some(("customStyle.colors.text", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "custom-style.colors.border" => Some(("customStyle.colors.border", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "content-ads-settings.type" => Some(("contentAdsSettings.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "custom-style.colors.background" => Some(("customStyle.colors.background", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "custom-style.colors.border" => Some(("customStyle.colors.border", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "custom-style.colors.text" => Some(("customStyle.colors.text", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "custom-style.colors.title" => Some(("customStyle.colors.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "custom-style.colors.url" => Some(("customStyle.colors.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "custom-style.corners" => Some(("customStyle.corners", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "custom-style.font.family" => Some(("customStyle.font.family", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "custom-style.font.size" => Some(("customStyle.font.size", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "custom-style.kind" => Some(("customStyle.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mobile-content-ads-settings.markup-language" => Some(("mobileContentAdsSettings.markupLanguage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mobile-content-ads-settings.scripting-language" => Some(("mobileContentAdsSettings.scriptingLanguage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mobile-content-ads-settings.size" => Some(("mobileContentAdsSettings.size", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mobile-content-ads-settings.type" => Some(("mobileContentAdsSettings.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["background", "backup-option", "border", "code", "color", "colors", "content-ads-settings", "corners", "custom-style", "family", "font", "id", "kind", "markup-language", "mobile-content-ads-settings", "name", "scripting-language", "size", "status", "text", "title", "type", "url"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -509,29 +511,29 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "code" => Some(("code", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "content-ads-settings.type" => Some(("contentAdsSettings.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "content-ads-settings.backup-option.color" => Some(("contentAdsSettings.backupOption.color", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "content-ads-settings.backup-option.url" => Some(("contentAdsSettings.backupOption.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "content-ads-settings.backup-option.type" => Some(("contentAdsSettings.backupOption.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "content-ads-settings.backup-option.url" => Some(("contentAdsSettings.backupOption.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "content-ads-settings.size" => Some(("contentAdsSettings.size", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "mobile-content-ads-settings.scripting-language" => Some(("mobileContentAdsSettings.scriptingLanguage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "mobile-content-ads-settings.type" => Some(("mobileContentAdsSettings.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "mobile-content-ads-settings.markup-language" => Some(("mobileContentAdsSettings.markupLanguage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "mobile-content-ads-settings.size" => Some(("mobileContentAdsSettings.size", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "custom-style.corners" => Some(("customStyle.corners", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "custom-style.colors.url" => Some(("customStyle.colors.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "custom-style.colors.text" => Some(("customStyle.colors.text", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "custom-style.colors.border" => Some(("customStyle.colors.border", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "content-ads-settings.type" => Some(("contentAdsSettings.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "custom-style.colors.background" => Some(("customStyle.colors.background", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "custom-style.colors.border" => Some(("customStyle.colors.border", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "custom-style.colors.text" => Some(("customStyle.colors.text", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "custom-style.colors.title" => Some(("customStyle.colors.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "custom-style.colors.url" => Some(("customStyle.colors.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "custom-style.corners" => Some(("customStyle.corners", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "custom-style.font.family" => Some(("customStyle.font.family", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "custom-style.font.size" => Some(("customStyle.font.size", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "custom-style.kind" => Some(("customStyle.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mobile-content-ads-settings.markup-language" => Some(("mobileContentAdsSettings.markupLanguage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mobile-content-ads-settings.scripting-language" => Some(("mobileContentAdsSettings.scriptingLanguage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mobile-content-ads-settings.size" => Some(("mobileContentAdsSettings.size", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mobile-content-ads-settings.type" => Some(("mobileContentAdsSettings.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["background", "backup-option", "border", "code", "color", "colors", "content-ads-settings", "corners", "custom-style", "family", "font", "id", "kind", "markup-language", "mobile-content-ads-settings", "name", "scripting-language", "size", "status", "text", "title", "type", "url"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -616,29 +618,29 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "code" => Some(("code", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "content-ads-settings.type" => Some(("contentAdsSettings.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "content-ads-settings.backup-option.color" => Some(("contentAdsSettings.backupOption.color", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "content-ads-settings.backup-option.url" => Some(("contentAdsSettings.backupOption.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "content-ads-settings.backup-option.type" => Some(("contentAdsSettings.backupOption.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "content-ads-settings.backup-option.url" => Some(("contentAdsSettings.backupOption.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "content-ads-settings.size" => Some(("contentAdsSettings.size", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "mobile-content-ads-settings.scripting-language" => Some(("mobileContentAdsSettings.scriptingLanguage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "mobile-content-ads-settings.type" => Some(("mobileContentAdsSettings.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "mobile-content-ads-settings.markup-language" => Some(("mobileContentAdsSettings.markupLanguage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "mobile-content-ads-settings.size" => Some(("mobileContentAdsSettings.size", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "custom-style.corners" => Some(("customStyle.corners", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "custom-style.colors.url" => Some(("customStyle.colors.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "custom-style.colors.text" => Some(("customStyle.colors.text", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "custom-style.colors.border" => Some(("customStyle.colors.border", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "content-ads-settings.type" => Some(("contentAdsSettings.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "custom-style.colors.background" => Some(("customStyle.colors.background", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "custom-style.colors.border" => Some(("customStyle.colors.border", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "custom-style.colors.text" => Some(("customStyle.colors.text", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "custom-style.colors.title" => Some(("customStyle.colors.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "custom-style.colors.url" => Some(("customStyle.colors.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "custom-style.corners" => Some(("customStyle.corners", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "custom-style.font.family" => Some(("customStyle.font.family", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "custom-style.font.size" => Some(("customStyle.font.size", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "custom-style.kind" => Some(("customStyle.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mobile-content-ads-settings.markup-language" => Some(("mobileContentAdsSettings.markupLanguage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mobile-content-ads-settings.scripting-language" => Some(("mobileContentAdsSettings.scriptingLanguage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mobile-content-ads-settings.size" => Some(("mobileContentAdsSettings.size", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mobile-content-ads-settings.type" => Some(("mobileContentAdsSettings.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["background", "backup-option", "border", "code", "color", "colors", "content-ads-settings", "corners", "custom-style", "family", "font", "id", "kind", "markup-language", "mobile-content-ads-settings", "name", "scripting-language", "size", "status", "text", "title", "type", "url"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -844,7 +846,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["sort", "locale", "metric", "max-results", "filter", "start-index", "dimension"].iter().map(|v|*v));
+                                                                           v.extend(["max-results", "start-index", "sort", "filter", "locale", "metric", "dimension"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1017,7 +1019,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["website-locale", "user-locale", "callback-url"].iter().map(|v|*v));
+                                                                           v.extend(["user-locale", "callback-url", "website-locale"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1230,9 +1232,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "code" => Some(("code", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["code", "id", "kind", "name"]);
@@ -1377,9 +1379,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "code" => Some(("code", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["code", "id", "kind", "name"]);
@@ -1465,9 +1467,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "code" => Some(("code", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["code", "id", "kind", "name"]);
@@ -1570,7 +1572,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["sort", "locale", "metric", "max-results", "filter", "start-index", "dimension"].iter().map(|v|*v));
+                                                                           v.extend(["max-results", "start-index", "sort", "filter", "locale", "metric", "dimension"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1679,8 +1681,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "url-pattern" => Some(("urlPattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["id", "kind", "url-pattern"]);
@@ -1952,12 +1954,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "adsensehost4d1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "adsensehost4d1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

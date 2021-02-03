@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_calendar3 as api;
+extern crate google_calendar3;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_calendar3::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::CalendarHub<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::CalendarHub<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -165,12 +167,12 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "role" => Some(("role", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "scope.type" => Some(("scope.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "scope.value" => Some(("scope.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "role" => Some(("role", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["etag", "id", "kind", "role", "scope", "type", "value"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -267,7 +269,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["sync-token", "max-results", "page-token", "show-deleted"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "sync-token", "show-deleted", "max-results"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -324,12 +326,12 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "role" => Some(("role", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "scope.type" => Some(("scope.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "scope.value" => Some(("scope.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "role" => Some(("role", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["etag", "id", "kind", "role", "scope", "type", "value"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -418,12 +420,12 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "role" => Some(("role", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "scope.type" => Some(("scope.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "scope.value" => Some(("scope.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "role" => Some(("role", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["etag", "id", "kind", "role", "scope", "type", "value"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -512,16 +514,16 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "resource-uri" => Some(("resourceUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "resource-id" => Some(("resourceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "payload" => Some(("payload", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "token" => Some(("token", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "params" => Some(("params", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "expiration" => Some(("expiration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "address" => Some(("address", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "expiration" => Some(("expiration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "params" => Some(("params", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "payload" => Some(("payload", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "resource-id" => Some(("resourceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "resource-uri" => Some(("resourceUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "token" => Some(("token", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["address", "expiration", "id", "kind", "params", "payload", "resource-id", "resource-uri", "token", "type"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -562,7 +564,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["sync-token", "max-results", "page-token", "show-deleted"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "sync-token", "show-deleted", "max-results"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -715,23 +717,23 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "foreground-color" => Some(("foregroundColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deleted" => Some(("deleted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "color-id" => Some(("colorId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "selected" => Some(("selected", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "conference-properties.allowed-conference-solution-types" => Some(("conferenceProperties.allowedConferenceSolutionTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "primary" => Some(("primary", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location" => Some(("location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "access-role" => Some(("accessRole", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "background-color" => Some(("backgroundColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "color-id" => Some(("colorId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-properties.allowed-conference-solution-types" => Some(("conferenceProperties.allowedConferenceSolutionTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "deleted" => Some(("deleted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "foreground-color" => Some(("foregroundColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "hidden" => Some(("hidden", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location" => Some(("location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "primary" => Some(("primary", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "selected" => Some(("selected", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "summary" => Some(("summary", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "summary-override" => Some(("summaryOverride", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "time-zone" => Some(("timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hidden" => Some(("hidden", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "summary" => Some(("summary", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "access-role" => Some(("accessRole", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["access-role", "allowed-conference-solution-types", "background-color", "color-id", "conference-properties", "deleted", "description", "etag", "foreground-color", "hidden", "id", "kind", "location", "primary", "selected", "summary", "summary-override", "time-zone"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -834,7 +836,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["sync-token", "min-access-role", "show-deleted", "max-results", "page-token", "show-hidden"].iter().map(|v|*v));
+                                                                           v.extend(["show-hidden", "show-deleted", "min-access-role", "max-results", "page-token", "sync-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -891,23 +893,23 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "foreground-color" => Some(("foregroundColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deleted" => Some(("deleted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "color-id" => Some(("colorId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "selected" => Some(("selected", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "conference-properties.allowed-conference-solution-types" => Some(("conferenceProperties.allowedConferenceSolutionTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "primary" => Some(("primary", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location" => Some(("location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "access-role" => Some(("accessRole", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "background-color" => Some(("backgroundColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "color-id" => Some(("colorId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-properties.allowed-conference-solution-types" => Some(("conferenceProperties.allowedConferenceSolutionTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "deleted" => Some(("deleted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "foreground-color" => Some(("foregroundColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "hidden" => Some(("hidden", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location" => Some(("location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "primary" => Some(("primary", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "selected" => Some(("selected", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "summary" => Some(("summary", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "summary-override" => Some(("summaryOverride", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "time-zone" => Some(("timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hidden" => Some(("hidden", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "summary" => Some(("summary", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "access-role" => Some(("accessRole", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["access-role", "allowed-conference-solution-types", "background-color", "color-id", "conference-properties", "deleted", "description", "etag", "foreground-color", "hidden", "id", "kind", "location", "primary", "selected", "summary", "summary-override", "time-zone"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -996,23 +998,23 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "foreground-color" => Some(("foregroundColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deleted" => Some(("deleted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "color-id" => Some(("colorId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "selected" => Some(("selected", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "conference-properties.allowed-conference-solution-types" => Some(("conferenceProperties.allowedConferenceSolutionTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "primary" => Some(("primary", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location" => Some(("location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "access-role" => Some(("accessRole", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "background-color" => Some(("backgroundColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "color-id" => Some(("colorId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-properties.allowed-conference-solution-types" => Some(("conferenceProperties.allowedConferenceSolutionTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "deleted" => Some(("deleted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "foreground-color" => Some(("foregroundColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "hidden" => Some(("hidden", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location" => Some(("location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "primary" => Some(("primary", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "selected" => Some(("selected", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "summary" => Some(("summary", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "summary-override" => Some(("summaryOverride", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "time-zone" => Some(("timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hidden" => Some(("hidden", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "summary" => Some(("summary", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "access-role" => Some(("accessRole", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["access-role", "allowed-conference-solution-types", "background-color", "color-id", "conference-properties", "deleted", "description", "etag", "foreground-color", "hidden", "id", "kind", "location", "primary", "selected", "summary", "summary-override", "time-zone"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1101,16 +1103,16 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "resource-uri" => Some(("resourceUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "resource-id" => Some(("resourceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "payload" => Some(("payload", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "token" => Some(("token", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "params" => Some(("params", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "expiration" => Some(("expiration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "address" => Some(("address", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "expiration" => Some(("expiration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "params" => Some(("params", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "payload" => Some(("payload", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "resource-id" => Some(("resourceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "resource-uri" => Some(("resourceUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "token" => Some(("token", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["address", "expiration", "id", "kind", "params", "payload", "resource-id", "resource-uri", "token", "type"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1157,7 +1159,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["sync-token", "min-access-role", "show-deleted", "max-results", "page-token", "show-hidden"].iter().map(|v|*v));
+                                                                           v.extend(["show-hidden", "show-deleted", "min-access-role", "max-results", "page-token", "sync-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1354,14 +1356,14 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "conference-properties.allowed-conference-solution-types" => Some(("conferenceProperties.allowedConferenceSolutionTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "summary" => Some(("summary", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location" => Some(("location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "time-zone" => Some(("timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location" => Some(("location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "summary" => Some(("summary", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "time-zone" => Some(("timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["allowed-conference-solution-types", "conference-properties", "description", "etag", "id", "kind", "location", "summary", "time-zone"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1446,14 +1448,14 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "conference-properties.allowed-conference-solution-types" => Some(("conferenceProperties.allowedConferenceSolutionTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "summary" => Some(("summary", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location" => Some(("location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "time-zone" => Some(("timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location" => Some(("location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "summary" => Some(("summary", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "time-zone" => Some(("timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["allowed-conference-solution-types", "conference-properties", "description", "etag", "id", "kind", "location", "summary", "time-zone"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1538,14 +1540,14 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "conference-properties.allowed-conference-solution-types" => Some(("conferenceProperties.allowedConferenceSolutionTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "summary" => Some(("summary", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location" => Some(("location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "time-zone" => Some(("timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location" => Some(("location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "summary" => Some(("summary", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "time-zone" => Some(("timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["allowed-conference-solution-types", "conference-properties", "description", "etag", "id", "kind", "location", "summary", "time-zone"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1630,16 +1632,16 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "resource-uri" => Some(("resourceUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "resource-id" => Some(("resourceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "payload" => Some(("payload", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "token" => Some(("token", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "params" => Some(("params", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "expiration" => Some(("expiration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "address" => Some(("address", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "expiration" => Some(("expiration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "params" => Some(("params", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "payload" => Some(("payload", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "resource-id" => Some(("resourceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "resource-uri" => Some(("resourceUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "token" => Some(("token", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["address", "expiration", "id", "kind", "params", "payload", "resource-id", "resource-uri", "token", "type"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1824,7 +1826,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["time-zone", "always-include-email", "max-attendees"].iter().map(|v|*v));
+                                                                           v.extend(["max-attendees", "time-zone", "always-include-email"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1881,72 +1883,72 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "extended-properties.shared" => Some(("extendedProperties.shared", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "extended-properties.private" => Some(("extendedProperties.private", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "creator.self" => Some(("creator.self", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "anyone-can-add-self" => Some(("anyoneCanAddSelf", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "attendees-omitted" => Some(("attendeesOmitted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "color-id" => Some(("colorId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.conference-id" => Some(("conferenceData.conferenceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.conference-solution.icon-uri" => Some(("conferenceData.conferenceSolution.iconUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.conference-solution.key.type" => Some(("conferenceData.conferenceSolution.key.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.conference-solution.name" => Some(("conferenceData.conferenceSolution.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.create-request.conference-solution-key.type" => Some(("conferenceData.createRequest.conferenceSolutionKey.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.create-request.request-id" => Some(("conferenceData.createRequest.requestId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.create-request.status.status-code" => Some(("conferenceData.createRequest.status.statusCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.notes" => Some(("conferenceData.notes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.parameters.add-on-parameters.parameters" => Some(("conferenceData.parameters.addOnParameters.parameters", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "conference-data.signature" => Some(("conferenceData.signature", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "created" => Some(("created", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "creator.display-name" => Some(("creator.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "creator.email" => Some(("creator.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "creator.id" => Some(("creator.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "organizer.self" => Some(("organizer.self", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "creator.self" => Some(("creator.self", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "end.date" => Some(("end.date", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "end.date-time" => Some(("end.dateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "end.time-zone" => Some(("end.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "end-time-unspecified" => Some(("endTimeUnspecified", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "extended-properties.private" => Some(("extendedProperties.private", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "extended-properties.shared" => Some(("extendedProperties.shared", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "gadget.display" => Some(("gadget.display", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gadget.height" => Some(("gadget.height", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "gadget.icon-link" => Some(("gadget.iconLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gadget.link" => Some(("gadget.link", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gadget.preferences" => Some(("gadget.preferences", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "gadget.title" => Some(("gadget.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gadget.type" => Some(("gadget.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gadget.width" => Some(("gadget.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "guests-can-invite-others" => Some(("guestsCanInviteOthers", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "guests-can-modify" => Some(("guestsCanModify", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "guests-can-see-other-guests" => Some(("guestsCanSeeOtherGuests", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "hangout-link" => Some(("hangoutLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "html-link" => Some(("htmlLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "i-cal-uid" => Some(("iCalUID", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location" => Some(("location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "locked" => Some(("locked", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "organizer.display-name" => Some(("organizer.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "organizer.email" => Some(("organizer.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "organizer.id" => Some(("organizer.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hangout-link" => Some(("hangoutLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "end.date" => Some(("end.date", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "end.time-zone" => Some(("end.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "end.date-time" => Some(("end.dateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "source.url" => Some(("source.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "source.title" => Some(("source.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "html-link" => Some(("htmlLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "recurrence" => Some(("recurrence", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "start.date" => Some(("start.date", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "start.time-zone" => Some(("start.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "start.date-time" => Some(("start.dateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location" => Some(("location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "recurring-event-id" => Some(("recurringEventId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "organizer.self" => Some(("organizer.self", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "original-start-time.date" => Some(("originalStartTime.date", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "original-start-time.time-zone" => Some(("originalStartTime.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "original-start-time.date-time" => Some(("originalStartTime.dateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "updated" => Some(("updated", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "i-cal-uid" => Some(("iCalUID", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gadget.preferences" => Some(("gadget.preferences", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "gadget.title" => Some(("gadget.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gadget.height" => Some(("gadget.height", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "gadget.width" => Some(("gadget.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "gadget.link" => Some(("gadget.link", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gadget.type" => Some(("gadget.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gadget.display" => Some(("gadget.display", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gadget.icon-link" => Some(("gadget.iconLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "end-time-unspecified" => Some(("endTimeUnspecified", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "sequence" => Some(("sequence", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "visibility" => Some(("visibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "guests-can-modify" => Some(("guestsCanModify", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "conference-data.parameters.add-on-parameters.parameters" => Some(("conferenceData.parameters.addOnParameters.parameters", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "conference-data.notes" => Some(("conferenceData.notes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.conference-id" => Some(("conferenceData.conferenceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.create-request.status.status-code" => Some(("conferenceData.createRequest.status.statusCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.create-request.conference-solution-key.type" => Some(("conferenceData.createRequest.conferenceSolutionKey.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.create-request.request-id" => Some(("conferenceData.createRequest.requestId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.conference-solution.icon-uri" => Some(("conferenceData.conferenceSolution.iconUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.conference-solution.name" => Some(("conferenceData.conferenceSolution.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.conference-solution.key.type" => Some(("conferenceData.conferenceSolution.key.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.signature" => Some(("conferenceData.signature", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "attendees-omitted" => Some(("attendeesOmitted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "locked" => Some(("locked", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "anyone-can-add-self" => Some(("anyoneCanAddSelf", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "color-id" => Some(("colorId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "created" => Some(("created", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "reminders.use-default" => Some(("reminders.useDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "guests-can-see-other-guests" => Some(("guestsCanSeeOtherGuests", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "summary" => Some(("summary", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "guests-can-invite-others" => Some(("guestsCanInviteOthers", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "transparency" => Some(("transparency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "original-start-time.time-zone" => Some(("originalStartTime.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "private-copy" => Some(("privateCopy", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "recurrence" => Some(("recurrence", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "recurring-event-id" => Some(("recurringEventId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "reminders.use-default" => Some(("reminders.useDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "sequence" => Some(("sequence", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "source.title" => Some(("source.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "source.url" => Some(("source.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "start.date" => Some(("start.date", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "start.date-time" => Some(("start.dateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "start.time-zone" => Some(("start.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "summary" => Some(("summary", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transparency" => Some(("transparency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "updated" => Some(("updated", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "visibility" => Some(("visibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["add-on-parameters", "anyone-can-add-self", "attendees-omitted", "color-id", "conference-data", "conference-id", "conference-solution", "conference-solution-key", "create-request", "created", "creator", "date", "date-time", "description", "display", "display-name", "email", "end", "end-time-unspecified", "etag", "extended-properties", "gadget", "guests-can-invite-others", "guests-can-modify", "guests-can-see-other-guests", "hangout-link", "height", "html-link", "i-cal-uid", "icon-link", "icon-uri", "id", "key", "kind", "link", "location", "locked", "name", "notes", "organizer", "original-start-time", "parameters", "preferences", "private", "private-copy", "recurrence", "recurring-event-id", "reminders", "request-id", "self", "sequence", "shared", "signature", "source", "start", "status", "status-code", "summary", "time-zone", "title", "transparency", "type", "updated", "url", "use-default", "visibility", "width"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1981,7 +1983,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["supports-attachments", "conference-data-version"].iter().map(|v|*v));
+                                                                           v.extend(["conference-data-version", "supports-attachments"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2038,72 +2040,72 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "extended-properties.shared" => Some(("extendedProperties.shared", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "extended-properties.private" => Some(("extendedProperties.private", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "creator.self" => Some(("creator.self", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "anyone-can-add-self" => Some(("anyoneCanAddSelf", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "attendees-omitted" => Some(("attendeesOmitted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "color-id" => Some(("colorId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.conference-id" => Some(("conferenceData.conferenceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.conference-solution.icon-uri" => Some(("conferenceData.conferenceSolution.iconUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.conference-solution.key.type" => Some(("conferenceData.conferenceSolution.key.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.conference-solution.name" => Some(("conferenceData.conferenceSolution.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.create-request.conference-solution-key.type" => Some(("conferenceData.createRequest.conferenceSolutionKey.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.create-request.request-id" => Some(("conferenceData.createRequest.requestId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.create-request.status.status-code" => Some(("conferenceData.createRequest.status.statusCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.notes" => Some(("conferenceData.notes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.parameters.add-on-parameters.parameters" => Some(("conferenceData.parameters.addOnParameters.parameters", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "conference-data.signature" => Some(("conferenceData.signature", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "created" => Some(("created", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "creator.display-name" => Some(("creator.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "creator.email" => Some(("creator.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "creator.id" => Some(("creator.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "organizer.self" => Some(("organizer.self", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "creator.self" => Some(("creator.self", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "end.date" => Some(("end.date", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "end.date-time" => Some(("end.dateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "end.time-zone" => Some(("end.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "end-time-unspecified" => Some(("endTimeUnspecified", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "extended-properties.private" => Some(("extendedProperties.private", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "extended-properties.shared" => Some(("extendedProperties.shared", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "gadget.display" => Some(("gadget.display", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gadget.height" => Some(("gadget.height", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "gadget.icon-link" => Some(("gadget.iconLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gadget.link" => Some(("gadget.link", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gadget.preferences" => Some(("gadget.preferences", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "gadget.title" => Some(("gadget.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gadget.type" => Some(("gadget.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gadget.width" => Some(("gadget.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "guests-can-invite-others" => Some(("guestsCanInviteOthers", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "guests-can-modify" => Some(("guestsCanModify", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "guests-can-see-other-guests" => Some(("guestsCanSeeOtherGuests", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "hangout-link" => Some(("hangoutLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "html-link" => Some(("htmlLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "i-cal-uid" => Some(("iCalUID", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location" => Some(("location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "locked" => Some(("locked", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "organizer.display-name" => Some(("organizer.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "organizer.email" => Some(("organizer.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "organizer.id" => Some(("organizer.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hangout-link" => Some(("hangoutLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "end.date" => Some(("end.date", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "end.time-zone" => Some(("end.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "end.date-time" => Some(("end.dateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "source.url" => Some(("source.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "source.title" => Some(("source.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "html-link" => Some(("htmlLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "recurrence" => Some(("recurrence", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "start.date" => Some(("start.date", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "start.time-zone" => Some(("start.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "start.date-time" => Some(("start.dateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location" => Some(("location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "recurring-event-id" => Some(("recurringEventId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "organizer.self" => Some(("organizer.self", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "original-start-time.date" => Some(("originalStartTime.date", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "original-start-time.time-zone" => Some(("originalStartTime.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "original-start-time.date-time" => Some(("originalStartTime.dateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "updated" => Some(("updated", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "i-cal-uid" => Some(("iCalUID", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gadget.preferences" => Some(("gadget.preferences", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "gadget.title" => Some(("gadget.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gadget.height" => Some(("gadget.height", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "gadget.width" => Some(("gadget.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "gadget.link" => Some(("gadget.link", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gadget.type" => Some(("gadget.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gadget.display" => Some(("gadget.display", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gadget.icon-link" => Some(("gadget.iconLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "end-time-unspecified" => Some(("endTimeUnspecified", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "sequence" => Some(("sequence", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "visibility" => Some(("visibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "guests-can-modify" => Some(("guestsCanModify", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "conference-data.parameters.add-on-parameters.parameters" => Some(("conferenceData.parameters.addOnParameters.parameters", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "conference-data.notes" => Some(("conferenceData.notes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.conference-id" => Some(("conferenceData.conferenceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.create-request.status.status-code" => Some(("conferenceData.createRequest.status.statusCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.create-request.conference-solution-key.type" => Some(("conferenceData.createRequest.conferenceSolutionKey.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.create-request.request-id" => Some(("conferenceData.createRequest.requestId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.conference-solution.icon-uri" => Some(("conferenceData.conferenceSolution.iconUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.conference-solution.name" => Some(("conferenceData.conferenceSolution.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.conference-solution.key.type" => Some(("conferenceData.conferenceSolution.key.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.signature" => Some(("conferenceData.signature", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "attendees-omitted" => Some(("attendeesOmitted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "locked" => Some(("locked", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "anyone-can-add-self" => Some(("anyoneCanAddSelf", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "color-id" => Some(("colorId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "created" => Some(("created", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "reminders.use-default" => Some(("reminders.useDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "guests-can-see-other-guests" => Some(("guestsCanSeeOtherGuests", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "summary" => Some(("summary", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "guests-can-invite-others" => Some(("guestsCanInviteOthers", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "transparency" => Some(("transparency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "original-start-time.time-zone" => Some(("originalStartTime.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "private-copy" => Some(("privateCopy", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "recurrence" => Some(("recurrence", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "recurring-event-id" => Some(("recurringEventId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "reminders.use-default" => Some(("reminders.useDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "sequence" => Some(("sequence", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "source.title" => Some(("source.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "source.url" => Some(("source.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "start.date" => Some(("start.date", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "start.date-time" => Some(("start.dateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "start.time-zone" => Some(("start.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "summary" => Some(("summary", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transparency" => Some(("transparency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "updated" => Some(("updated", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "visibility" => Some(("visibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["add-on-parameters", "anyone-can-add-self", "attendees-omitted", "color-id", "conference-data", "conference-id", "conference-solution", "conference-solution-key", "create-request", "created", "creator", "date", "date-time", "description", "display", "display-name", "email", "end", "end-time-unspecified", "etag", "extended-properties", "gadget", "guests-can-invite-others", "guests-can-modify", "guests-can-see-other-guests", "hangout-link", "height", "html-link", "i-cal-uid", "icon-link", "icon-uri", "id", "key", "kind", "link", "location", "locked", "name", "notes", "organizer", "original-start-time", "parameters", "preferences", "private", "private-copy", "recurrence", "recurring-event-id", "reminders", "request-id", "self", "sequence", "shared", "signature", "source", "start", "status", "status-code", "summary", "time-zone", "title", "transparency", "type", "updated", "url", "use-default", "visibility", "width"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2147,7 +2149,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["supports-attachments", "send-notifications", "max-attendees", "conference-data-version", "send-updates"].iter().map(|v|*v));
+                                                                           v.extend(["max-attendees", "supports-attachments", "send-updates", "send-notifications", "conference-data-version"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2227,7 +2229,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["show-deleted", "time-max", "always-include-email", "max-results", "page-token", "time-min", "time-zone", "original-start", "max-attendees"].iter().map(|v|*v));
+                                                                           v.extend(["time-min", "time-max", "show-deleted", "time-zone", "original-start", "max-attendees", "always-include-email", "max-results", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2331,7 +2333,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["show-hidden-invitations", "sync-token", "page-token", "time-max", "updated-min", "single-events", "i-cal-uid", "always-include-email", "order-by", "q", "show-deleted", "max-results", "time-min", "time-zone", "private-extended-property", "shared-extended-property", "max-attendees"].iter().map(|v|*v));
+                                                                           v.extend(["shared-extended-property", "time-min", "i-cal-uid", "time-max", "show-deleted", "order-by", "time-zone", "page-token", "max-attendees", "always-include-email", "private-extended-property", "max-results", "show-hidden-invitations", "q", "single-events", "sync-token", "updated-min"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2447,72 +2449,72 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "extended-properties.shared" => Some(("extendedProperties.shared", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "extended-properties.private" => Some(("extendedProperties.private", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "creator.self" => Some(("creator.self", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "anyone-can-add-self" => Some(("anyoneCanAddSelf", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "attendees-omitted" => Some(("attendeesOmitted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "color-id" => Some(("colorId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.conference-id" => Some(("conferenceData.conferenceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.conference-solution.icon-uri" => Some(("conferenceData.conferenceSolution.iconUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.conference-solution.key.type" => Some(("conferenceData.conferenceSolution.key.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.conference-solution.name" => Some(("conferenceData.conferenceSolution.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.create-request.conference-solution-key.type" => Some(("conferenceData.createRequest.conferenceSolutionKey.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.create-request.request-id" => Some(("conferenceData.createRequest.requestId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.create-request.status.status-code" => Some(("conferenceData.createRequest.status.statusCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.notes" => Some(("conferenceData.notes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.parameters.add-on-parameters.parameters" => Some(("conferenceData.parameters.addOnParameters.parameters", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "conference-data.signature" => Some(("conferenceData.signature", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "created" => Some(("created", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "creator.display-name" => Some(("creator.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "creator.email" => Some(("creator.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "creator.id" => Some(("creator.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "organizer.self" => Some(("organizer.self", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "creator.self" => Some(("creator.self", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "end.date" => Some(("end.date", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "end.date-time" => Some(("end.dateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "end.time-zone" => Some(("end.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "end-time-unspecified" => Some(("endTimeUnspecified", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "extended-properties.private" => Some(("extendedProperties.private", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "extended-properties.shared" => Some(("extendedProperties.shared", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "gadget.display" => Some(("gadget.display", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gadget.height" => Some(("gadget.height", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "gadget.icon-link" => Some(("gadget.iconLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gadget.link" => Some(("gadget.link", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gadget.preferences" => Some(("gadget.preferences", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "gadget.title" => Some(("gadget.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gadget.type" => Some(("gadget.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gadget.width" => Some(("gadget.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "guests-can-invite-others" => Some(("guestsCanInviteOthers", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "guests-can-modify" => Some(("guestsCanModify", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "guests-can-see-other-guests" => Some(("guestsCanSeeOtherGuests", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "hangout-link" => Some(("hangoutLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "html-link" => Some(("htmlLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "i-cal-uid" => Some(("iCalUID", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location" => Some(("location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "locked" => Some(("locked", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "organizer.display-name" => Some(("organizer.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "organizer.email" => Some(("organizer.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "organizer.id" => Some(("organizer.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hangout-link" => Some(("hangoutLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "end.date" => Some(("end.date", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "end.time-zone" => Some(("end.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "end.date-time" => Some(("end.dateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "source.url" => Some(("source.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "source.title" => Some(("source.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "html-link" => Some(("htmlLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "recurrence" => Some(("recurrence", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "start.date" => Some(("start.date", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "start.time-zone" => Some(("start.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "start.date-time" => Some(("start.dateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location" => Some(("location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "recurring-event-id" => Some(("recurringEventId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "organizer.self" => Some(("organizer.self", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "original-start-time.date" => Some(("originalStartTime.date", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "original-start-time.time-zone" => Some(("originalStartTime.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "original-start-time.date-time" => Some(("originalStartTime.dateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "updated" => Some(("updated", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "i-cal-uid" => Some(("iCalUID", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gadget.preferences" => Some(("gadget.preferences", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "gadget.title" => Some(("gadget.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gadget.height" => Some(("gadget.height", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "gadget.width" => Some(("gadget.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "gadget.link" => Some(("gadget.link", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gadget.type" => Some(("gadget.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gadget.display" => Some(("gadget.display", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gadget.icon-link" => Some(("gadget.iconLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "end-time-unspecified" => Some(("endTimeUnspecified", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "sequence" => Some(("sequence", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "visibility" => Some(("visibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "guests-can-modify" => Some(("guestsCanModify", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "conference-data.parameters.add-on-parameters.parameters" => Some(("conferenceData.parameters.addOnParameters.parameters", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "conference-data.notes" => Some(("conferenceData.notes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.conference-id" => Some(("conferenceData.conferenceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.create-request.status.status-code" => Some(("conferenceData.createRequest.status.statusCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.create-request.conference-solution-key.type" => Some(("conferenceData.createRequest.conferenceSolutionKey.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.create-request.request-id" => Some(("conferenceData.createRequest.requestId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.conference-solution.icon-uri" => Some(("conferenceData.conferenceSolution.iconUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.conference-solution.name" => Some(("conferenceData.conferenceSolution.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.conference-solution.key.type" => Some(("conferenceData.conferenceSolution.key.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.signature" => Some(("conferenceData.signature", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "attendees-omitted" => Some(("attendeesOmitted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "locked" => Some(("locked", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "anyone-can-add-self" => Some(("anyoneCanAddSelf", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "color-id" => Some(("colorId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "created" => Some(("created", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "reminders.use-default" => Some(("reminders.useDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "guests-can-see-other-guests" => Some(("guestsCanSeeOtherGuests", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "summary" => Some(("summary", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "guests-can-invite-others" => Some(("guestsCanInviteOthers", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "transparency" => Some(("transparency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "original-start-time.time-zone" => Some(("originalStartTime.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "private-copy" => Some(("privateCopy", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "recurrence" => Some(("recurrence", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "recurring-event-id" => Some(("recurringEventId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "reminders.use-default" => Some(("reminders.useDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "sequence" => Some(("sequence", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "source.title" => Some(("source.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "source.url" => Some(("source.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "start.date" => Some(("start.date", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "start.date-time" => Some(("start.dateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "start.time-zone" => Some(("start.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "summary" => Some(("summary", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transparency" => Some(("transparency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "updated" => Some(("updated", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "visibility" => Some(("visibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["add-on-parameters", "anyone-can-add-self", "attendees-omitted", "color-id", "conference-data", "conference-id", "conference-solution", "conference-solution-key", "create-request", "created", "creator", "date", "date-time", "description", "display", "display-name", "email", "end", "end-time-unspecified", "etag", "extended-properties", "gadget", "guests-can-invite-others", "guests-can-modify", "guests-can-see-other-guests", "hangout-link", "height", "html-link", "i-cal-uid", "icon-link", "icon-uri", "id", "key", "kind", "link", "location", "locked", "name", "notes", "organizer", "original-start-time", "parameters", "preferences", "private", "private-copy", "recurrence", "recurring-event-id", "reminders", "request-id", "self", "sequence", "shared", "signature", "source", "start", "status", "status-code", "summary", "time-zone", "title", "transparency", "type", "updated", "url", "use-default", "visibility", "width"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2559,7 +2561,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["send-notifications", "always-include-email", "conference-data-version", "supports-attachments", "send-updates", "max-attendees"].iter().map(|v|*v));
+                                                                           v.extend(["max-attendees", "always-include-email", "supports-attachments", "send-updates", "send-notifications", "conference-data-version"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2675,72 +2677,72 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "extended-properties.shared" => Some(("extendedProperties.shared", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "extended-properties.private" => Some(("extendedProperties.private", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "creator.self" => Some(("creator.self", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "anyone-can-add-self" => Some(("anyoneCanAddSelf", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "attendees-omitted" => Some(("attendeesOmitted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "color-id" => Some(("colorId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.conference-id" => Some(("conferenceData.conferenceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.conference-solution.icon-uri" => Some(("conferenceData.conferenceSolution.iconUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.conference-solution.key.type" => Some(("conferenceData.conferenceSolution.key.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.conference-solution.name" => Some(("conferenceData.conferenceSolution.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.create-request.conference-solution-key.type" => Some(("conferenceData.createRequest.conferenceSolutionKey.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.create-request.request-id" => Some(("conferenceData.createRequest.requestId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.create-request.status.status-code" => Some(("conferenceData.createRequest.status.statusCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.notes" => Some(("conferenceData.notes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conference-data.parameters.add-on-parameters.parameters" => Some(("conferenceData.parameters.addOnParameters.parameters", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "conference-data.signature" => Some(("conferenceData.signature", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "created" => Some(("created", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "creator.display-name" => Some(("creator.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "creator.email" => Some(("creator.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "creator.id" => Some(("creator.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "organizer.self" => Some(("organizer.self", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "creator.self" => Some(("creator.self", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "end.date" => Some(("end.date", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "end.date-time" => Some(("end.dateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "end.time-zone" => Some(("end.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "end-time-unspecified" => Some(("endTimeUnspecified", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "extended-properties.private" => Some(("extendedProperties.private", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "extended-properties.shared" => Some(("extendedProperties.shared", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "gadget.display" => Some(("gadget.display", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gadget.height" => Some(("gadget.height", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "gadget.icon-link" => Some(("gadget.iconLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gadget.link" => Some(("gadget.link", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gadget.preferences" => Some(("gadget.preferences", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "gadget.title" => Some(("gadget.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gadget.type" => Some(("gadget.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gadget.width" => Some(("gadget.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "guests-can-invite-others" => Some(("guestsCanInviteOthers", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "guests-can-modify" => Some(("guestsCanModify", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "guests-can-see-other-guests" => Some(("guestsCanSeeOtherGuests", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "hangout-link" => Some(("hangoutLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "html-link" => Some(("htmlLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "i-cal-uid" => Some(("iCalUID", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location" => Some(("location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "locked" => Some(("locked", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "organizer.display-name" => Some(("organizer.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "organizer.email" => Some(("organizer.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "organizer.id" => Some(("organizer.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hangout-link" => Some(("hangoutLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "end.date" => Some(("end.date", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "end.time-zone" => Some(("end.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "end.date-time" => Some(("end.dateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "source.url" => Some(("source.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "source.title" => Some(("source.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "html-link" => Some(("htmlLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "recurrence" => Some(("recurrence", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "start.date" => Some(("start.date", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "start.time-zone" => Some(("start.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "start.date-time" => Some(("start.dateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location" => Some(("location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "recurring-event-id" => Some(("recurringEventId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "organizer.self" => Some(("organizer.self", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "original-start-time.date" => Some(("originalStartTime.date", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "original-start-time.time-zone" => Some(("originalStartTime.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "original-start-time.date-time" => Some(("originalStartTime.dateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "updated" => Some(("updated", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "i-cal-uid" => Some(("iCalUID", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gadget.preferences" => Some(("gadget.preferences", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "gadget.title" => Some(("gadget.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gadget.height" => Some(("gadget.height", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "gadget.width" => Some(("gadget.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "gadget.link" => Some(("gadget.link", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gadget.type" => Some(("gadget.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gadget.display" => Some(("gadget.display", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gadget.icon-link" => Some(("gadget.iconLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "end-time-unspecified" => Some(("endTimeUnspecified", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "sequence" => Some(("sequence", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "visibility" => Some(("visibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "guests-can-modify" => Some(("guestsCanModify", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "conference-data.parameters.add-on-parameters.parameters" => Some(("conferenceData.parameters.addOnParameters.parameters", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "conference-data.notes" => Some(("conferenceData.notes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.conference-id" => Some(("conferenceData.conferenceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.create-request.status.status-code" => Some(("conferenceData.createRequest.status.statusCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.create-request.conference-solution-key.type" => Some(("conferenceData.createRequest.conferenceSolutionKey.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.create-request.request-id" => Some(("conferenceData.createRequest.requestId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.conference-solution.icon-uri" => Some(("conferenceData.conferenceSolution.iconUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.conference-solution.name" => Some(("conferenceData.conferenceSolution.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.conference-solution.key.type" => Some(("conferenceData.conferenceSolution.key.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "conference-data.signature" => Some(("conferenceData.signature", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "attendees-omitted" => Some(("attendeesOmitted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "locked" => Some(("locked", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "anyone-can-add-self" => Some(("anyoneCanAddSelf", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "color-id" => Some(("colorId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "created" => Some(("created", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "reminders.use-default" => Some(("reminders.useDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "guests-can-see-other-guests" => Some(("guestsCanSeeOtherGuests", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "summary" => Some(("summary", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "guests-can-invite-others" => Some(("guestsCanInviteOthers", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "transparency" => Some(("transparency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "original-start-time.time-zone" => Some(("originalStartTime.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "private-copy" => Some(("privateCopy", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "recurrence" => Some(("recurrence", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "recurring-event-id" => Some(("recurringEventId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "reminders.use-default" => Some(("reminders.useDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "sequence" => Some(("sequence", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "source.title" => Some(("source.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "source.url" => Some(("source.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "start.date" => Some(("start.date", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "start.date-time" => Some(("start.dateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "start.time-zone" => Some(("start.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "summary" => Some(("summary", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transparency" => Some(("transparency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "updated" => Some(("updated", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "visibility" => Some(("visibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["add-on-parameters", "anyone-can-add-self", "attendees-omitted", "color-id", "conference-data", "conference-id", "conference-solution", "conference-solution-key", "create-request", "created", "creator", "date", "date-time", "description", "display", "display-name", "email", "end", "end-time-unspecified", "etag", "extended-properties", "gadget", "guests-can-invite-others", "guests-can-modify", "guests-can-see-other-guests", "hangout-link", "height", "html-link", "i-cal-uid", "icon-link", "icon-uri", "id", "key", "kind", "link", "location", "locked", "name", "notes", "organizer", "original-start-time", "parameters", "preferences", "private", "private-copy", "recurrence", "recurring-event-id", "reminders", "request-id", "self", "sequence", "shared", "signature", "source", "start", "status", "status-code", "summary", "time-zone", "title", "transparency", "type", "updated", "url", "use-default", "visibility", "width"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2787,7 +2789,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["send-notifications", "always-include-email", "conference-data-version", "supports-attachments", "send-updates", "max-attendees"].iter().map(|v|*v));
+                                                                           v.extend(["max-attendees", "always-include-email", "supports-attachments", "send-updates", "send-notifications", "conference-data-version"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2844,16 +2846,16 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "resource-uri" => Some(("resourceUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "resource-id" => Some(("resourceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "payload" => Some(("payload", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "token" => Some(("token", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "params" => Some(("params", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "expiration" => Some(("expiration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "address" => Some(("address", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "expiration" => Some(("expiration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "params" => Some(("params", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "payload" => Some(("payload", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "resource-id" => Some(("resourceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "resource-uri" => Some(("resourceUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "token" => Some(("token", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["address", "expiration", "id", "kind", "params", "payload", "resource-id", "resource-uri", "token", "type"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2933,7 +2935,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["show-hidden-invitations", "sync-token", "page-token", "time-max", "updated-min", "single-events", "i-cal-uid", "always-include-email", "order-by", "q", "show-deleted", "max-results", "time-min", "time-zone", "private-extended-property", "shared-extended-property", "max-attendees"].iter().map(|v|*v));
+                                                                           v.extend(["shared-extended-property", "time-min", "i-cal-uid", "time-max", "show-deleted", "order-by", "time-zone", "page-token", "max-attendees", "always-include-email", "private-extended-property", "max-results", "show-hidden-invitations", "q", "single-events", "sync-token", "updated-min"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2990,11 +2992,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "time-max" => Some(("timeMax", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "calendar-expansion-max" => Some(("calendarExpansionMax", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "time-zone" => Some(("timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "time-min" => Some(("timeMin", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "group-expansion-max" => Some(("groupExpansionMax", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "time-max" => Some(("timeMax", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "time-min" => Some(("timeMin", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "time-zone" => Some(("timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["calendar-expansion-max", "group-expansion-max", "time-max", "time-min", "time-zone"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3136,7 +3138,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["sync-token", "max-results", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "sync-token", "max-results"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3193,16 +3195,16 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "resource-uri" => Some(("resourceUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "resource-id" => Some(("resourceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "payload" => Some(("payload", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "token" => Some(("token", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "params" => Some(("params", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "expiration" => Some(("expiration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "address" => Some(("address", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "expiration" => Some(("expiration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "params" => Some(("params", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "payload" => Some(("payload", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "resource-id" => Some(("resourceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "resource-uri" => Some(("resourceUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "token" => Some(("token", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["address", "expiration", "id", "kind", "params", "payload", "resource-id", "resource-uri", "token", "type"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3240,7 +3242,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["sync-token", "max-results", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "sync-token", "max-results"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3473,12 +3475,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "calendar3-secret.json",
+            match client::application_secret_from_directory(&config_dir, "calendar3-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

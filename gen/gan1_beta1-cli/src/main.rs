@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_gan1_beta1 as api;
+extern crate google_gan1_beta1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_gan1_beta1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Gan<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::Gan<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -139,7 +141,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["relationship-status", "min-seven-day-epc", "advertiser-category", "max-results", "page-token", "min-ninety-day-epc", "min-payout-rank"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "max-results", "min-ninety-day-epc", "relationship-status", "min-seven-day-epc", "advertiser-category", "min-payout-rank"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -195,7 +197,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["advertiser", "projection"].iter().map(|v|*v));
+                                                                           v.extend(["projection", "advertiser"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -293,7 +295,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["status", "sku", "modify-date-max", "type", "link-id", "event-date-min", "member-id", "product-category", "order-id", "page-token", "advertiser-id", "max-results", "charge-type", "modify-date-min", "event-date-max", "publisher-id"].iter().map(|v|*v));
+                                                                           v.extend(["charge-type", "page-token", "event-date-max", "modify-date-max", "link-id", "order-id", "modify-date-min", "max-results", "publisher-id", "product-category", "type", "sku", "member-id", "advertiser-id", "event-date-min", "status"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -396,40 +398,40 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "link-type" => Some(("linkType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "start-date" => Some(("startDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "end-date" => Some(("endDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "authorship" => Some(("authorship", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "availability" => Some(("availability", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "click-tracking-url" => Some(("clickTrackingUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "create-date" => Some(("createDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "destination-url" => Some(("destinationUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "duration" => Some(("duration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "end-date" => Some(("endDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "epc-ninety-day-average.amount" => Some(("epcNinetyDayAverage.amount", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "epc-ninety-day-average.currency-code" => Some(("epcNinetyDayAverage.currencyCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "epc-seven-day-average.amount" => Some(("epcSevenDayAverage.amount", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "epc-seven-day-average.currency-code" => Some(("epcSevenDayAverage.currencyCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "image-alt-text" => Some(("imageAltText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "impression-tracking-url" => Some(("impressionTrackingUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "is-active" => Some(("isActive", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "link-type" => Some(("linkType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "promotion-type" => Some(("promotionType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "special-offers.free-gift" => Some(("specialOffers.freeGift", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "special-offers.free-shipping" => Some(("specialOffers.freeShipping", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "special-offers.free-shipping-min.amount" => Some(("specialOffers.freeShippingMin.amount", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "special-offers.free-shipping-min.currency-code" => Some(("specialOffers.freeShippingMin.currencyCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "special-offers.percent-off" => Some(("specialOffers.percentOff", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "special-offers.percent-off-min.amount" => Some(("specialOffers.percentOffMin.amount", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "special-offers.percent-off-min.currency-code" => Some(("specialOffers.percentOffMin.currencyCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "special-offers.price-cut.amount" => Some(("specialOffers.priceCut.amount", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "special-offers.price-cut.currency-code" => Some(("specialOffers.priceCut.currencyCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "special-offers.price-cut-min.amount" => Some(("specialOffers.priceCutMin.amount", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "special-offers.price-cut-min.currency-code" => Some(("specialOffers.priceCutMin.currencyCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "special-offers.free-shipping" => Some(("specialOffers.freeShipping", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "special-offers.promotion-codes" => Some(("specialOffers.promotionCodes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "special-offers.percent-off" => Some(("specialOffers.percentOff", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "special-offers.percent-off-min.amount" => Some(("specialOffers.percentOffMin.amount", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "special-offers.percent-off-min.currency-code" => Some(("specialOffers.percentOffMin.currencyCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "special-offers.free-gift" => Some(("specialOffers.freeGift", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "special-offers.free-shipping-min.amount" => Some(("specialOffers.freeShippingMin.amount", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "special-offers.free-shipping-min.currency-code" => Some(("specialOffers.freeShippingMin.currencyCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "epc-seven-day-average.amount" => Some(("epcSevenDayAverage.amount", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "epc-seven-day-average.currency-code" => Some(("epcSevenDayAverage.currencyCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "create-date" => Some(("createDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "image-alt-text" => Some(("imageAltText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-active" => Some(("isActive", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "promotion-type" => Some(("promotionType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "duration" => Some(("duration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "authorship" => Some(("authorship", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "impression-tracking-url" => Some(("impressionTrackingUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "epc-ninety-day-average.amount" => Some(("epcNinetyDayAverage.amount", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "epc-ninety-day-average.currency-code" => Some(("epcNinetyDayAverage.currencyCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "availability" => Some(("availability", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "click-tracking-url" => Some(("clickTrackingUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "destination-url" => Some(("destinationUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "start-date" => Some(("startDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["advertiser-id", "amount", "authorship", "availability", "click-tracking-url", "create-date", "currency-code", "description", "destination-url", "duration", "end-date", "epc-ninety-day-average", "epc-seven-day-average", "free-gift", "free-shipping", "free-shipping-min", "id", "image-alt-text", "impression-tracking-url", "is-active", "kind", "link-type", "name", "percent-off", "percent-off-min", "price-cut", "price-cut-min", "promotion-codes", "promotion-type", "special-offers", "start-date"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -546,7 +548,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["start-date-min", "link-type", "relationship-status", "search-text", "create-date-max", "create-date-min", "asset-size", "start-date-max", "advertiser-id", "page-token", "max-results", "promotion-type", "authorship"].iter().map(|v|*v));
+                                                                           v.extend(["start-date-max", "page-token", "promotion-type", "start-date-min", "authorship", "max-results", "create-date-min", "search-text", "create-date-max", "relationship-status", "link-type", "advertiser-id", "asset-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -670,7 +672,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["publisher-category", "relationship-status", "min-seven-day-epc", "min-ninety-day-epc", "page-token", "max-results", "min-payout-rank"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "publisher-category", "max-results", "min-ninety-day-epc", "relationship-status", "min-seven-day-epc", "min-payout-rank"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -753,7 +755,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["status", "start-date", "end-date", "advertiser-id", "link-id", "max-results", "order-id", "start-index", "event-type", "calculate-totals", "publisher-id"].iter().map(|v|*v));
+                                                                           v.extend(["link-id", "order-id", "max-results", "end-date", "publisher-id", "calculate-totals", "start-index", "advertiser-id", "start-date", "event-type", "status"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -886,12 +888,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "gan1-beta1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "gan1-beta1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

@@ -51,14 +51,14 @@ mirror1 [options]
         timeline
                 attachments-delete <item-id> <attachment-id> [-p <v>]...
                 attachments-get <item-id> <attachment-id> [-p <v>]... [-o <out>]
-                attachments-insert <item-id> (-u (simple|resumable) -f <file> [-m <mime>]) [-p <v>]... [-o <out>]
+                attachments-insert <item-id> (-u (resumable|simple) -f <file> [-m <mime>]) [-p <v>]... [-o <out>]
                 attachments-list <item-id> [-p <v>]... [-o <out>]
                 delete <id> [-p <v>]...
                 get <id> [-p <v>]... [-o <out>]
-                insert (-r <kv>)... (-u (simple|resumable) -f <file> [-m <mime>]) [-p <v>]... [-o <out>]
+                insert (-r <kv>)... (-u (resumable|simple) -f <file> [-m <mime>]) [-p <v>]... [-o <out>]
                 list [-p <v>]... [-o <out>]
                 patch <id> (-r <kv>)... [-p <v>]... [-o <out>]
-                update <id> (-r <kv>)... (-u (simple|resumable) -f <file> [-m <mime>]) [-p <v>]... [-o <out>]
+                update <id> (-r <kv>)... (-u (resumable|simple) -f <file> [-m <mime>]) [-p <v>]... [-o <out>]
   mirror1 --help
 
 Configuration:

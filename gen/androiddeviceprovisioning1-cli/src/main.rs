@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_androiddeviceprovisioning1 as api;
+extern crate google_androiddeviceprovisioning1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_androiddeviceprovisioning1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::AndroidProvisioningPartner<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::AndroidProvisioningPartner<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -69,16 +71,16 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "dpc-extras" => Some(("dpcExtras", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "contact-phone" => Some(("contactPhone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "company-name" => Some(("companyName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "configuration-id" => Some(("configurationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "custom-message" => Some(("customMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "dpc-resource-path" => Some(("dpcResourcePath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "contact-email" => Some(("contactEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "configuration-name" => Some(("configurationName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "contact-email" => Some(("contactEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "contact-phone" => Some(("contactPhone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "custom-message" => Some(("customMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "dpc-extras" => Some(("dpcExtras", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "dpc-resource-path" => Some(("dpcResourcePath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "is-default" => Some(("isDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["company-name", "configuration-id", "configuration-name", "contact-email", "contact-phone", "custom-message", "dpc-extras", "dpc-resource-path", "is-default", "name"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -307,16 +309,16 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "dpc-extras" => Some(("dpcExtras", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "contact-phone" => Some(("contactPhone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "company-name" => Some(("companyName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "configuration-id" => Some(("configurationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "custom-message" => Some(("customMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "dpc-resource-path" => Some(("dpcResourcePath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "contact-email" => Some(("contactEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "configuration-name" => Some(("configurationName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "contact-email" => Some(("contactEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "contact-phone" => Some(("contactPhone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "custom-message" => Some(("customMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "dpc-extras" => Some(("dpcExtras", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "dpc-resource-path" => Some(("dpcResourcePath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "is-default" => Some(("isDefault", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["company-name", "configuration-id", "configuration-name", "contact-email", "contact-phone", "custom-message", "dpc-extras", "dpc-resource-path", "is-default", "name"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -402,13 +404,13 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "configuration" => Some(("configuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.device-id" => Some(("device.deviceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device.device-identifier.imei" => Some(("device.deviceIdentifier.imei", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.device-identifier.manufacturer" => Some(("device.deviceIdentifier.manufacturer", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.device-identifier.meid" => Some(("device.deviceIdentifier.meid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device.device-identifier.model" => Some(("device.deviceIdentifier.model", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device.device-identifier.serial-number" => Some(("device.deviceIdentifier.serialNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.device-identifier.meid" => Some(("device.deviceIdentifier.meid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.device-identifier.manufacturer" => Some(("device.deviceIdentifier.manufacturer", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.device-id" => Some(("device.deviceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "configuration" => Some(("configuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["configuration", "device", "device-id", "device-identifier", "imei", "manufacturer", "meid", "model", "serial-number"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -595,12 +597,12 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "device.device-id" => Some(("device.deviceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device.device-identifier.imei" => Some(("device.deviceIdentifier.imei", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.device-identifier.manufacturer" => Some(("device.deviceIdentifier.manufacturer", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.device-identifier.meid" => Some(("device.deviceIdentifier.meid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device.device-identifier.model" => Some(("device.deviceIdentifier.model", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device.device-identifier.serial-number" => Some(("device.deviceIdentifier.serialNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.device-identifier.meid" => Some(("device.deviceIdentifier.meid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.device-identifier.manufacturer" => Some(("device.deviceIdentifier.manufacturer", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.device-id" => Some(("device.deviceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["device", "device-id", "device-identifier", "imei", "manufacturer", "meid", "model", "serial-number"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -682,12 +684,12 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "device.device-id" => Some(("device.deviceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device.device-identifier.imei" => Some(("device.deviceIdentifier.imei", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.device-identifier.manufacturer" => Some(("device.deviceIdentifier.manufacturer", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device.device-identifier.meid" => Some(("device.deviceIdentifier.meid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device.device-identifier.model" => Some(("device.deviceIdentifier.model", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device.device-identifier.serial-number" => Some(("device.deviceIdentifier.serialNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.device-identifier.meid" => Some(("device.deviceIdentifier.meid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.device-identifier.manufacturer" => Some(("device.deviceIdentifier.manufacturer", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device.device-id" => Some(("device.deviceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["device", "device-id", "device-identifier", "imei", "manufacturer", "meid", "model", "serial-number"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -923,12 +925,12 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "customer.name" => Some(("customer.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "customer.company-name" => Some(("customer.companyName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "customer.admin-emails" => Some(("customer.adminEmails", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "customer.company-id" => Some(("customer.companyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "customer.company-name" => Some(("customer.companyName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "customer.name" => Some(("customer.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "customer.owner-emails" => Some(("customer.ownerEmails", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "customer.terms-status" => Some(("customer.termsStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "customer.admin-emails" => Some(("customer.adminEmails", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["admin-emails", "company-id", "company-name", "customer", "name", "owner-emails", "terms-status"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1066,14 +1068,14 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "device-metadata.entries" => Some(("deviceMetadata.entries", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "customer-id" => Some(("customerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device-identifier.imei" => Some(("deviceIdentifier.imei", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device-identifier.manufacturer" => Some(("deviceIdentifier.manufacturer", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device-identifier.meid" => Some(("deviceIdentifier.meid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device-identifier.model" => Some(("deviceIdentifier.model", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device-identifier.serial-number" => Some(("deviceIdentifier.serialNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device-identifier.meid" => Some(("deviceIdentifier.meid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device-identifier.manufacturer" => Some(("deviceIdentifier.manufacturer", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device-metadata.entries" => Some(("deviceMetadata.entries", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "section-type" => Some(("sectionType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "customer-id" => Some(("customerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["customer-id", "device-identifier", "device-metadata", "entries", "imei", "manufacturer", "meid", "model", "section-type", "serial-number"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1236,13 +1238,13 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "page-token" => Some(("pageToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device-identifier.imei" => Some(("deviceIdentifier.imei", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device-identifier.manufacturer" => Some(("deviceIdentifier.manufacturer", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device-identifier.meid" => Some(("deviceIdentifier.meid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device-identifier.model" => Some(("deviceIdentifier.model", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device-identifier.serial-number" => Some(("deviceIdentifier.serialNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device-identifier.meid" => Some(("deviceIdentifier.meid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device-identifier.manufacturer" => Some(("deviceIdentifier.manufacturer", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "limit" => Some(("limit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "page-token" => Some(("pageToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["device-identifier", "imei", "limit", "manufacturer", "meid", "model", "page-token", "serial-number"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1324,9 +1326,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "page-token" => Some(("pageToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "limit" => Some(("limit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "customer-id" => Some(("customerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "limit" => Some(("limit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "page-token" => Some(("pageToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "section-type" => Some(("sectionType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["customer-id", "limit", "page-token", "section-type"]);
@@ -1540,15 +1542,15 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "vacation-mode-days" => Some(("vacationModeDays", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "device-id" => Some(("deviceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device-identifier.imei" => Some(("deviceIdentifier.imei", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device-identifier.manufacturer" => Some(("deviceIdentifier.manufacturer", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device-identifier.meid" => Some(("deviceIdentifier.meid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device-identifier.model" => Some(("deviceIdentifier.model", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device-identifier.serial-number" => Some(("deviceIdentifier.serialNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device-identifier.meid" => Some(("deviceIdentifier.meid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device-identifier.manufacturer" => Some(("deviceIdentifier.manufacturer", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "vacation-mode-expire-time" => Some(("vacationModeExpireTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device-id" => Some(("deviceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "section-type" => Some(("sectionType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vacation-mode-days" => Some(("vacationModeDays", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "vacation-mode-expire-time" => Some(("vacationModeExpireTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["device-id", "device-identifier", "imei", "manufacturer", "meid", "model", "section-type", "serial-number", "vacation-mode-days", "vacation-mode-expire-time"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2007,12 +2009,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "androiddeviceprovisioning1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "androiddeviceprovisioning1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

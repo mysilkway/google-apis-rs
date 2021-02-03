@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_books1 as api;
+extern crate google_books1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_books1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Books<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::Books<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -189,7 +191,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["source", "start-index", "show-preorders", "max-results"].iter().map(|v|*v));
+                                                                           v.extend(["max-results", "start-index", "show-preorders", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -254,7 +256,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["mime-type", "name", "upload-client-token", "drive-document-id"].iter().map(|v|*v));
+                                                                           v.extend(["drive-document-id", "name", "upload-client-token", "mime-type"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -367,10 +369,10 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "title" => Some(("title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "processing-state" => Some(("processingState", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "volume-id" => Some(("volumeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "author" => Some(("author", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "processing-state" => Some(("processingState", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "title" => Some(("title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "volume-id" => Some(("volumeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["author", "processing-state", "title", "volume-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -572,7 +574,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["source", "doc-id", "volume-id"].iter().map(|v|*v));
+                                                                           v.extend(["doc-id", "volume-id", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -634,7 +636,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["source", "doc-id", "volume-id"].iter().map(|v|*v));
+                                                                           v.extend(["doc-id", "volume-id", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -708,7 +710,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["scale", "locale", "h", "source", "content-version", "w", "allow-web-definitions"].iter().map(|v|*v));
+                                                                           v.extend(["allow-web-definitions", "locale", "source", "h", "content-version", "w", "scale"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -794,7 +796,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["scale", "source", "locale", "updated-min", "updated-max", "max-results", "annotation-data-id", "page-token", "content-version", "w", "h"].iter().map(|v|*v));
+                                                                           v.extend(["locale", "updated-min", "source", "h", "content-version", "annotation-data-id", "w", "scale", "page-token", "max-results", "updated-max"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -853,7 +855,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["source", "content-version"].iter().map(|v|*v));
+                                                                           v.extend(["content-version", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -918,7 +920,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["source", "content-version", "max-results", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["content-version", "max-results", "page-token", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1069,7 +1071,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["show-deleted", "volume-annotations-version", "end-position", "updated-max", "start-position", "updated-min", "end-offset", "max-results", "source", "content-version", "start-offset", "page-token", "locale"].iter().map(|v|*v));
+                                                                           v.extend(["locale", "updated-max", "updated-min", "source", "content-version", "volume-annotations-version", "start-offset", "end-position", "page-token", "end-offset", "max-results", "start-position", "show-deleted"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1190,7 +1192,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["locale", "source", "volume-ids", "cpksver"].iter().map(|v|*v));
+                                                                           v.extend(["volume-ids", "locale", "cpksver", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1261,7 +1263,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["nonce", "license-types", "locale", "volume-id", "cpksver", "source"].iter().map(|v|*v));
+                                                                           v.extend(["locale", "source", "license-types", "volume-id", "nonce", "cpksver"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1338,7 +1340,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["nonce", "features", "locale", "show-preorders", "cpksver", "source", "volume-ids", "include-non-comics-series"].iter().map(|v|*v));
+                                                                           v.extend(["volume-ids", "include-non-comics-series", "locale", "source", "features", "nonce", "show-preorders", "cpksver"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1395,14 +1397,14 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "notification.match-my-interests.opted-state" => Some(("notification.matchMyInterests.opted_state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "notification.reward-expirations.opted-state" => Some(("notification.rewardExpirations.opted_state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "notification.more-from-series.opted-state" => Some(("notification.moreFromSeries.opted_state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "notification.more-from-authors.opted-state" => Some(("notification.moreFromAuthors.opted_state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "notification.price-drop.opted-state" => Some(("notification.priceDrop.opted_state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "notes-export.is-enabled" => Some(("notesExport.isEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "notes-export.folder-name" => Some(("notesExport.folderName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notes-export.is-enabled" => Some(("notesExport.isEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "notification.match-my-interests.opted-state" => Some(("notification.matchMyInterests.opted_state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notification.more-from-authors.opted-state" => Some(("notification.moreFromAuthors.opted_state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notification.more-from-series.opted-state" => Some(("notification.moreFromSeries.opted_state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notification.price-drop.opted-state" => Some(("notification.priceDrop.opted_state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notification.reward-expirations.opted-state" => Some(("notification.rewardExpirations.opted_state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["folder-name", "is-enabled", "kind", "match-my-interests", "more-from-authors", "more-from-series", "notes-export", "notification", "opted-state", "price-drop", "reward-expirations"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1543,57 +1545,57 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "updated" => Some(("updated", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "page-ids" => Some(("pageIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "created" => Some(("created", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deleted" => Some(("deleted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "before-selected-text" => Some(("beforeSelectedText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.image-cfi-range.start-position" => Some(("currentVersionRanges.imageCfiRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.image-cfi-range.end-position" => Some(("currentVersionRanges.imageCfiRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.image-cfi-range.start-offset" => Some(("currentVersionRanges.imageCfiRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.image-cfi-range.end-offset" => Some(("currentVersionRanges.imageCfiRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.gb-text-range.start-position" => Some(("currentVersionRanges.gbTextRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.gb-text-range.end-position" => Some(("currentVersionRanges.gbTextRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.gb-text-range.start-offset" => Some(("currentVersionRanges.gbTextRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.gb-text-range.end-offset" => Some(("currentVersionRanges.gbTextRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.content-version" => Some(("currentVersionRanges.contentVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.cfi-range.start-position" => Some(("currentVersionRanges.cfiRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.cfi-range.end-position" => Some(("currentVersionRanges.cfiRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.cfi-range.start-offset" => Some(("currentVersionRanges.cfiRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.cfi-range.end-offset" => Some(("currentVersionRanges.cfiRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.gb-image-range.start-position" => Some(("currentVersionRanges.gbImageRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.gb-image-range.end-position" => Some(("currentVersionRanges.gbImageRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.gb-image-range.start-offset" => Some(("currentVersionRanges.gbImageRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.gb-image-range.end-offset" => Some(("currentVersionRanges.gbImageRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "after-selected-text" => Some(("afterSelectedText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "volume-id" => Some(("volumeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "layer-summary.limit-type" => Some(("layerSummary.limitType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "layer-summary.remaining-character-count" => Some(("layerSummary.remainingCharacterCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "layer-summary.allowed-character-count" => Some(("layerSummary.allowedCharacterCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "selected-text" => Some(("selectedText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.image-cfi-range.start-position" => Some(("clientVersionRanges.imageCfiRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.image-cfi-range.end-position" => Some(("clientVersionRanges.imageCfiRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.image-cfi-range.start-offset" => Some(("clientVersionRanges.imageCfiRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.image-cfi-range.end-offset" => Some(("clientVersionRanges.imageCfiRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.gb-text-range.start-position" => Some(("clientVersionRanges.gbTextRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.gb-text-range.end-position" => Some(("clientVersionRanges.gbTextRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.gb-text-range.start-offset" => Some(("clientVersionRanges.gbTextRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.gb-text-range.end-offset" => Some(("clientVersionRanges.gbTextRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.content-version" => Some(("clientVersionRanges.contentVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.cfi-range.start-position" => Some(("clientVersionRanges.cfiRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "before-selected-text" => Some(("beforeSelectedText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.cfi-range.end-offset" => Some(("clientVersionRanges.cfiRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "client-version-ranges.cfi-range.end-position" => Some(("clientVersionRanges.cfiRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "client-version-ranges.cfi-range.start-offset" => Some(("clientVersionRanges.cfiRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.cfi-range.end-offset" => Some(("clientVersionRanges.cfiRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.gb-image-range.start-position" => Some(("clientVersionRanges.gbImageRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.cfi-range.start-position" => Some(("clientVersionRanges.cfiRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.content-version" => Some(("clientVersionRanges.contentVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.gb-image-range.end-offset" => Some(("clientVersionRanges.gbImageRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "client-version-ranges.gb-image-range.end-position" => Some(("clientVersionRanges.gbImageRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "client-version-ranges.gb-image-range.start-offset" => Some(("clientVersionRanges.gbImageRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.gb-image-range.end-offset" => Some(("clientVersionRanges.gbImageRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "layer-id" => Some(("layerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "highlight-style" => Some(("highlightStyle", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.gb-image-range.start-position" => Some(("clientVersionRanges.gbImageRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.gb-text-range.end-offset" => Some(("clientVersionRanges.gbTextRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.gb-text-range.end-position" => Some(("clientVersionRanges.gbTextRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.gb-text-range.start-offset" => Some(("clientVersionRanges.gbTextRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.gb-text-range.start-position" => Some(("clientVersionRanges.gbTextRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.image-cfi-range.end-offset" => Some(("clientVersionRanges.imageCfiRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.image-cfi-range.end-position" => Some(("clientVersionRanges.imageCfiRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.image-cfi-range.start-offset" => Some(("clientVersionRanges.imageCfiRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.image-cfi-range.start-position" => Some(("clientVersionRanges.imageCfiRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "created" => Some(("created", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.cfi-range.end-offset" => Some(("currentVersionRanges.cfiRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.cfi-range.end-position" => Some(("currentVersionRanges.cfiRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.cfi-range.start-offset" => Some(("currentVersionRanges.cfiRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.cfi-range.start-position" => Some(("currentVersionRanges.cfiRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.content-version" => Some(("currentVersionRanges.contentVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.gb-image-range.end-offset" => Some(("currentVersionRanges.gbImageRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.gb-image-range.end-position" => Some(("currentVersionRanges.gbImageRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.gb-image-range.start-offset" => Some(("currentVersionRanges.gbImageRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.gb-image-range.start-position" => Some(("currentVersionRanges.gbImageRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.gb-text-range.end-offset" => Some(("currentVersionRanges.gbTextRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.gb-text-range.end-position" => Some(("currentVersionRanges.gbTextRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.gb-text-range.start-offset" => Some(("currentVersionRanges.gbTextRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.gb-text-range.start-position" => Some(("currentVersionRanges.gbTextRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.image-cfi-range.end-offset" => Some(("currentVersionRanges.imageCfiRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.image-cfi-range.end-position" => Some(("currentVersionRanges.imageCfiRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.image-cfi-range.start-offset" => Some(("currentVersionRanges.imageCfiRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.image-cfi-range.start-position" => Some(("currentVersionRanges.imageCfiRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deleted" => Some(("deleted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "highlight-style" => Some(("highlightStyle", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "layer-id" => Some(("layerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "layer-summary.allowed-character-count" => Some(("layerSummary.allowedCharacterCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "layer-summary.limit-type" => Some(("layerSummary.limitType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "layer-summary.remaining-character-count" => Some(("layerSummary.remainingCharacterCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "page-ids" => Some(("pageIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "selected-text" => Some(("selectedText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "self-link" => Some(("selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "updated" => Some(("updated", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "volume-id" => Some(("volumeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["after-selected-text", "allowed-character-count", "before-selected-text", "cfi-range", "client-version-ranges", "content-version", "created", "current-version-ranges", "data", "deleted", "end-offset", "end-position", "gb-image-range", "gb-text-range", "highlight-style", "id", "image-cfi-range", "kind", "layer-id", "layer-summary", "limit-type", "page-ids", "remaining-character-count", "selected-text", "self-link", "start-offset", "start-position", "updated", "volume-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1634,7 +1636,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["source", "show-only-summary-in-response", "annotation-id", "country"].iter().map(|v|*v));
+                                                                           v.extend(["show-only-summary-in-response", "country", "annotation-id", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1717,7 +1719,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "layer-ids", "show-deleted", "updated-min", "updated-max", "volume-id", "max-results", "source", "content-version", "layer-id"].iter().map(|v|*v));
+                                                                           v.extend(["updated-min", "source", "content-version", "layer-id", "volume-id", "layer-ids", "page-token", "max-results", "updated-max", "show-deleted"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1776,7 +1778,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["layer-ids", "volume-id"].iter().map(|v|*v));
+                                                                           v.extend(["volume-id", "layer-ids"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1833,57 +1835,57 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "updated" => Some(("updated", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "page-ids" => Some(("pageIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "created" => Some(("created", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deleted" => Some(("deleted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "before-selected-text" => Some(("beforeSelectedText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.image-cfi-range.start-position" => Some(("currentVersionRanges.imageCfiRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.image-cfi-range.end-position" => Some(("currentVersionRanges.imageCfiRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.image-cfi-range.start-offset" => Some(("currentVersionRanges.imageCfiRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.image-cfi-range.end-offset" => Some(("currentVersionRanges.imageCfiRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.gb-text-range.start-position" => Some(("currentVersionRanges.gbTextRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.gb-text-range.end-position" => Some(("currentVersionRanges.gbTextRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.gb-text-range.start-offset" => Some(("currentVersionRanges.gbTextRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.gb-text-range.end-offset" => Some(("currentVersionRanges.gbTextRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.content-version" => Some(("currentVersionRanges.contentVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.cfi-range.start-position" => Some(("currentVersionRanges.cfiRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.cfi-range.end-position" => Some(("currentVersionRanges.cfiRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.cfi-range.start-offset" => Some(("currentVersionRanges.cfiRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.cfi-range.end-offset" => Some(("currentVersionRanges.cfiRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.gb-image-range.start-position" => Some(("currentVersionRanges.gbImageRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.gb-image-range.end-position" => Some(("currentVersionRanges.gbImageRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.gb-image-range.start-offset" => Some(("currentVersionRanges.gbImageRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "current-version-ranges.gb-image-range.end-offset" => Some(("currentVersionRanges.gbImageRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "after-selected-text" => Some(("afterSelectedText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "volume-id" => Some(("volumeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "layer-summary.limit-type" => Some(("layerSummary.limitType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "layer-summary.remaining-character-count" => Some(("layerSummary.remainingCharacterCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "layer-summary.allowed-character-count" => Some(("layerSummary.allowedCharacterCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "selected-text" => Some(("selectedText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.image-cfi-range.start-position" => Some(("clientVersionRanges.imageCfiRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.image-cfi-range.end-position" => Some(("clientVersionRanges.imageCfiRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.image-cfi-range.start-offset" => Some(("clientVersionRanges.imageCfiRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.image-cfi-range.end-offset" => Some(("clientVersionRanges.imageCfiRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.gb-text-range.start-position" => Some(("clientVersionRanges.gbTextRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.gb-text-range.end-position" => Some(("clientVersionRanges.gbTextRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.gb-text-range.start-offset" => Some(("clientVersionRanges.gbTextRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.gb-text-range.end-offset" => Some(("clientVersionRanges.gbTextRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.content-version" => Some(("clientVersionRanges.contentVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.cfi-range.start-position" => Some(("clientVersionRanges.cfiRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "before-selected-text" => Some(("beforeSelectedText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.cfi-range.end-offset" => Some(("clientVersionRanges.cfiRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "client-version-ranges.cfi-range.end-position" => Some(("clientVersionRanges.cfiRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "client-version-ranges.cfi-range.start-offset" => Some(("clientVersionRanges.cfiRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.cfi-range.end-offset" => Some(("clientVersionRanges.cfiRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.gb-image-range.start-position" => Some(("clientVersionRanges.gbImageRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.cfi-range.start-position" => Some(("clientVersionRanges.cfiRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.content-version" => Some(("clientVersionRanges.contentVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.gb-image-range.end-offset" => Some(("clientVersionRanges.gbImageRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "client-version-ranges.gb-image-range.end-position" => Some(("clientVersionRanges.gbImageRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "client-version-ranges.gb-image-range.start-offset" => Some(("clientVersionRanges.gbImageRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "client-version-ranges.gb-image-range.end-offset" => Some(("clientVersionRanges.gbImageRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "layer-id" => Some(("layerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "highlight-style" => Some(("highlightStyle", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.gb-image-range.start-position" => Some(("clientVersionRanges.gbImageRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.gb-text-range.end-offset" => Some(("clientVersionRanges.gbTextRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.gb-text-range.end-position" => Some(("clientVersionRanges.gbTextRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.gb-text-range.start-offset" => Some(("clientVersionRanges.gbTextRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.gb-text-range.start-position" => Some(("clientVersionRanges.gbTextRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.image-cfi-range.end-offset" => Some(("clientVersionRanges.imageCfiRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.image-cfi-range.end-position" => Some(("clientVersionRanges.imageCfiRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.image-cfi-range.start-offset" => Some(("clientVersionRanges.imageCfiRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "client-version-ranges.image-cfi-range.start-position" => Some(("clientVersionRanges.imageCfiRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "created" => Some(("created", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.cfi-range.end-offset" => Some(("currentVersionRanges.cfiRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.cfi-range.end-position" => Some(("currentVersionRanges.cfiRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.cfi-range.start-offset" => Some(("currentVersionRanges.cfiRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.cfi-range.start-position" => Some(("currentVersionRanges.cfiRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.content-version" => Some(("currentVersionRanges.contentVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.gb-image-range.end-offset" => Some(("currentVersionRanges.gbImageRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.gb-image-range.end-position" => Some(("currentVersionRanges.gbImageRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.gb-image-range.start-offset" => Some(("currentVersionRanges.gbImageRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.gb-image-range.start-position" => Some(("currentVersionRanges.gbImageRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.gb-text-range.end-offset" => Some(("currentVersionRanges.gbTextRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.gb-text-range.end-position" => Some(("currentVersionRanges.gbTextRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.gb-text-range.start-offset" => Some(("currentVersionRanges.gbTextRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.gb-text-range.start-position" => Some(("currentVersionRanges.gbTextRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.image-cfi-range.end-offset" => Some(("currentVersionRanges.imageCfiRange.endOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.image-cfi-range.end-position" => Some(("currentVersionRanges.imageCfiRange.endPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.image-cfi-range.start-offset" => Some(("currentVersionRanges.imageCfiRange.startOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "current-version-ranges.image-cfi-range.start-position" => Some(("currentVersionRanges.imageCfiRange.startPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deleted" => Some(("deleted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "highlight-style" => Some(("highlightStyle", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "layer-id" => Some(("layerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "layer-summary.allowed-character-count" => Some(("layerSummary.allowedCharacterCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "layer-summary.limit-type" => Some(("layerSummary.limitType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "layer-summary.remaining-character-count" => Some(("layerSummary.remainingCharacterCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "page-ids" => Some(("pageIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "selected-text" => Some(("selectedText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "self-link" => Some(("selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "updated" => Some(("updated", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "volume-id" => Some(("volumeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["after-selected-text", "allowed-character-count", "before-selected-text", "cfi-range", "client-version-ranges", "content-version", "created", "current-version-ranges", "data", "deleted", "end-offset", "end-position", "gb-image-range", "gb-text-range", "highlight-style", "id", "image-cfi-range", "kind", "layer-id", "layer-summary", "limit-type", "page-ids", "remaining-character-count", "selected-text", "self-link", "start-offset", "start-position", "updated", "volume-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1977,7 +1979,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["source", "reason", "volume-id"].iter().map(|v|*v));
+                                                                           v.extend(["reason", "volume-id", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2207,7 +2209,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["volume-position", "volume-id", "source"].iter().map(|v|*v));
+                                                                           v.extend(["source", "volume-id", "volume-position"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2269,7 +2271,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["source", "reason", "volume-id"].iter().map(|v|*v));
+                                                                           v.extend(["reason", "volume-id", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2343,7 +2345,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["projection", "country", "show-preorders", "max-results", "q", "source", "start-index"].iter().map(|v|*v));
+                                                                           v.extend(["start-index", "source", "country", "projection", "max-results", "show-preorders", "q"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2402,7 +2404,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["source", "content-version"].iter().map(|v|*v));
+                                                                           v.extend(["content-version", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2473,7 +2475,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["device-cookie", "timestamp", "source", "content-version", "action", "position"].iter().map(|v|*v));
+                                                                           v.extend(["source", "content-version", "timestamp", "action", "position", "device-cookie"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2535,7 +2537,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["notification-id", "source", "locale"].iter().map(|v|*v));
+                                                                           v.extend(["locale", "notification-id", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2659,7 +2661,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["locale", "page-token", "max-allowed-maturity-rating", "category-id", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "locale", "category-id", "max-allowed-maturity-rating", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2721,7 +2723,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["locale", "source", "max-allowed-maturity-rating"].iter().map(|v|*v));
+                                                                           v.extend(["locale", "max-allowed-maturity-rating", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2798,7 +2800,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["product", "volume-id", "offer-id", "android-id", "device", "model", "serial", "manufacturer"].iter().map(|v|*v));
+                                                                           v.extend(["product", "volume-id", "device", "manufacturer", "model", "serial", "offer-id", "android-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2872,7 +2874,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["product", "offer-id", "android-id", "device", "model", "serial", "manufacturer"].iter().map(|v|*v));
+                                                                           v.extend(["product", "device", "manufacturer", "model", "serial", "offer-id", "android-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2943,7 +2945,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["product", "android-id", "device", "model", "serial", "manufacturer"].iter().map(|v|*v));
+                                                                           v.extend(["product", "device", "manufacturer", "model", "serial", "android-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3126,7 +3128,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["locale", "source", "max-allowed-maturity-rating", "association"].iter().map(|v|*v));
+                                                                           v.extend(["association", "locale", "max-allowed-maturity-rating", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3197,7 +3199,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["user-library-consistent-read", "projection", "country", "source", "include-non-comics-series", "partner"].iter().map(|v|*v));
+                                                                           v.extend(["include-non-comics-series", "source", "partner", "country", "projection", "user-library-consistent-read"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3292,7 +3294,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "filter", "projection", "library-restrict", "lang-restrict", "print-type", "show-preorders", "max-results", "q", "source", "start-index", "max-allowed-maturity-rating", "download", "partner"].iter().map(|v|*v));
+                                                                           v.extend(["start-index", "source", "partner", "projection", "print-type", "max-results", "lang-restrict", "filter", "show-preorders", "max-allowed-maturity-rating", "download", "library-restrict", "q", "order-by"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3366,7 +3368,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["locale", "country", "acquire-method", "max-results", "source", "start-index", "processing-state"].iter().map(|v|*v));
+                                                                           v.extend(["start-index", "locale", "source", "country", "processing-state", "acquire-method", "max-results"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3428,7 +3430,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["locale", "source", "max-allowed-maturity-rating"].iter().map(|v|*v));
+                                                                           v.extend(["locale", "max-allowed-maturity-rating", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3493,7 +3495,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["locale", "source", "volume-id", "rating"].iter().map(|v|*v));
+                                                                           v.extend(["rating", "volume-id", "source", "locale"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3564,7 +3566,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["locale", "volume-id", "max-results", "source", "start-index", "processing-state"].iter().map(|v|*v));
+                                                                           v.extend(["start-index", "locale", "source", "processing-state", "volume-id", "max-results"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3879,12 +3881,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "books1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "books1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

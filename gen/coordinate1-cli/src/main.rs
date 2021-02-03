@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_coordinate1 as api;
+extern crate google_coordinate1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_coordinate1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Coordinate<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::Coordinate<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -173,20 +175,20 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.kind" => Some(("state.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.customer-name" => Some(("state.customerName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.title" => Some(("state.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.note" => Some(("state.note", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "state.assignee" => Some(("state.assignee", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.customer-phone-number" => Some(("state.customerPhoneNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.location.lat" => Some(("state.location.lat", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "state.location.kind" => Some(("state.location.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.location.address-line" => Some(("state.location.addressLine", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "state.location.lng" => Some(("state.location.lng", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "state.progress" => Some(("state.progress", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "state.custom-fields.kind" => Some(("state.customFields.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state.customer-name" => Some(("state.customerName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state.customer-phone-number" => Some(("state.customerPhoneNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state.kind" => Some(("state.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state.location.address-line" => Some(("state.location.addressLine", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "state.location.kind" => Some(("state.location.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state.location.lat" => Some(("state.location.lat", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "state.location.lng" => Some(("state.location.lng", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "state.note" => Some(("state.note", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "state.progress" => Some(("state.progress", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state.title" => Some(("state.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["address-line", "assignee", "custom-fields", "customer-name", "customer-phone-number", "id", "kind", "lat", "lng", "location", "note", "progress", "state", "title"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -232,7 +234,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["note", "custom-field", "customer-phone-number", "customer-name", "assignee"].iter().map(|v|*v));
+                                                                           v.extend(["note", "customer-name", "custom-field", "customer-phone-number", "assignee"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -297,7 +299,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "min-modified-timestamp-ms", "max-results", "omit-job-changes"].iter().map(|v|*v));
+                                                                           v.extend(["min-modified-timestamp-ms", "page-token", "max-results", "omit-job-changes"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -354,20 +356,20 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.kind" => Some(("state.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.customer-name" => Some(("state.customerName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.title" => Some(("state.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.note" => Some(("state.note", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "state.assignee" => Some(("state.assignee", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.customer-phone-number" => Some(("state.customerPhoneNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.location.lat" => Some(("state.location.lat", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "state.location.kind" => Some(("state.location.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.location.address-line" => Some(("state.location.addressLine", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "state.location.lng" => Some(("state.location.lng", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "state.progress" => Some(("state.progress", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "state.custom-fields.kind" => Some(("state.customFields.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state.customer-name" => Some(("state.customerName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state.customer-phone-number" => Some(("state.customerPhoneNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state.kind" => Some(("state.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state.location.address-line" => Some(("state.location.addressLine", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "state.location.kind" => Some(("state.location.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state.location.lat" => Some(("state.location.lat", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "state.location.lng" => Some(("state.location.lng", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "state.note" => Some(("state.note", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "state.progress" => Some(("state.progress", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state.title" => Some(("state.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["address-line", "assignee", "custom-fields", "customer-name", "customer-phone-number", "id", "kind", "lat", "lng", "location", "note", "progress", "state", "title"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -426,7 +428,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["customer-name", "title", "note", "assignee", "customer-phone-number", "address", "lat", "progress", "lng", "custom-field"].iter().map(|v|*v));
+                                                                           v.extend(["lat", "note", "title", "address", "customer-name", "custom-field", "progress", "customer-phone-number", "lng", "assignee"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -483,20 +485,20 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.kind" => Some(("state.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.customer-name" => Some(("state.customerName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.title" => Some(("state.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.note" => Some(("state.note", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "state.assignee" => Some(("state.assignee", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.customer-phone-number" => Some(("state.customerPhoneNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.location.lat" => Some(("state.location.lat", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "state.location.kind" => Some(("state.location.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state.location.address-line" => Some(("state.location.addressLine", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "state.location.lng" => Some(("state.location.lng", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "state.progress" => Some(("state.progress", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "state.custom-fields.kind" => Some(("state.customFields.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state.customer-name" => Some(("state.customerName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state.customer-phone-number" => Some(("state.customerPhoneNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state.kind" => Some(("state.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state.location.address-line" => Some(("state.location.addressLine", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "state.location.kind" => Some(("state.location.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state.location.lat" => Some(("state.location.lat", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "state.location.lng" => Some(("state.location.lng", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "state.note" => Some(("state.note", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "state.progress" => Some(("state.progress", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state.title" => Some(("state.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["address-line", "assignee", "custom-fields", "customer-name", "customer-phone-number", "id", "kind", "lat", "lng", "location", "note", "progress", "state", "title"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -555,7 +557,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["customer-name", "title", "note", "assignee", "customer-phone-number", "address", "lat", "progress", "lng", "custom-field"].iter().map(|v|*v));
+                                                                           v.extend(["lat", "note", "title", "address", "customer-name", "custom-field", "progress", "customer-phone-number", "lng", "assignee"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -723,11 +725,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "duration" => Some(("duration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "all-day" => Some(("allDay", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "start-time" => Some(("startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "duration" => Some(("duration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "end-time" => Some(("endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "start-time" => Some(("startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["all-day", "duration", "end-time", "kind", "start-time"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -768,7 +770,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["duration", "all-day", "end-time", "start-time"].iter().map(|v|*v));
+                                                                           v.extend(["all-day", "start-time", "duration", "end-time"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -825,11 +827,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "duration" => Some(("duration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "all-day" => Some(("allDay", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "start-time" => Some(("startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "duration" => Some(("duration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "end-time" => Some(("endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "start-time" => Some(("startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["all-day", "duration", "end-time", "kind", "start-time"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -870,7 +872,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["duration", "all-day", "end-time", "start-time"].iter().map(|v|*v));
+                                                                           v.extend(["all-day", "start-time", "duration", "end-time"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -932,7 +934,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["admin", "worker", "dispatcher"].iter().map(|v|*v));
+                                                                           v.extend(["worker", "admin", "dispatcher"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1126,12 +1128,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "coordinate1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "coordinate1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

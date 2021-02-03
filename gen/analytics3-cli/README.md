@@ -99,7 +99,7 @@ analytics3 [options]
                 uploads-delete-upload-data <account-id> <web-property-id> <custom-data-source-id> (-r <kv>)... [-p <v>]...
                 uploads-get <account-id> <web-property-id> <custom-data-source-id> <upload-id> [-p <v>]... [-o <out>]
                 uploads-list <account-id> <web-property-id> <custom-data-source-id> [-p <v>]... [-o <out>]
-                uploads-upload-data <account-id> <web-property-id> <custom-data-source-id> (-u (simple|resumable) -f <file> [-m <mime>]) [-p <v>]... [-o <out>]
+                uploads-upload-data <account-id> <web-property-id> <custom-data-source-id> (-u (resumable|simple) -f <file> [-m <mime>]) [-p <v>]... [-o <out>]
                 web-property-ad-words-links-delete <account-id> <web-property-id> <web-property-ad-words-link-id> [-p <v>]...
                 web-property-ad-words-links-get <account-id> <web-property-id> <web-property-ad-words-link-id> [-p <v>]... [-o <out>]
                 web-property-ad-words-links-insert <account-id> <web-property-id> (-r <kv>)... [-p <v>]... [-o <out>]

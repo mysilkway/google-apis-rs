@@ -18,6 +18,7 @@ make:
     - source: README.md
     - source: ../LICENSE.md
     - source: ../Cargo.toml
+    - source: ../rustfmt.toml
     - source: lib.rs
       output_dir: src
     - source: api.rs

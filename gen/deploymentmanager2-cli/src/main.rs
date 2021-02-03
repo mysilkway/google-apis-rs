@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_deploymentmanager2 as api;
+extern crate google_deploymentmanager2;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_deploymentmanager2::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::DeploymentManager<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::DeploymentManager<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -314,38 +316,38 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "update.description" => Some(("update.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "update.manifest" => Some(("update.manifest", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "manifest" => Some(("manifest", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "insert-time" => Some(("insertTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "fingerprint" => Some(("fingerprint", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.status" => Some(("operation.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.kind" => Some(("operation.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.status-message" => Some(("operation.statusMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "insert-time" => Some(("insertTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "manifest" => Some(("manifest", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.client-operation-id" => Some(("operation.clientOperationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.creation-timestamp" => Some(("operation.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation.description" => Some(("operation.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.zone" => Some(("operation.zone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.end-time" => Some(("operation.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.http-error-message" => Some(("operation.httpErrorMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation.http-error-status-code" => Some(("operation.httpErrorStatusCode", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "operation.region" => Some(("operation.region", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.id" => Some(("operation.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation.insert-time" => Some(("operation.insertTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.target-id" => Some(("operation.targetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.kind" => Some(("operation.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.name" => Some(("operation.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation.operation-type" => Some(("operation.operationType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.progress" => Some(("operation.progress", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "operation.region" => Some(("operation.region", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.self-link" => Some(("operation.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.start-time" => Some(("operation.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.status" => Some(("operation.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.status-message" => Some(("operation.statusMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.target-id" => Some(("operation.targetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation.target-link" => Some(("operation.targetLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation.user" => Some(("operation.user", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.start-time" => Some(("operation.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.http-error-message" => Some(("operation.httpErrorMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.progress" => Some(("operation.progress", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "operation.client-operation-id" => Some(("operation.clientOperationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.end-time" => Some(("operation.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.creation-timestamp" => Some(("operation.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.id" => Some(("operation.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.self-link" => Some(("operation.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.name" => Some(("operation.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "target.config.content" => Some(("target.config.content", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.zone" => Some(("operation.zone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "self-link" => Some(("selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "target.config.content" => Some(("target.config.content", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update.description" => Some(("update.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update.manifest" => Some(("update.manifest", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["client-operation-id", "config", "content", "creation-timestamp", "description", "end-time", "fingerprint", "http-error-message", "http-error-status-code", "id", "insert-time", "kind", "manifest", "name", "operation", "operation-type", "progress", "region", "self-link", "start-time", "status", "status-message", "target", "target-id", "target-link", "update", "update-time", "user", "zone"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -445,7 +447,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "filter", "max-results"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "max-results", "filter", "order-by"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -502,38 +504,38 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "update.description" => Some(("update.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "update.manifest" => Some(("update.manifest", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "manifest" => Some(("manifest", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "insert-time" => Some(("insertTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "fingerprint" => Some(("fingerprint", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.status" => Some(("operation.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.kind" => Some(("operation.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.status-message" => Some(("operation.statusMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "insert-time" => Some(("insertTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "manifest" => Some(("manifest", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.client-operation-id" => Some(("operation.clientOperationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.creation-timestamp" => Some(("operation.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation.description" => Some(("operation.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.zone" => Some(("operation.zone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.end-time" => Some(("operation.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.http-error-message" => Some(("operation.httpErrorMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation.http-error-status-code" => Some(("operation.httpErrorStatusCode", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "operation.region" => Some(("operation.region", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.id" => Some(("operation.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation.insert-time" => Some(("operation.insertTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.target-id" => Some(("operation.targetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.kind" => Some(("operation.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.name" => Some(("operation.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation.operation-type" => Some(("operation.operationType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.progress" => Some(("operation.progress", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "operation.region" => Some(("operation.region", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.self-link" => Some(("operation.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.start-time" => Some(("operation.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.status" => Some(("operation.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.status-message" => Some(("operation.statusMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.target-id" => Some(("operation.targetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation.target-link" => Some(("operation.targetLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation.user" => Some(("operation.user", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.start-time" => Some(("operation.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.http-error-message" => Some(("operation.httpErrorMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.progress" => Some(("operation.progress", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "operation.client-operation-id" => Some(("operation.clientOperationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.end-time" => Some(("operation.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.creation-timestamp" => Some(("operation.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.id" => Some(("operation.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.self-link" => Some(("operation.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.name" => Some(("operation.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "target.config.content" => Some(("target.config.content", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.zone" => Some(("operation.zone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "self-link" => Some(("selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "target.config.content" => Some(("target.config.content", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update.description" => Some(("update.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update.manifest" => Some(("update.manifest", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["client-operation-id", "config", "content", "creation-timestamp", "description", "end-time", "fingerprint", "http-error-message", "http-error-status-code", "id", "insert-time", "kind", "manifest", "name", "operation", "operation-type", "progress", "region", "self-link", "start-time", "status", "status-message", "target", "target-id", "target-link", "update", "update-time", "user", "zone"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -628,10 +630,10 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "policy.version" => Some(("policy.version", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "policy.etag" => Some(("policy.etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "policy.iam-owned" => Some(("policy.iamOwned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "policy.version" => Some(("policy.version", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["etag", "iam-owned", "policy", "version"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -886,38 +888,38 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "update.description" => Some(("update.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "update.manifest" => Some(("update.manifest", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "manifest" => Some(("manifest", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "insert-time" => Some(("insertTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "fingerprint" => Some(("fingerprint", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.status" => Some(("operation.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.kind" => Some(("operation.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.status-message" => Some(("operation.statusMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "insert-time" => Some(("insertTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "manifest" => Some(("manifest", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.client-operation-id" => Some(("operation.clientOperationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.creation-timestamp" => Some(("operation.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation.description" => Some(("operation.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.zone" => Some(("operation.zone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.end-time" => Some(("operation.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.http-error-message" => Some(("operation.httpErrorMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation.http-error-status-code" => Some(("operation.httpErrorStatusCode", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "operation.region" => Some(("operation.region", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.id" => Some(("operation.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation.insert-time" => Some(("operation.insertTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.target-id" => Some(("operation.targetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.kind" => Some(("operation.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.name" => Some(("operation.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation.operation-type" => Some(("operation.operationType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.progress" => Some(("operation.progress", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "operation.region" => Some(("operation.region", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.self-link" => Some(("operation.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.start-time" => Some(("operation.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.status" => Some(("operation.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.status-message" => Some(("operation.statusMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.target-id" => Some(("operation.targetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation.target-link" => Some(("operation.targetLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "operation.user" => Some(("operation.user", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.start-time" => Some(("operation.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.http-error-message" => Some(("operation.httpErrorMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.progress" => Some(("operation.progress", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "operation.client-operation-id" => Some(("operation.clientOperationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.end-time" => Some(("operation.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.creation-timestamp" => Some(("operation.creationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.id" => Some(("operation.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.self-link" => Some(("operation.selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation.name" => Some(("operation.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "target.config.content" => Some(("target.config.content", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation.zone" => Some(("operation.zone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "self-link" => Some(("selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "target.config.content" => Some(("target.config.content", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update.description" => Some(("update.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update.manifest" => Some(("update.manifest", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["client-operation-id", "config", "content", "creation-timestamp", "description", "end-time", "fingerprint", "http-error-message", "http-error-status-code", "id", "insert-time", "kind", "manifest", "name", "operation", "operation-type", "progress", "region", "self-link", "start-time", "status", "status-message", "target", "target-id", "target-link", "update", "update-time", "user", "zone"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1072,7 +1074,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "filter", "max-results"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "max-results", "filter", "order-by"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1189,7 +1191,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "filter", "max-results"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "max-results", "filter", "order-by"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1306,7 +1308,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "filter", "max-results"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "max-results", "filter", "order-by"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1371,7 +1373,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "filter", "max-results"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "max-results", "filter", "order-by"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1523,12 +1525,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "deploymentmanager2-secret.json",
+            match client::application_secret_from_directory(&config_dir, "deploymentmanager2-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

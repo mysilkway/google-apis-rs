@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_androidmanagement1 as api;
+extern crate google_androidmanagement1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_androidmanagement1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::AndroidManagement<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::AndroidManagement<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -125,14 +127,14 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-auto-approval-enabled" => Some(("appAutoApprovalEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "enabled-notification-types" => Some(("enabledNotificationTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "logo.url" => Some(("logo.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "logo.sha256-hash" => Some(("logo.sha256Hash", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "enterprise-display-name" => Some(("enterpriseDisplayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "logo.sha256-hash" => Some(("logo.sha256Hash", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "logo.url" => Some(("logo.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "primary-color" => Some(("primaryColor", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "pubsub-topic" => Some(("pubsubTopic", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "app-auto-approval-enabled" => Some(("appAutoApprovalEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["app-auto-approval-enabled", "enabled-notification-types", "enterprise-display-name", "logo", "name", "primary-color", "pubsub-topic", "sha256-hash", "url"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -170,7 +172,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["project-id", "enterprise-token", "signup-url-name"].iter().map(|v|*v));
+                                                                           v.extend(["project-id", "signup-url-name", "enterprise-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -338,13 +340,13 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "user-name" => Some(("userName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "reset-password-flags" => Some(("resetPasswordFlags", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "new-password" => Some(("newPassword", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "error-code" => Some(("errorCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "duration" => Some(("duration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "duration" => Some(("duration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "error-code" => Some(("errorCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "new-password" => Some(("newPassword", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "reset-password-flags" => Some(("resetPasswordFlags", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "user-name" => Some(("userName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["create-time", "duration", "error-code", "new-password", "reset-password-flags", "type", "user-name"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -706,66 +708,66 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "applied-policy-name" => Some(("appliedPolicyName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "api-level" => Some(("apiLevel", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "policy-name" => Some(("policyName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "disabled-reason.default-message" => Some(("disabledReason.defaultMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "disabled-reason.localized-messages" => Some(("disabledReason.localizedMessages", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "enrollment-token-data" => Some(("enrollmentTokenData", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "software-info.primary-language-code" => Some(("softwareInfo.primaryLanguageCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "software-info.android-build-time" => Some(("softwareInfo.androidBuildTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "software-info.android-build-number" => Some(("softwareInfo.androidBuildNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "software-info.device-build-signature" => Some(("softwareInfo.deviceBuildSignature", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "software-info.android-device-policy-version-code" => Some(("softwareInfo.androidDevicePolicyVersionCode", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "software-info.security-patch-level" => Some(("softwareInfo.securityPatchLevel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "software-info.android-device-policy-version-name" => Some(("softwareInfo.androidDevicePolicyVersionName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "software-info.device-kernel-version" => Some(("softwareInfo.deviceKernelVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "software-info.android-version" => Some(("softwareInfo.androidVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "software-info.bootloader-version" => Some(("softwareInfo.bootloaderVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "policy-compliant" => Some(("policyCompliant", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "last-policy-compliance-report-time" => Some(("lastPolicyComplianceReportTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device-settings.development-settings-enabled" => Some(("deviceSettings.developmentSettingsEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "device-settings.unknown-sources-enabled" => Some(("deviceSettings.unknownSourcesEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "device-settings.verify-apps-enabled" => Some(("deviceSettings.verifyAppsEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "applied-policy-name" => Some(("appliedPolicyName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "applied-policy-version" => Some(("appliedPolicyVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "applied-state" => Some(("appliedState", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device-settings.adb-enabled" => Some(("deviceSettings.adbEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "device-settings.is-encrypted" => Some(("deviceSettings.isEncrypted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "device-settings.development-settings-enabled" => Some(("deviceSettings.developmentSettingsEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "device-settings.encryption-status" => Some(("deviceSettings.encryptionStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device-settings.is-device-secure" => Some(("deviceSettings.isDeviceSecure", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "last-status-report-time" => Some(("lastStatusReportTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hardware-info.skin-shutdown-temperatures" => Some(("hardwareInfo.skinShutdownTemperatures", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Vec })),
+                    "device-settings.is-encrypted" => Some(("deviceSettings.isEncrypted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "device-settings.unknown-sources-enabled" => Some(("deviceSettings.unknownSourcesEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "device-settings.verify-apps-enabled" => Some(("deviceSettings.verifyAppsEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "disabled-reason.default-message" => Some(("disabledReason.defaultMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "disabled-reason.localized-messages" => Some(("disabledReason.localizedMessages", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "enrollment-time" => Some(("enrollmentTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "enrollment-token-data" => Some(("enrollmentTokenData", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "enrollment-token-name" => Some(("enrollmentTokenName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "hardware-info.battery-shutdown-temperatures" => Some(("hardwareInfo.batteryShutdownTemperatures", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Vec })),
+                    "hardware-info.battery-throttling-temperatures" => Some(("hardwareInfo.batteryThrottlingTemperatures", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Vec })),
+                    "hardware-info.brand" => Some(("hardwareInfo.brand", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "hardware-info.cpu-shutdown-temperatures" => Some(("hardwareInfo.cpuShutdownTemperatures", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Vec })),
                     "hardware-info.cpu-throttling-temperatures" => Some(("hardwareInfo.cpuThrottlingTemperatures", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Vec })),
-                    "hardware-info.battery-throttling-temperatures" => Some(("hardwareInfo.batteryThrottlingTemperatures", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Vec })),
-                    "hardware-info.serial-number" => Some(("hardwareInfo.serialNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "hardware-info.device-baseband-version" => Some(("hardwareInfo.deviceBasebandVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "hardware-info.gpu-shutdown-temperatures" => Some(("hardwareInfo.gpuShutdownTemperatures", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Vec })),
                     "hardware-info.gpu-throttling-temperatures" => Some(("hardwareInfo.gpuThrottlingTemperatures", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Vec })),
                     "hardware-info.hardware" => Some(("hardwareInfo.hardware", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hardware-info.skin-throttling-temperatures" => Some(("hardwareInfo.skinThrottlingTemperatures", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Vec })),
-                    "hardware-info.battery-shutdown-temperatures" => Some(("hardwareInfo.batteryShutdownTemperatures", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Vec })),
-                    "hardware-info.device-baseband-version" => Some(("hardwareInfo.deviceBasebandVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hardware-info.model" => Some(("hardwareInfo.model", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hardware-info.brand" => Some(("hardwareInfo.brand", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "hardware-info.manufacturer" => Some(("hardwareInfo.manufacturer", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "security-posture.device-posture" => Some(("securityPosture.devicePosture", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "network-info.imei" => Some(("networkInfo.imei", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "network-info.network-operator-name" => Some(("networkInfo.networkOperatorName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "network-info.meid" => Some(("networkInfo.meid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "network-info.wifi-mac-address" => Some(("networkInfo.wifiMacAddress", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "management-mode" => Some(("managementMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "enrollment-token-name" => Some(("enrollmentTokenName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "user.account-identifier" => Some(("user.accountIdentifier", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "ownership" => Some(("ownership", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "applied-policy-version" => Some(("appliedPolicyVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "user-name" => Some(("userName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "previous-device-names" => Some(("previousDeviceNames", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "hardware-info.model" => Some(("hardwareInfo.model", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "hardware-info.serial-number" => Some(("hardwareInfo.serialNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "hardware-info.skin-shutdown-temperatures" => Some(("hardwareInfo.skinShutdownTemperatures", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Vec })),
+                    "hardware-info.skin-throttling-temperatures" => Some(("hardwareInfo.skinThrottlingTemperatures", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Vec })),
+                    "last-policy-compliance-report-time" => Some(("lastPolicyComplianceReportTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "last-policy-sync-time" => Some(("lastPolicySyncTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "applied-state" => Some(("appliedState", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "system-properties" => Some(("systemProperties", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "last-status-report-time" => Some(("lastStatusReportTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "management-mode" => Some(("managementMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "memory-info.total-internal-storage" => Some(("memoryInfo.totalInternalStorage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "memory-info.total-ram" => Some(("memoryInfo.totalRam", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "enrollment-time" => Some(("enrollmentTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "network-info.imei" => Some(("networkInfo.imei", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "network-info.meid" => Some(("networkInfo.meid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "network-info.network-operator-name" => Some(("networkInfo.networkOperatorName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "network-info.wifi-mac-address" => Some(("networkInfo.wifiMacAddress", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "ownership" => Some(("ownership", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "policy-compliant" => Some(("policyCompliant", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "policy-name" => Some(("policyName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "previous-device-names" => Some(("previousDeviceNames", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "security-posture.device-posture" => Some(("securityPosture.devicePosture", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "software-info.android-build-number" => Some(("softwareInfo.androidBuildNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "software-info.android-build-time" => Some(("softwareInfo.androidBuildTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "software-info.android-device-policy-version-code" => Some(("softwareInfo.androidDevicePolicyVersionCode", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "software-info.android-device-policy-version-name" => Some(("softwareInfo.androidDevicePolicyVersionName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "software-info.android-version" => Some(("softwareInfo.androidVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "software-info.bootloader-version" => Some(("softwareInfo.bootloaderVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "software-info.device-build-signature" => Some(("softwareInfo.deviceBuildSignature", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "software-info.device-kernel-version" => Some(("softwareInfo.deviceKernelVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "software-info.primary-language-code" => Some(("softwareInfo.primaryLanguageCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "software-info.security-patch-level" => Some(("softwareInfo.securityPatchLevel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "system-properties" => Some(("systemProperties", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "user.account-identifier" => Some(("user.accountIdentifier", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "user-name" => Some(("userName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["account-identifier", "adb-enabled", "android-build-number", "android-build-time", "android-device-policy-version-code", "android-device-policy-version-name", "android-version", "api-level", "applied-policy-name", "applied-policy-version", "applied-state", "battery-shutdown-temperatures", "battery-throttling-temperatures", "bootloader-version", "brand", "cpu-shutdown-temperatures", "cpu-throttling-temperatures", "default-message", "development-settings-enabled", "device-baseband-version", "device-build-signature", "device-kernel-version", "device-posture", "device-settings", "disabled-reason", "encryption-status", "enrollment-time", "enrollment-token-data", "enrollment-token-name", "gpu-shutdown-temperatures", "gpu-throttling-temperatures", "hardware", "hardware-info", "imei", "is-device-secure", "is-encrypted", "last-policy-compliance-report-time", "last-policy-sync-time", "last-status-report-time", "localized-messages", "management-mode", "manufacturer", "meid", "memory-info", "model", "name", "network-info", "network-operator-name", "ownership", "policy-compliant", "policy-name", "previous-device-names", "primary-language-code", "security-patch-level", "security-posture", "serial-number", "skin-shutdown-temperatures", "skin-throttling-temperatures", "software-info", "state", "system-properties", "total-internal-storage", "total-ram", "unknown-sources-enabled", "user", "user-name", "verify-apps-enabled", "wifi-mac-address"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -855,15 +857,15 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "additional-data" => Some(("additionalData", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "allow-personal-usage" => Some(("allowPersonalUsage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "duration" => Some(("duration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "expiration-timestamp" => Some(("expirationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "one-time-only" => Some(("oneTimeOnly", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "policy-name" => Some(("policyName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "value" => Some(("value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "qr-code" => Some(("qrCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "user.account-identifier" => Some(("user.accountIdentifier", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "duration" => Some(("duration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "expiration-timestamp" => Some(("expirationTimestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "allow-personal-usage" => Some(("allowPersonalUsage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "value" => Some(("value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["account-identifier", "additional-data", "allow-personal-usage", "duration", "expiration-timestamp", "name", "one-time-only", "policy-name", "qr-code", "user", "value"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1052,14 +1054,14 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-auto-approval-enabled" => Some(("appAutoApprovalEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "enabled-notification-types" => Some(("enabledNotificationTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "logo.url" => Some(("logo.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "logo.sha256-hash" => Some(("logo.sha256Hash", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "enterprise-display-name" => Some(("enterpriseDisplayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "logo.sha256-hash" => Some(("logo.sha256Hash", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "logo.url" => Some(("logo.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "primary-color" => Some(("primaryColor", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "pubsub-topic" => Some(("pubsubTopic", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "app-auto-approval-enabled" => Some(("appAutoApprovalEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["app-auto-approval-enabled", "enabled-notification-types", "enterprise-display-name", "logo", "name", "primary-color", "pubsub-topic", "sha256-hash", "url"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1311,116 +1313,116 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "kiosk-customization.status-bar" => Some(("kioskCustomization.statusBar", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kiosk-customization.device-settings" => Some(("kioskCustomization.deviceSettings", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kiosk-customization.system-navigation" => Some(("kioskCustomization.systemNavigation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kiosk-customization.power-button-actions" => Some(("kioskCustomization.powerButtonActions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kiosk-customization.system-error-warnings" => Some(("kioskCustomization.systemErrorWarnings", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version" => Some(("version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "data-roaming-disabled" => Some(("dataRoamingDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "network-reset-disabled" => Some(("networkResetDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "share-location-disabled" => Some(("shareLocationDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "camera-disabled" => Some(("cameraDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "wifi-configs-lockdown-enabled" => Some(("wifiConfigsLockdownEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "minimum-api-level" => Some(("minimumApiLevel", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "permitted-input-methods.package-names" => Some(("permittedInputMethods.packageNames", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "status-reporting-settings.network-info-enabled" => Some(("statusReportingSettings.networkInfoEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "status-reporting-settings.system-properties-enabled" => Some(("statusReportingSettings.systemPropertiesEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "status-reporting-settings.memory-info-enabled" => Some(("statusReportingSettings.memoryInfoEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "status-reporting-settings.hardware-status-enabled" => Some(("statusReportingSettings.hardwareStatusEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "status-reporting-settings.device-settings-enabled" => Some(("statusReportingSettings.deviceSettingsEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "status-reporting-settings.display-info-enabled" => Some(("statusReportingSettings.displayInfoEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "status-reporting-settings.power-management-events-enabled" => Some(("statusReportingSettings.powerManagementEventsEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "status-reporting-settings.application-reporting-settings.include-removed-apps" => Some(("statusReportingSettings.applicationReportingSettings.includeRemovedApps", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "status-reporting-settings.software-info-enabled" => Some(("statusReportingSettings.softwareInfoEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "status-reporting-settings.application-reports-enabled" => Some(("statusReportingSettings.applicationReportsEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "kiosk-custom-launcher-enabled" => Some(("kioskCustomLauncherEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "bluetooth-config-disabled" => Some(("bluetoothConfigDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "location-mode" => Some(("locationMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "mobile-networks-config-disabled" => Some(("mobileNetworksConfigDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "advanced-security-overrides.untrusted-apps-policy" => Some(("advancedSecurityOverrides.untrustedAppsPolicy", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "install-unknown-sources-allowed" => Some(("installUnknownSourcesAllowed", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "block-applications-enabled" => Some(("blockApplicationsEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "personal-usage-policies.max-days-with-work-off" => Some(("personalUsagePolicies.maxDaysWithWorkOff", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "personal-usage-policies.personal-play-store-mode" => Some(("personalUsagePolicies.personalPlayStoreMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "personal-usage-policies.camera-disabled" => Some(("personalUsagePolicies.cameraDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "personal-usage-policies.screen-capture-disabled" => Some(("personalUsagePolicies.screenCaptureDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "personal-usage-policies.account-types-with-management-disabled" => Some(("personalUsagePolicies.accountTypesWithManagementDisabled", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "remove-user-disabled" => Some(("removeUserDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "system-update.end-minutes" => Some(("systemUpdate.endMinutes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "system-update.start-minutes" => Some(("systemUpdate.startMinutes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "system-update.type" => Some(("systemUpdate.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "long-support-message.default-message" => Some(("longSupportMessage.defaultMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "long-support-message.localized-messages" => Some(("longSupportMessage.localizedMessages", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "account-types-with-management-disabled" => Some(("accountTypesWithManagementDisabled", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "frp-admin-emails" => Some(("frpAdminEmails", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "keyguard-disabled" => Some(("keyguardDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "password-requirements.password-scope" => Some(("passwordRequirements.passwordScope", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "password-requirements.password-expiration-timeout" => Some(("passwordRequirements.passwordExpirationTimeout", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "password-requirements.maximum-failed-passwords-for-wipe" => Some(("passwordRequirements.maximumFailedPasswordsForWipe", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "password-requirements.require-password-unlock" => Some(("passwordRequirements.requirePasswordUnlock", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "password-requirements.password-minimum-symbols" => Some(("passwordRequirements.passwordMinimumSymbols", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "password-requirements.password-quality" => Some(("passwordRequirements.passwordQuality", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "password-requirements.password-minimum-length" => Some(("passwordRequirements.passwordMinimumLength", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "password-requirements.password-minimum-numeric" => Some(("passwordRequirements.passwordMinimumNumeric", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "password-requirements.password-history-length" => Some(("passwordRequirements.passwordHistoryLength", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "password-requirements.password-minimum-letters" => Some(("passwordRequirements.passwordMinimumLetters", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "password-requirements.password-minimum-upper-case" => Some(("passwordRequirements.passwordMinimumUpperCase", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "password-requirements.password-minimum-lower-case" => Some(("passwordRequirements.passwordMinimumLowerCase", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "password-requirements.password-minimum-non-letter" => Some(("passwordRequirements.passwordMinimumNonLetter", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "maximum-time-to-lock" => Some(("maximumTimeToLock", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "add-user-disabled" => Some(("addUserDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "adjust-volume-disabled" => Some(("adjustVolumeDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "advanced-security-overrides.untrusted-apps-policy" => Some(("advancedSecurityOverrides.untrustedAppsPolicy", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "always-on-vpn-package.lockdown-enabled" => Some(("alwaysOnVpnPackage.lockdownEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "always-on-vpn-package.package-name" => Some(("alwaysOnVpnPackage.packageName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "android-device-policy-tracks" => Some(("androidDevicePolicyTracks", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "app-auto-update-policy" => Some(("appAutoUpdatePolicy", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "auto-time-required" => Some(("autoTimeRequired", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "block-applications-enabled" => Some(("blockApplicationsEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "bluetooth-config-disabled" => Some(("bluetoothConfigDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "bluetooth-contact-sharing-disabled" => Some(("bluetoothContactSharingDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "bluetooth-disabled" => Some(("bluetoothDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "camera-disabled" => Some(("cameraDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "cell-broadcasts-config-disabled" => Some(("cellBroadcastsConfigDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "create-windows-disabled" => Some(("createWindowsDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "credentials-config-disabled" => Some(("credentialsConfigDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "data-roaming-disabled" => Some(("dataRoamingDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "debugging-features-allowed" => Some(("debuggingFeaturesAllowed", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "default-permission-policy" => Some(("defaultPermissionPolicy", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device-owner-lock-screen-info.default-message" => Some(("deviceOwnerLockScreenInfo.defaultMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "device-owner-lock-screen-info.localized-messages" => Some(("deviceOwnerLockScreenInfo.localizedMessages", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "mount-physical-media-disabled" => Some(("mountPhysicalMediaDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "tethering-config-disabled" => Some(("tetheringConfigDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "factory-reset-disabled" => Some(("factoryResetDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "add-user-disabled" => Some(("addUserDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "set-wallpaper-disabled" => Some(("setWallpaperDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "ensure-verify-apps-enabled" => Some(("ensureVerifyAppsEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "status-bar-disabled" => Some(("statusBarDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "encryption-policy" => Some(("encryptionPolicy", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "sms-disabled" => Some(("smsDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "vpn-config-disabled" => Some(("vpnConfigDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "usb-mass-storage-enabled" => Some(("usbMassStorageEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "play-store-mode" => Some(("playStoreMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "usb-file-transfer-disabled" => Some(("usbFileTransferDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "wifi-config-disabled" => Some(("wifiConfigDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "outgoing-beam-disabled" => Some(("outgoingBeamDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "ensure-verify-apps-enabled" => Some(("ensureVerifyAppsEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "factory-reset-disabled" => Some(("factoryResetDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "frp-admin-emails" => Some(("frpAdminEmails", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "fun-disabled" => Some(("funDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "always-on-vpn-package.package-name" => Some(("alwaysOnVpnPackage.packageName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "always-on-vpn-package.lockdown-enabled" => Some(("alwaysOnVpnPackage.lockdownEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "recommended-global-proxy.pac-uri" => Some(("recommendedGlobalProxy.pacUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "install-apps-disabled" => Some(("installAppsDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "install-unknown-sources-allowed" => Some(("installUnknownSourcesAllowed", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "keyguard-disabled" => Some(("keyguardDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "keyguard-disabled-features" => Some(("keyguardDisabledFeatures", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "kiosk-custom-launcher-enabled" => Some(("kioskCustomLauncherEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "kiosk-customization.device-settings" => Some(("kioskCustomization.deviceSettings", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kiosk-customization.power-button-actions" => Some(("kioskCustomization.powerButtonActions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kiosk-customization.status-bar" => Some(("kioskCustomization.statusBar", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kiosk-customization.system-error-warnings" => Some(("kioskCustomization.systemErrorWarnings", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kiosk-customization.system-navigation" => Some(("kioskCustomization.systemNavigation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location-mode" => Some(("locationMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "long-support-message.default-message" => Some(("longSupportMessage.defaultMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "long-support-message.localized-messages" => Some(("longSupportMessage.localizedMessages", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "maximum-time-to-lock" => Some(("maximumTimeToLock", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "minimum-api-level" => Some(("minimumApiLevel", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "mobile-networks-config-disabled" => Some(("mobileNetworksConfigDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "modify-accounts-disabled" => Some(("modifyAccountsDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "mount-physical-media-disabled" => Some(("mountPhysicalMediaDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "network-escape-hatch-enabled" => Some(("networkEscapeHatchEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "network-reset-disabled" => Some(("networkResetDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "outgoing-beam-disabled" => Some(("outgoingBeamDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "outgoing-calls-disabled" => Some(("outgoingCallsDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "password-requirements.maximum-failed-passwords-for-wipe" => Some(("passwordRequirements.maximumFailedPasswordsForWipe", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "password-requirements.password-expiration-timeout" => Some(("passwordRequirements.passwordExpirationTimeout", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "password-requirements.password-history-length" => Some(("passwordRequirements.passwordHistoryLength", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "password-requirements.password-minimum-length" => Some(("passwordRequirements.passwordMinimumLength", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "password-requirements.password-minimum-letters" => Some(("passwordRequirements.passwordMinimumLetters", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "password-requirements.password-minimum-lower-case" => Some(("passwordRequirements.passwordMinimumLowerCase", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "password-requirements.password-minimum-non-letter" => Some(("passwordRequirements.passwordMinimumNonLetter", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "password-requirements.password-minimum-numeric" => Some(("passwordRequirements.passwordMinimumNumeric", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "password-requirements.password-minimum-symbols" => Some(("passwordRequirements.passwordMinimumSymbols", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "password-requirements.password-minimum-upper-case" => Some(("passwordRequirements.passwordMinimumUpperCase", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "password-requirements.password-quality" => Some(("passwordRequirements.passwordQuality", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "password-requirements.password-scope" => Some(("passwordRequirements.passwordScope", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "password-requirements.require-password-unlock" => Some(("passwordRequirements.requirePasswordUnlock", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "permitted-accessibility-services.package-names" => Some(("permittedAccessibilityServices.packageNames", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "permitted-input-methods.package-names" => Some(("permittedInputMethods.packageNames", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "personal-usage-policies.account-types-with-management-disabled" => Some(("personalUsagePolicies.accountTypesWithManagementDisabled", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "personal-usage-policies.camera-disabled" => Some(("personalUsagePolicies.cameraDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "personal-usage-policies.max-days-with-work-off" => Some(("personalUsagePolicies.maxDaysWithWorkOff", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "personal-usage-policies.personal-play-store-mode" => Some(("personalUsagePolicies.personalPlayStoreMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "personal-usage-policies.screen-capture-disabled" => Some(("personalUsagePolicies.screenCaptureDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "play-store-mode" => Some(("playStoreMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "private-key-selection-enabled" => Some(("privateKeySelectionEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "recommended-global-proxy.excluded-hosts" => Some(("recommendedGlobalProxy.excludedHosts", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "recommended-global-proxy.host" => Some(("recommendedGlobalProxy.host", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "recommended-global-proxy.pac-uri" => Some(("recommendedGlobalProxy.pacUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "recommended-global-proxy.port" => Some(("recommendedGlobalProxy.port", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "uninstall-apps-disabled" => Some(("uninstallAppsDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "unmute-microphone-disabled" => Some(("unmuteMicrophoneDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "keyguard-disabled-features" => Some(("keyguardDisabledFeatures", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "cell-broadcasts-config-disabled" => Some(("cellBroadcastsConfigDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "debugging-features-allowed" => Some(("debuggingFeaturesAllowed", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "android-device-policy-tracks" => Some(("androidDevicePolicyTracks", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "default-permission-policy" => Some(("defaultPermissionPolicy", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "bluetooth-disabled" => Some(("bluetoothDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "bluetooth-contact-sharing-disabled" => Some(("bluetoothContactSharingDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "network-escape-hatch-enabled" => Some(("networkEscapeHatchEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "outgoing-calls-disabled" => Some(("outgoingCallsDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "auto-time-required" => Some(("autoTimeRequired", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "modify-accounts-disabled" => Some(("modifyAccountsDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "app-auto-update-policy" => Some(("appAutoUpdatePolicy", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "remove-user-disabled" => Some(("removeUserDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "safe-boot-disabled" => Some(("safeBootDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "set-user-icon-disabled" => Some(("setUserIconDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "stay-on-plugged-modes" => Some(("stayOnPluggedModes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "screen-capture-disabled" => Some(("screenCaptureDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "credentials-config-disabled" => Some(("credentialsConfigDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "permitted-accessibility-services.package-names" => Some(("permittedAccessibilityServices.packageNames", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "install-apps-disabled" => Some(("installAppsDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "adjust-volume-disabled" => Some(("adjustVolumeDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "set-user-icon-disabled" => Some(("setUserIconDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "set-wallpaper-disabled" => Some(("setWallpaperDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "share-location-disabled" => Some(("shareLocationDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "short-support-message.default-message" => Some(("shortSupportMessage.defaultMessage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "short-support-message.localized-messages" => Some(("shortSupportMessage.localizedMessages", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "skip-first-use-hints-enabled" => Some(("skipFirstUseHintsEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "private-key-selection-enabled" => Some(("privateKeySelectionEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "create-windows-disabled" => Some(("createWindowsDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "sms-disabled" => Some(("smsDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "status-bar-disabled" => Some(("statusBarDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "status-reporting-settings.application-reporting-settings.include-removed-apps" => Some(("statusReportingSettings.applicationReportingSettings.includeRemovedApps", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "status-reporting-settings.application-reports-enabled" => Some(("statusReportingSettings.applicationReportsEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "status-reporting-settings.device-settings-enabled" => Some(("statusReportingSettings.deviceSettingsEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "status-reporting-settings.display-info-enabled" => Some(("statusReportingSettings.displayInfoEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "status-reporting-settings.hardware-status-enabled" => Some(("statusReportingSettings.hardwareStatusEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "status-reporting-settings.memory-info-enabled" => Some(("statusReportingSettings.memoryInfoEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "status-reporting-settings.network-info-enabled" => Some(("statusReportingSettings.networkInfoEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "status-reporting-settings.power-management-events-enabled" => Some(("statusReportingSettings.powerManagementEventsEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "status-reporting-settings.software-info-enabled" => Some(("statusReportingSettings.softwareInfoEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "status-reporting-settings.system-properties-enabled" => Some(("statusReportingSettings.systemPropertiesEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "stay-on-plugged-modes" => Some(("stayOnPluggedModes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "system-update.end-minutes" => Some(("systemUpdate.endMinutes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "system-update.start-minutes" => Some(("systemUpdate.startMinutes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "system-update.type" => Some(("systemUpdate.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "tethering-config-disabled" => Some(("tetheringConfigDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "uninstall-apps-disabled" => Some(("uninstallAppsDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "unmute-microphone-disabled" => Some(("unmuteMicrophoneDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "usb-file-transfer-disabled" => Some(("usbFileTransferDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "usb-mass-storage-enabled" => Some(("usbMassStorageEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "version" => Some(("version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vpn-config-disabled" => Some(("vpnConfigDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "wifi-config-disabled" => Some(("wifiConfigDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "wifi-configs-lockdown-enabled" => Some(("wifiConfigsLockdownEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["account-types-with-management-disabled", "add-user-disabled", "adjust-volume-disabled", "advanced-security-overrides", "always-on-vpn-package", "android-device-policy-tracks", "app-auto-update-policy", "application-reporting-settings", "application-reports-enabled", "auto-time-required", "block-applications-enabled", "bluetooth-config-disabled", "bluetooth-contact-sharing-disabled", "bluetooth-disabled", "camera-disabled", "cell-broadcasts-config-disabled", "create-windows-disabled", "credentials-config-disabled", "data-roaming-disabled", "debugging-features-allowed", "default-message", "default-permission-policy", "device-owner-lock-screen-info", "device-settings", "device-settings-enabled", "display-info-enabled", "encryption-policy", "end-minutes", "ensure-verify-apps-enabled", "excluded-hosts", "factory-reset-disabled", "frp-admin-emails", "fun-disabled", "hardware-status-enabled", "host", "include-removed-apps", "install-apps-disabled", "install-unknown-sources-allowed", "keyguard-disabled", "keyguard-disabled-features", "kiosk-custom-launcher-enabled", "kiosk-customization", "localized-messages", "location-mode", "lockdown-enabled", "long-support-message", "max-days-with-work-off", "maximum-failed-passwords-for-wipe", "maximum-time-to-lock", "memory-info-enabled", "minimum-api-level", "mobile-networks-config-disabled", "modify-accounts-disabled", "mount-physical-media-disabled", "name", "network-escape-hatch-enabled", "network-info-enabled", "network-reset-disabled", "outgoing-beam-disabled", "outgoing-calls-disabled", "pac-uri", "package-name", "package-names", "password-expiration-timeout", "password-history-length", "password-minimum-length", "password-minimum-letters", "password-minimum-lower-case", "password-minimum-non-letter", "password-minimum-numeric", "password-minimum-symbols", "password-minimum-upper-case", "password-quality", "password-requirements", "password-scope", "permitted-accessibility-services", "permitted-input-methods", "personal-play-store-mode", "personal-usage-policies", "play-store-mode", "port", "power-button-actions", "power-management-events-enabled", "private-key-selection-enabled", "recommended-global-proxy", "remove-user-disabled", "require-password-unlock", "safe-boot-disabled", "screen-capture-disabled", "set-user-icon-disabled", "set-wallpaper-disabled", "share-location-disabled", "short-support-message", "skip-first-use-hints-enabled", "sms-disabled", "software-info-enabled", "start-minutes", "status-bar", "status-bar-disabled", "status-reporting-settings", "stay-on-plugged-modes", "system-error-warnings", "system-navigation", "system-properties-enabled", "system-update", "tethering-config-disabled", "type", "uninstall-apps-disabled", "unmute-microphone-disabled", "untrusted-apps-policy", "usb-file-transfer-disabled", "usb-mass-storage-enabled", "version", "vpn-config-disabled", "wifi-config-disabled", "wifi-configs-lockdown-enabled"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1509,11 +1511,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "version-code" => Some(("versionCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "start-url" => Some(("startUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "display-mode" => Some(("displayMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "start-url" => Some(("startUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "title" => Some(("title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version-code" => Some(("versionCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["display-mode", "name", "start-url", "title", "version-code"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1761,11 +1763,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "version-code" => Some(("versionCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "start-url" => Some(("startUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "display-mode" => Some(("displayMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "start-url" => Some(("startUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "title" => Some(("title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version-code" => Some(("versionCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["display-mode", "name", "start-url", "title", "version-code"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1854,11 +1856,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "permissions" => Some(("permissions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "parent-frame-url" => Some(("parentFrameUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "enabled-features" => Some(("enabledFeatures", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "value" => Some(("value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "parent-frame-url" => Some(("parentFrameUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "permissions" => Some(("permissions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "value" => Some(("value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["enabled-features", "name", "parent-frame-url", "permissions", "value"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2097,12 +2099,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "androidmanagement1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "androidmanagement1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

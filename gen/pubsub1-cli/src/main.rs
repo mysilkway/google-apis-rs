@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_pubsub1 as api;
+extern crate google_pubsub1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_pubsub1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Pubsub<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::Pubsub<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -375,9 +377,9 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "snapshot.expire-time" => Some(("snapshot.expireTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "snapshot.topic" => Some(("snapshot.topic", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "snapshot.labels" => Some(("snapshot.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "snapshot.name" => Some(("snapshot.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "snapshot.topic" => Some(("snapshot.topic", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "update-mask" => Some(("updateMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["expire-time", "labels", "name", "snapshot", "topic", "update-mask"]);
@@ -719,22 +721,22 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "topic" => Some(("topic", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "retry-policy.maximum-backoff" => Some(("retryPolicy.maximumBackoff", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "retry-policy.minimum-backoff" => Some(("retryPolicy.minimumBackoff", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "ack-deadline-seconds" => Some(("ackDeadlineSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "dead-letter-policy.dead-letter-topic" => Some(("deadLetterPolicy.deadLetterTopic", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "dead-letter-policy.max-delivery-attempts" => Some(("deadLetterPolicy.maxDeliveryAttempts", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "expiration-policy.ttl" => Some(("expirationPolicy.ttl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "filter" => Some(("filter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "message-retention-duration" => Some(("messageRetentionDuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "push-config.attributes" => Some(("pushConfig.attributes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "push-config.oidc-token.audience" => Some(("pushConfig.oidcToken.audience", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "push-config.oidc-token.service-account-email" => Some(("pushConfig.oidcToken.serviceAccountEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "push-config.push-endpoint" => Some(("pushConfig.pushEndpoint", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "filter" => Some(("filter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message-retention-duration" => Some(("messageRetentionDuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "retain-acked-messages" => Some(("retainAckedMessages", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "dead-letter-policy.dead-letter-topic" => Some(("deadLetterPolicy.deadLetterTopic", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "dead-letter-policy.max-delivery-attempts" => Some(("deadLetterPolicy.maxDeliveryAttempts", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "expiration-policy.ttl" => Some(("expirationPolicy.ttl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "retry-policy.maximum-backoff" => Some(("retryPolicy.maximumBackoff", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "retry-policy.minimum-backoff" => Some(("retryPolicy.minimumBackoff", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "topic" => Some(("topic", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["ack-deadline-seconds", "attributes", "audience", "dead-letter-policy", "dead-letter-topic", "expiration-policy", "filter", "labels", "max-delivery-attempts", "maximum-backoff", "message-retention-duration", "minimum-backoff", "name", "oidc-token", "push-config", "push-endpoint", "retain-acked-messages", "retry-policy", "service-account-email", "topic", "ttl"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1264,23 +1266,23 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "update-mask" => Some(("updateMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "subscription.topic" => Some(("subscription.topic", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "subscription.name" => Some(("subscription.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "subscription.retry-policy.maximum-backoff" => Some(("subscription.retryPolicy.maximumBackoff", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "subscription.retry-policy.minimum-backoff" => Some(("subscription.retryPolicy.minimumBackoff", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "subscription.ack-deadline-seconds" => Some(("subscription.ackDeadlineSeconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "subscription.dead-letter-policy.dead-letter-topic" => Some(("subscription.deadLetterPolicy.deadLetterTopic", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "subscription.dead-letter-policy.max-delivery-attempts" => Some(("subscription.deadLetterPolicy.maxDeliveryAttempts", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "subscription.expiration-policy.ttl" => Some(("subscription.expirationPolicy.ttl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "subscription.filter" => Some(("subscription.filter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "subscription.labels" => Some(("subscription.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "subscription.message-retention-duration" => Some(("subscription.messageRetentionDuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "subscription.name" => Some(("subscription.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "subscription.push-config.attributes" => Some(("subscription.pushConfig.attributes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "subscription.push-config.oidc-token.audience" => Some(("subscription.pushConfig.oidcToken.audience", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "subscription.push-config.oidc-token.service-account-email" => Some(("subscription.pushConfig.oidcToken.serviceAccountEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "subscription.push-config.push-endpoint" => Some(("subscription.pushConfig.pushEndpoint", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "subscription.filter" => Some(("subscription.filter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "subscription.message-retention-duration" => Some(("subscription.messageRetentionDuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "subscription.retain-acked-messages" => Some(("subscription.retainAckedMessages", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "subscription.dead-letter-policy.dead-letter-topic" => Some(("subscription.deadLetterPolicy.deadLetterTopic", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "subscription.dead-letter-policy.max-delivery-attempts" => Some(("subscription.deadLetterPolicy.maxDeliveryAttempts", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "subscription.expiration-policy.ttl" => Some(("subscription.expirationPolicy.ttl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "subscription.retry-policy.maximum-backoff" => Some(("subscription.retryPolicy.maximumBackoff", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "subscription.retry-policy.minimum-backoff" => Some(("subscription.retryPolicy.minimumBackoff", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "subscription.topic" => Some(("subscription.topic", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-mask" => Some(("updateMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["ack-deadline-seconds", "attributes", "audience", "dead-letter-policy", "dead-letter-topic", "expiration-policy", "filter", "labels", "max-delivery-attempts", "maximum-backoff", "message-retention-duration", "minimum-backoff", "name", "oidc-token", "push-config", "push-endpoint", "retain-acked-messages", "retry-policy", "service-account-email", "subscription", "topic", "ttl", "update-mask"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1365,8 +1367,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "return-immediately" => Some(("returnImmediately", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "max-messages" => Some(("maxMessages", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "return-immediately" => Some(("returnImmediately", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["max-messages", "return-immediately"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1708,10 +1710,10 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message-storage-policy.allowed-persistence-regions" => Some(("messageStoragePolicy.allowedPersistenceRegions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "kms-key-name" => Some(("kmsKeyName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "message-storage-policy.allowed-persistence-regions" => Some(("messageStoragePolicy.allowedPersistenceRegions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["allowed-persistence-regions", "kms-key-name", "labels", "message-storage-policy", "name"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2015,10 +2017,10 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "topic.labels" => Some(("topic.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "topic.name" => Some(("topic.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "topic.message-storage-policy.allowed-persistence-regions" => Some(("topic.messageStoragePolicy.allowedPersistenceRegions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "topic.kms-key-name" => Some(("topic.kmsKeyName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "topic.labels" => Some(("topic.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "topic.message-storage-policy.allowed-persistence-regions" => Some(("topic.messageStoragePolicy.allowedPersistenceRegions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "topic.name" => Some(("topic.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "update-mask" => Some(("updateMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["allowed-persistence-regions", "kms-key-name", "labels", "message-storage-policy", "name", "topic", "update-mask"]);
@@ -2585,12 +2587,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "pubsub1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "pubsub1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

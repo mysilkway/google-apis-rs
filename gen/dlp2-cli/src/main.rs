@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_dlp2 as api;
+extern crate google_dlp2;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_dlp2::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::DLP<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::DLP<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -77,7 +79,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "language-code", "location-id", "parent"].iter().map(|v|*v));
+                                                                           v.extend(["parent", "location-id", "language-code", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -139,7 +141,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "language-code", "location-id"].iter().map(|v|*v));
+                                                                           v.extend(["location-id", "language-code", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -196,11 +198,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "deidentify-template.update-time" => Some(("deidentifyTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deidentify-template.display-name" => Some(("deidentifyTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deidentify-template.description" => Some(("deidentifyTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deidentify-template.name" => Some(("deidentifyTemplate.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "deidentify-template.create-time" => Some(("deidentifyTemplate.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.description" => Some(("deidentifyTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.display-name" => Some(("deidentifyTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.name" => Some(("deidentifyTemplate.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.update-time" => Some(("deidentifyTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "template-id" => Some(("templateId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
@@ -399,7 +401,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "location-id", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "order-by", "location-id", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -456,11 +458,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "deidentify-template.update-time" => Some(("deidentifyTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deidentify-template.display-name" => Some(("deidentifyTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deidentify-template.description" => Some(("deidentifyTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deidentify-template.name" => Some(("deidentifyTemplate.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "deidentify-template.create-time" => Some(("deidentifyTemplate.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.description" => Some(("deidentifyTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.display-name" => Some(("deidentifyTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.name" => Some(("deidentifyTemplate.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.update-time" => Some(("deidentifyTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "update-mask" => Some(("updateMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["create-time", "deidentify-template", "description", "display-name", "name", "update-mask", "update-time"]);
@@ -546,18 +548,18 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.update-time" => Some(("inspectTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.display-name" => Some(("inspectTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.description" => Some(("inspectTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.exclude-info-types" => Some(("inspectTemplate.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.content-options" => Some(("inspectTemplate.inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "inspect-template.inspect-config.include-quote" => Some(("inspectTemplate.inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.limits.max-findings-per-request" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.limits.max-findings-per-item" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.min-likelihood" => Some(("inspectTemplate.inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "inspect-template.create-time" => Some(("inspectTemplate.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.description" => Some(("inspectTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.display-name" => Some(("inspectTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.content-options" => Some(("inspectTemplate.inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-template.inspect-config.exclude-info-types" => Some(("inspectTemplate.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.include-quote" => Some(("inspectTemplate.inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.limits.max-findings-per-item" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.limits.max-findings-per-request" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.min-likelihood" => Some(("inspectTemplate.inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "inspect-template.name" => Some(("inspectTemplate.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.update-time" => Some(("inspectTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "template-id" => Some(("templateId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["content-options", "create-time", "description", "display-name", "exclude-info-types", "include-quote", "inspect-config", "inspect-template", "limits", "location-id", "max-findings-per-item", "max-findings-per-request", "min-likelihood", "name", "template-id", "update-time"]);
@@ -755,7 +757,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "location-id", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "order-by", "location-id", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -812,17 +814,17 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "inspect-template.update-time" => Some(("inspectTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.display-name" => Some(("inspectTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.description" => Some(("inspectTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.exclude-info-types" => Some(("inspectTemplate.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.content-options" => Some(("inspectTemplate.inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "inspect-template.inspect-config.include-quote" => Some(("inspectTemplate.inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.limits.max-findings-per-request" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.limits.max-findings-per-item" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.min-likelihood" => Some(("inspectTemplate.inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "inspect-template.create-time" => Some(("inspectTemplate.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.description" => Some(("inspectTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.display-name" => Some(("inspectTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.content-options" => Some(("inspectTemplate.inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-template.inspect-config.exclude-info-types" => Some(("inspectTemplate.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.include-quote" => Some(("inspectTemplate.inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.limits.max-findings-per-item" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.limits.max-findings-per-request" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.min-likelihood" => Some(("inspectTemplate.inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "inspect-template.name" => Some(("inspectTemplate.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.update-time" => Some(("inspectTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "update-mask" => Some(("updateMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["content-options", "create-time", "description", "display-name", "exclude-info-types", "include-quote", "inspect-config", "inspect-template", "limits", "max-findings-per-item", "max-findings-per-request", "min-likelihood", "name", "update-mask", "update-time"]);
@@ -908,11 +910,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "deidentify-template.update-time" => Some(("deidentifyTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deidentify-template.display-name" => Some(("deidentifyTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deidentify-template.description" => Some(("deidentifyTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deidentify-template.name" => Some(("deidentifyTemplate.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "deidentify-template.create-time" => Some(("deidentifyTemplate.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.description" => Some(("deidentifyTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.display-name" => Some(("deidentifyTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.name" => Some(("deidentifyTemplate.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.update-time" => Some(("deidentifyTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "template-id" => Some(("templateId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
@@ -1111,7 +1113,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "location-id", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "order-by", "location-id", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1168,11 +1170,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "deidentify-template.update-time" => Some(("deidentifyTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deidentify-template.display-name" => Some(("deidentifyTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deidentify-template.description" => Some(("deidentifyTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deidentify-template.name" => Some(("deidentifyTemplate.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "deidentify-template.create-time" => Some(("deidentifyTemplate.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.description" => Some(("deidentifyTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.display-name" => Some(("deidentifyTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.name" => Some(("deidentifyTemplate.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.update-time" => Some(("deidentifyTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "update-mask" => Some(("updateMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["create-time", "deidentify-template", "description", "display-name", "name", "update-mask", "update-time"]);
@@ -1258,18 +1260,18 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.update-time" => Some(("inspectTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.display-name" => Some(("inspectTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.description" => Some(("inspectTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.exclude-info-types" => Some(("inspectTemplate.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.content-options" => Some(("inspectTemplate.inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "inspect-template.inspect-config.include-quote" => Some(("inspectTemplate.inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.limits.max-findings-per-request" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.limits.max-findings-per-item" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.min-likelihood" => Some(("inspectTemplate.inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "inspect-template.create-time" => Some(("inspectTemplate.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.description" => Some(("inspectTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.display-name" => Some(("inspectTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.content-options" => Some(("inspectTemplate.inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-template.inspect-config.exclude-info-types" => Some(("inspectTemplate.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.include-quote" => Some(("inspectTemplate.inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.limits.max-findings-per-item" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.limits.max-findings-per-request" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.min-likelihood" => Some(("inspectTemplate.inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "inspect-template.name" => Some(("inspectTemplate.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.update-time" => Some(("inspectTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "template-id" => Some(("templateId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["content-options", "create-time", "description", "display-name", "exclude-info-types", "include-quote", "inspect-config", "inspect-template", "limits", "location-id", "max-findings-per-item", "max-findings-per-request", "min-likelihood", "name", "template-id", "update-time"]);
@@ -1467,7 +1469,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "location-id", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "order-by", "location-id", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1524,17 +1526,17 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "inspect-template.update-time" => Some(("inspectTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.display-name" => Some(("inspectTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.description" => Some(("inspectTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.exclude-info-types" => Some(("inspectTemplate.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.content-options" => Some(("inspectTemplate.inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "inspect-template.inspect-config.include-quote" => Some(("inspectTemplate.inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.limits.max-findings-per-request" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.limits.max-findings-per-item" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.min-likelihood" => Some(("inspectTemplate.inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "inspect-template.create-time" => Some(("inspectTemplate.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.description" => Some(("inspectTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.display-name" => Some(("inspectTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.content-options" => Some(("inspectTemplate.inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-template.inspect-config.exclude-info-types" => Some(("inspectTemplate.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.include-quote" => Some(("inspectTemplate.inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.limits.max-findings-per-item" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.limits.max-findings-per-request" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.min-likelihood" => Some(("inspectTemplate.inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "inspect-template.name" => Some(("inspectTemplate.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.update-time" => Some(("inspectTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "update-mask" => Some(("updateMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["content-options", "create-time", "description", "display-name", "exclude-info-types", "include-quote", "inspect-config", "inspect-template", "limits", "max-findings-per-item", "max-findings-per-request", "min-likelihood", "name", "update-mask", "update-time"]);
@@ -1620,20 +1622,20 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "stored-info-type-id" => Some(("storedInfoTypeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.regex.pattern" => Some(("config.regex.pattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.regex.group-indexes" => Some(("config.regex.groupIndexes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
-                    "config.display-name" => Some(("config.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.description" => Some(("config.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.dictionary.word-list.words" => Some(("config.dictionary.wordList.words", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "config.dictionary.cloud-storage-path.path" => Some(("config.dictionary.cloudStoragePath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.large-custom-dictionary.output-path.path" => Some(("config.largeCustomDictionary.outputPath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.large-custom-dictionary.cloud-storage-file-set.url" => Some(("config.largeCustomDictionary.cloudStorageFileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.dictionary.word-list.words" => Some(("config.dictionary.wordList.words", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "config.display-name" => Some(("config.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.large-custom-dictionary.big-query-field.field.name" => Some(("config.largeCustomDictionary.bigQueryField.field.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.large-custom-dictionary.big-query-field.table.dataset-id" => Some(("config.largeCustomDictionary.bigQueryField.table.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.large-custom-dictionary.big-query-field.table.project-id" => Some(("config.largeCustomDictionary.bigQueryField.table.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.large-custom-dictionary.big-query-field.table.table-id" => Some(("config.largeCustomDictionary.bigQueryField.table.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.large-custom-dictionary.big-query-field.table.dataset-id" => Some(("config.largeCustomDictionary.bigQueryField.table.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.large-custom-dictionary.cloud-storage-file-set.url" => Some(("config.largeCustomDictionary.cloudStorageFileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.large-custom-dictionary.output-path.path" => Some(("config.largeCustomDictionary.outputPath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.regex.group-indexes" => Some(("config.regex.groupIndexes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
+                    "config.regex.pattern" => Some(("config.regex.pattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "stored-info-type-id" => Some(("storedInfoTypeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["big-query-field", "cloud-storage-file-set", "cloud-storage-path", "config", "dataset-id", "description", "dictionary", "display-name", "field", "group-indexes", "large-custom-dictionary", "location-id", "name", "output-path", "path", "pattern", "project-id", "regex", "stored-info-type-id", "table", "table-id", "url", "word-list", "words"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1830,7 +1832,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "location-id", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "order-by", "location-id", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1887,18 +1889,18 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "config.regex.pattern" => Some(("config.regex.pattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.regex.group-indexes" => Some(("config.regex.groupIndexes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
-                    "config.display-name" => Some(("config.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.description" => Some(("config.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.dictionary.word-list.words" => Some(("config.dictionary.wordList.words", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "config.dictionary.cloud-storage-path.path" => Some(("config.dictionary.cloudStoragePath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.large-custom-dictionary.output-path.path" => Some(("config.largeCustomDictionary.outputPath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.large-custom-dictionary.cloud-storage-file-set.url" => Some(("config.largeCustomDictionary.cloudStorageFileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.dictionary.word-list.words" => Some(("config.dictionary.wordList.words", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "config.display-name" => Some(("config.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.large-custom-dictionary.big-query-field.field.name" => Some(("config.largeCustomDictionary.bigQueryField.field.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.large-custom-dictionary.big-query-field.table.dataset-id" => Some(("config.largeCustomDictionary.bigQueryField.table.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.large-custom-dictionary.big-query-field.table.project-id" => Some(("config.largeCustomDictionary.bigQueryField.table.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.large-custom-dictionary.big-query-field.table.table-id" => Some(("config.largeCustomDictionary.bigQueryField.table.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.large-custom-dictionary.big-query-field.table.dataset-id" => Some(("config.largeCustomDictionary.bigQueryField.table.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.large-custom-dictionary.cloud-storage-file-set.url" => Some(("config.largeCustomDictionary.cloudStorageFileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.large-custom-dictionary.output-path.path" => Some(("config.largeCustomDictionary.outputPath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.regex.group-indexes" => Some(("config.regex.groupIndexes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
+                    "config.regex.pattern" => Some(("config.regex.pattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "update-mask" => Some(("updateMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["big-query-field", "cloud-storage-file-set", "cloud-storage-path", "config", "dataset-id", "description", "dictionary", "display-name", "field", "group-indexes", "large-custom-dictionary", "name", "output-path", "path", "pattern", "project-id", "regex", "table", "table-id", "update-mask", "url", "word-list", "words"]);
@@ -1984,20 +1986,20 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "stored-info-type-id" => Some(("storedInfoTypeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.regex.pattern" => Some(("config.regex.pattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.regex.group-indexes" => Some(("config.regex.groupIndexes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
-                    "config.display-name" => Some(("config.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.description" => Some(("config.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.dictionary.word-list.words" => Some(("config.dictionary.wordList.words", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "config.dictionary.cloud-storage-path.path" => Some(("config.dictionary.cloudStoragePath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.large-custom-dictionary.output-path.path" => Some(("config.largeCustomDictionary.outputPath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.large-custom-dictionary.cloud-storage-file-set.url" => Some(("config.largeCustomDictionary.cloudStorageFileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.dictionary.word-list.words" => Some(("config.dictionary.wordList.words", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "config.display-name" => Some(("config.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.large-custom-dictionary.big-query-field.field.name" => Some(("config.largeCustomDictionary.bigQueryField.field.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.large-custom-dictionary.big-query-field.table.dataset-id" => Some(("config.largeCustomDictionary.bigQueryField.table.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.large-custom-dictionary.big-query-field.table.project-id" => Some(("config.largeCustomDictionary.bigQueryField.table.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.large-custom-dictionary.big-query-field.table.table-id" => Some(("config.largeCustomDictionary.bigQueryField.table.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.large-custom-dictionary.big-query-field.table.dataset-id" => Some(("config.largeCustomDictionary.bigQueryField.table.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.large-custom-dictionary.cloud-storage-file-set.url" => Some(("config.largeCustomDictionary.cloudStorageFileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.large-custom-dictionary.output-path.path" => Some(("config.largeCustomDictionary.outputPath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.regex.group-indexes" => Some(("config.regex.groupIndexes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
+                    "config.regex.pattern" => Some(("config.regex.pattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "stored-info-type-id" => Some(("storedInfoTypeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["big-query-field", "cloud-storage-file-set", "cloud-storage-path", "config", "dataset-id", "description", "dictionary", "display-name", "field", "group-indexes", "large-custom-dictionary", "location-id", "name", "output-path", "path", "pattern", "project-id", "regex", "stored-info-type-id", "table", "table-id", "url", "word-list", "words"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2194,7 +2196,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "location-id", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "order-by", "location-id", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2251,18 +2253,18 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "config.regex.pattern" => Some(("config.regex.pattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.regex.group-indexes" => Some(("config.regex.groupIndexes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
-                    "config.display-name" => Some(("config.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.description" => Some(("config.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.dictionary.word-list.words" => Some(("config.dictionary.wordList.words", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "config.dictionary.cloud-storage-path.path" => Some(("config.dictionary.cloudStoragePath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.large-custom-dictionary.output-path.path" => Some(("config.largeCustomDictionary.outputPath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.large-custom-dictionary.cloud-storage-file-set.url" => Some(("config.largeCustomDictionary.cloudStorageFileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.dictionary.word-list.words" => Some(("config.dictionary.wordList.words", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "config.display-name" => Some(("config.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.large-custom-dictionary.big-query-field.field.name" => Some(("config.largeCustomDictionary.bigQueryField.field.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.large-custom-dictionary.big-query-field.table.dataset-id" => Some(("config.largeCustomDictionary.bigQueryField.table.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.large-custom-dictionary.big-query-field.table.project-id" => Some(("config.largeCustomDictionary.bigQueryField.table.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.large-custom-dictionary.big-query-field.table.table-id" => Some(("config.largeCustomDictionary.bigQueryField.table.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.large-custom-dictionary.big-query-field.table.dataset-id" => Some(("config.largeCustomDictionary.bigQueryField.table.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.large-custom-dictionary.cloud-storage-file-set.url" => Some(("config.largeCustomDictionary.cloudStorageFileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.large-custom-dictionary.output-path.path" => Some(("config.largeCustomDictionary.outputPath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.regex.group-indexes" => Some(("config.regex.groupIndexes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
+                    "config.regex.pattern" => Some(("config.regex.pattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "update-mask" => Some(("updateMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["big-query-field", "cloud-storage-file-set", "cloud-storage-path", "config", "dataset-id", "description", "dictionary", "display-name", "field", "group-indexes", "large-custom-dictionary", "name", "output-path", "path", "pattern", "project-id", "regex", "table", "table-id", "update-mask", "url", "word-list", "words"]);
@@ -2349,16 +2351,16 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "deidentify-template-name" => Some(("deidentifyTemplateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "item.byte-item.type" => Some(("item.byteItem.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "item.byte-item.data" => Some(("item.byteItem.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "item.value" => Some(("item.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template-name" => Some(("inspectTemplateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-config.exclude-info-types" => Some(("inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "inspect-config.content-options" => Some(("inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-config.exclude-info-types" => Some(("inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "inspect-config.include-quote" => Some(("inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-config.limits.max-findings-per-request" => Some(("inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "inspect-config.limits.max-findings-per-item" => Some(("inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-config.limits.max-findings-per-request" => Some(("inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "inspect-config.min-likelihood" => Some(("inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template-name" => Some(("inspectTemplateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "item.byte-item.data" => Some(("item.byteItem.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "item.byte-item.type" => Some(("item.byteItem.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "item.value" => Some(("item.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["byte-item", "content-options", "data", "deidentify-template-name", "exclude-info-types", "include-quote", "inspect-config", "inspect-template-name", "item", "limits", "location-id", "max-findings-per-item", "max-findings-per-request", "min-likelihood", "type", "value"]);
@@ -2444,17 +2446,17 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "item.byte-item.type" => Some(("item.byteItem.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "item.byte-item.data" => Some(("item.byteItem.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "item.value" => Some(("item.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-config.exclude-info-types" => Some(("inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "inspect-config.content-options" => Some(("inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-config.exclude-info-types" => Some(("inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "inspect-config.include-quote" => Some(("inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-config.limits.max-findings-per-request" => Some(("inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "inspect-config.limits.max-findings-per-item" => Some(("inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-config.limits.max-findings-per-request" => Some(("inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "inspect-config.min-likelihood" => Some(("inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "inspect-template-name" => Some(("inspectTemplateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "item.byte-item.data" => Some(("item.byteItem.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "item.byte-item.type" => Some(("item.byteItem.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "item.value" => Some(("item.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["byte-item", "content-options", "data", "exclude-info-types", "include-quote", "inspect-config", "inspect-template-name", "item", "limits", "location-id", "max-findings-per-item", "max-findings-per-request", "min-likelihood", "type", "value"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2539,18 +2541,18 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "item.byte-item.type" => Some(("item.byteItem.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "item.byte-item.data" => Some(("item.byteItem.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "item.value" => Some(("item.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "reidentify-template-name" => Some(("reidentifyTemplateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-config.exclude-info-types" => Some(("inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "inspect-config.content-options" => Some(("inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-config.exclude-info-types" => Some(("inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "inspect-config.include-quote" => Some(("inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-config.limits.max-findings-per-request" => Some(("inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "inspect-config.limits.max-findings-per-item" => Some(("inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-config.limits.max-findings-per-request" => Some(("inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "inspect-config.min-likelihood" => Some(("inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "inspect-template-name" => Some(("inspectTemplateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "item.byte-item.data" => Some(("item.byteItem.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "item.byte-item.type" => Some(("item.byteItem.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "item.value" => Some(("item.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "reidentify-template-name" => Some(("reidentifyTemplateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["byte-item", "content-options", "data", "exclude-info-types", "include-quote", "inspect-config", "inspect-template-name", "item", "limits", "location-id", "max-findings-per-item", "max-findings-per-request", "min-likelihood", "reidentify-template-name", "type", "value"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2635,11 +2637,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "deidentify-template.update-time" => Some(("deidentifyTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deidentify-template.display-name" => Some(("deidentifyTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deidentify-template.description" => Some(("deidentifyTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deidentify-template.name" => Some(("deidentifyTemplate.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "deidentify-template.create-time" => Some(("deidentifyTemplate.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.description" => Some(("deidentifyTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.display-name" => Some(("deidentifyTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.name" => Some(("deidentifyTemplate.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.update-time" => Some(("deidentifyTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "template-id" => Some(("templateId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
@@ -2838,7 +2840,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "location-id", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "order-by", "location-id", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2895,11 +2897,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "deidentify-template.update-time" => Some(("deidentifyTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deidentify-template.display-name" => Some(("deidentifyTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deidentify-template.description" => Some(("deidentifyTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deidentify-template.name" => Some(("deidentifyTemplate.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "deidentify-template.create-time" => Some(("deidentifyTemplate.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.description" => Some(("deidentifyTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.display-name" => Some(("deidentifyTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.name" => Some(("deidentifyTemplate.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.update-time" => Some(("deidentifyTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "update-mask" => Some(("updateMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["create-time", "deidentify-template", "description", "display-name", "name", "update-mask", "update-time"]);
@@ -3069,49 +3071,49 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "risk-job.privacy-metric.numerical-stats-config.field.name" => Some(("riskJob.privacyMetric.numericalStatsConfig.field.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "risk-job.privacy-metric.k-map-estimation-config.region-code" => Some(("riskJob.privacyMetric.kMapEstimationConfig.regionCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "risk-job.privacy-metric.l-diversity-config.sensitive-attribute.name" => Some(("riskJob.privacyMetric.lDiversityConfig.sensitiveAttribute.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "risk-job.privacy-metric.k-anonymity-config.entity-id.field.name" => Some(("riskJob.privacyMetric.kAnonymityConfig.entityId.field.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "risk-job.privacy-metric.categorical-stats-config.field.name" => Some(("riskJob.privacyMetric.categoricalStatsConfig.field.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "risk-job.privacy-metric.delta-presence-estimation-config.region-code" => Some(("riskJob.privacyMetric.deltaPresenceEstimationConfig.regionCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "risk-job.source-table.project-id" => Some(("riskJob.sourceTable.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "risk-job.source-table.table-id" => Some(("riskJob.sourceTable.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "risk-job.source-table.dataset-id" => Some(("riskJob.sourceTable.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-id" => Some(("jobId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.timespan-config.timestamp-field.name" => Some(("inspectJob.storageConfig.timespanConfig.timestampField.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.timespan-config.end-time" => Some(("inspectJob.storageConfig.timespanConfig.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.timespan-config.start-time" => Some(("inspectJob.storageConfig.timespanConfig.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.timespan-config.enable-auto-population-of-timespan-config" => Some(("inspectJob.storageConfig.timespanConfig.enableAutoPopulationOfTimespanConfig", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.datastore-options.kind.name" => Some(("inspectJob.storageConfig.datastoreOptions.kind.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.datastore-options.partition-id.project-id" => Some(("inspectJob.storageConfig.datastoreOptions.partitionId.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.datastore-options.partition-id.namespace-id" => Some(("inspectJob.storageConfig.datastoreOptions.partitionId.namespaceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.big-query-options.sample-method" => Some(("inspectJob.storageConfig.bigQueryOptions.sampleMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.big-query-options.rows-limit-percent" => Some(("inspectJob.storageConfig.bigQueryOptions.rowsLimitPercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.big-query-options.rows-limit" => Some(("inspectJob.storageConfig.bigQueryOptions.rowsLimit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.big-query-options.table-reference.project-id" => Some(("inspectJob.storageConfig.bigQueryOptions.tableReference.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.big-query-options.table-reference.table-id" => Some(("inspectJob.storageConfig.bigQueryOptions.tableReference.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.big-query-options.table-reference.dataset-id" => Some(("inspectJob.storageConfig.bigQueryOptions.tableReference.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.hybrid-options.labels" => Some(("inspectJob.storageConfig.hybridOptions.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "inspect-job.storage-config.hybrid-options.required-finding-label-keys" => Some(("inspectJob.storageConfig.hybridOptions.requiredFindingLabelKeys", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "inspect-job.storage-config.hybrid-options.description" => Some(("inspectJob.storageConfig.hybridOptions.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.cloud-storage-options.bytes-limit-per-file" => Some(("inspectJob.storageConfig.cloudStorageOptions.bytesLimitPerFile", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.cloud-storage-options.sample-method" => Some(("inspectJob.storageConfig.cloudStorageOptions.sampleMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.cloud-storage-options.file-set.url" => Some(("inspectJob.storageConfig.cloudStorageOptions.fileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.exclude-regex" => Some(("inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.excludeRegex", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.bucket-name" => Some(("inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.bucketName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.include-regex" => Some(("inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.includeRegex", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "inspect-job.storage-config.cloud-storage-options.files-limit-percent" => Some(("inspectJob.storageConfig.cloudStorageOptions.filesLimitPercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.cloud-storage-options.bytes-limit-per-file-percent" => Some(("inspectJob.storageConfig.cloudStorageOptions.bytesLimitPerFilePercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.cloud-storage-options.file-types" => Some(("inspectJob.storageConfig.cloudStorageOptions.fileTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "inspect-job.inspect-config.exclude-info-types" => Some(("inspectJob.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "inspect-job.inspect-config.content-options" => Some(("inspectJob.inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-job.inspect-config.exclude-info-types" => Some(("inspectJob.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "inspect-job.inspect-config.include-quote" => Some(("inspectJob.inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-job.inspect-config.limits.max-findings-per-request" => Some(("inspectJob.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "inspect-job.inspect-config.limits.max-findings-per-item" => Some(("inspectJob.inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-job.inspect-config.limits.max-findings-per-request" => Some(("inspectJob.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "inspect-job.inspect-config.min-likelihood" => Some(("inspectJob.inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "inspect-job.inspect-template-name" => Some(("inspectJob.inspectTemplateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.big-query-options.rows-limit" => Some(("inspectJob.storageConfig.bigQueryOptions.rowsLimit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.big-query-options.rows-limit-percent" => Some(("inspectJob.storageConfig.bigQueryOptions.rowsLimitPercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.big-query-options.sample-method" => Some(("inspectJob.storageConfig.bigQueryOptions.sampleMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.big-query-options.table-reference.dataset-id" => Some(("inspectJob.storageConfig.bigQueryOptions.tableReference.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.big-query-options.table-reference.project-id" => Some(("inspectJob.storageConfig.bigQueryOptions.tableReference.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.big-query-options.table-reference.table-id" => Some(("inspectJob.storageConfig.bigQueryOptions.tableReference.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.cloud-storage-options.bytes-limit-per-file" => Some(("inspectJob.storageConfig.cloudStorageOptions.bytesLimitPerFile", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.cloud-storage-options.bytes-limit-per-file-percent" => Some(("inspectJob.storageConfig.cloudStorageOptions.bytesLimitPerFilePercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.bucket-name" => Some(("inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.bucketName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.exclude-regex" => Some(("inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.excludeRegex", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.include-regex" => Some(("inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.includeRegex", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-job.storage-config.cloud-storage-options.file-set.url" => Some(("inspectJob.storageConfig.cloudStorageOptions.fileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.cloud-storage-options.file-types" => Some(("inspectJob.storageConfig.cloudStorageOptions.fileTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-job.storage-config.cloud-storage-options.files-limit-percent" => Some(("inspectJob.storageConfig.cloudStorageOptions.filesLimitPercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.cloud-storage-options.sample-method" => Some(("inspectJob.storageConfig.cloudStorageOptions.sampleMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.datastore-options.kind.name" => Some(("inspectJob.storageConfig.datastoreOptions.kind.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.datastore-options.partition-id.namespace-id" => Some(("inspectJob.storageConfig.datastoreOptions.partitionId.namespaceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.datastore-options.partition-id.project-id" => Some(("inspectJob.storageConfig.datastoreOptions.partitionId.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.hybrid-options.description" => Some(("inspectJob.storageConfig.hybridOptions.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.hybrid-options.labels" => Some(("inspectJob.storageConfig.hybridOptions.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "inspect-job.storage-config.hybrid-options.required-finding-label-keys" => Some(("inspectJob.storageConfig.hybridOptions.requiredFindingLabelKeys", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-job.storage-config.timespan-config.enable-auto-population-of-timespan-config" => Some(("inspectJob.storageConfig.timespanConfig.enableAutoPopulationOfTimespanConfig", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.timespan-config.end-time" => Some(("inspectJob.storageConfig.timespanConfig.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.timespan-config.start-time" => Some(("inspectJob.storageConfig.timespanConfig.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.timespan-config.timestamp-field.name" => Some(("inspectJob.storageConfig.timespanConfig.timestampField.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-id" => Some(("jobId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "risk-job.privacy-metric.categorical-stats-config.field.name" => Some(("riskJob.privacyMetric.categoricalStatsConfig.field.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "risk-job.privacy-metric.delta-presence-estimation-config.region-code" => Some(("riskJob.privacyMetric.deltaPresenceEstimationConfig.regionCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "risk-job.privacy-metric.k-anonymity-config.entity-id.field.name" => Some(("riskJob.privacyMetric.kAnonymityConfig.entityId.field.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "risk-job.privacy-metric.k-map-estimation-config.region-code" => Some(("riskJob.privacyMetric.kMapEstimationConfig.regionCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "risk-job.privacy-metric.l-diversity-config.sensitive-attribute.name" => Some(("riskJob.privacyMetric.lDiversityConfig.sensitiveAttribute.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "risk-job.privacy-metric.numerical-stats-config.field.name" => Some(("riskJob.privacyMetric.numericalStatsConfig.field.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "risk-job.source-table.dataset-id" => Some(("riskJob.sourceTable.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "risk-job.source-table.project-id" => Some(("riskJob.sourceTable.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "risk-job.source-table.table-id" => Some(("riskJob.sourceTable.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["big-query-options", "bucket-name", "bytes-limit-per-file", "bytes-limit-per-file-percent", "categorical-stats-config", "cloud-storage-options", "content-options", "dataset-id", "datastore-options", "delta-presence-estimation-config", "description", "enable-auto-population-of-timespan-config", "end-time", "entity-id", "exclude-info-types", "exclude-regex", "field", "file-set", "file-types", "files-limit-percent", "hybrid-options", "include-quote", "include-regex", "inspect-config", "inspect-job", "inspect-template-name", "job-id", "k-anonymity-config", "k-map-estimation-config", "kind", "l-diversity-config", "labels", "limits", "location-id", "max-findings-per-item", "max-findings-per-request", "min-likelihood", "name", "namespace-id", "numerical-stats-config", "partition-id", "privacy-metric", "project-id", "regex-file-set", "region-code", "required-finding-label-keys", "risk-job", "rows-limit", "rows-limit-percent", "sample-method", "sensitive-attribute", "source-table", "start-time", "storage-config", "table-id", "table-reference", "timespan-config", "timestamp-field", "url"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3314,7 +3316,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-size", "filter", "page-token", "location-id", "type"].iter().map(|v|*v));
+                                                                           v.extend(["order-by", "type", "page-token", "page-size", "filter", "location-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3371,16 +3373,16 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "byte-item.type" => Some(("byteItem.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "byte-item.data" => Some(("byteItem.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-config.exclude-info-types" => Some(("inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-config.content-options" => Some(("inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "inspect-config.include-quote" => Some(("inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-config.limits.max-findings-per-request" => Some(("inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-config.limits.max-findings-per-item" => Some(("inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-config.min-likelihood" => Some(("inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "byte-item.type" => Some(("byteItem.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "include-findings" => Some(("includeFindings", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "inspect-config.content-options" => Some(("inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-config.exclude-info-types" => Some(("inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "inspect-config.include-quote" => Some(("inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "inspect-config.limits.max-findings-per-item" => Some(("inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-config.limits.max-findings-per-request" => Some(("inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-config.min-likelihood" => Some(("inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["byte-item", "content-options", "data", "exclude-info-types", "include-findings", "include-quote", "inspect-config", "limits", "location-id", "max-findings-per-item", "max-findings-per-request", "min-likelihood", "type"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3465,18 +3467,18 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.update-time" => Some(("inspectTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.display-name" => Some(("inspectTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.description" => Some(("inspectTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.exclude-info-types" => Some(("inspectTemplate.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.content-options" => Some(("inspectTemplate.inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "inspect-template.inspect-config.include-quote" => Some(("inspectTemplate.inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.limits.max-findings-per-request" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.limits.max-findings-per-item" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.min-likelihood" => Some(("inspectTemplate.inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "inspect-template.create-time" => Some(("inspectTemplate.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.description" => Some(("inspectTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.display-name" => Some(("inspectTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.content-options" => Some(("inspectTemplate.inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-template.inspect-config.exclude-info-types" => Some(("inspectTemplate.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.include-quote" => Some(("inspectTemplate.inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.limits.max-findings-per-item" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.limits.max-findings-per-request" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.min-likelihood" => Some(("inspectTemplate.inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "inspect-template.name" => Some(("inspectTemplate.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.update-time" => Some(("inspectTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "template-id" => Some(("templateId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["content-options", "create-time", "description", "display-name", "exclude-info-types", "include-quote", "inspect-config", "inspect-template", "limits", "location-id", "max-findings-per-item", "max-findings-per-request", "min-likelihood", "name", "template-id", "update-time"]);
@@ -3674,7 +3676,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "location-id", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "order-by", "location-id", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3731,17 +3733,17 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "inspect-template.update-time" => Some(("inspectTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.display-name" => Some(("inspectTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.description" => Some(("inspectTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.exclude-info-types" => Some(("inspectTemplate.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.content-options" => Some(("inspectTemplate.inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "inspect-template.inspect-config.include-quote" => Some(("inspectTemplate.inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.limits.max-findings-per-request" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.limits.max-findings-per-item" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.min-likelihood" => Some(("inspectTemplate.inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "inspect-template.create-time" => Some(("inspectTemplate.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.description" => Some(("inspectTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.display-name" => Some(("inspectTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.content-options" => Some(("inspectTemplate.inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-template.inspect-config.exclude-info-types" => Some(("inspectTemplate.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.include-quote" => Some(("inspectTemplate.inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.limits.max-findings-per-item" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.limits.max-findings-per-request" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.min-likelihood" => Some(("inspectTemplate.inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "inspect-template.name" => Some(("inspectTemplate.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.update-time" => Some(("inspectTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "update-mask" => Some(("updateMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["content-options", "create-time", "description", "display-name", "exclude-info-types", "include-quote", "inspect-config", "inspect-template", "limits", "max-findings-per-item", "max-findings-per-request", "min-likelihood", "name", "update-mask", "update-time"]);
@@ -3911,47 +3913,47 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "trigger-id" => Some(("triggerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.status" => Some(("jobTrigger.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.update-time" => Some(("jobTrigger.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.display-name" => Some(("jobTrigger.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.create-time" => Some(("jobTrigger.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "job-trigger.description" => Some(("jobTrigger.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.timespan-config.timestamp-field.name" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.timestampField.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.timespan-config.end-time" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.timespan-config.start-time" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.timespan-config.enable-auto-population-of-timespan-config" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.enableAutoPopulationOfTimespanConfig", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.datastore-options.kind.name" => Some(("jobTrigger.inspectJob.storageConfig.datastoreOptions.kind.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.datastore-options.partition-id.project-id" => Some(("jobTrigger.inspectJob.storageConfig.datastoreOptions.partitionId.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.datastore-options.partition-id.namespace-id" => Some(("jobTrigger.inspectJob.storageConfig.datastoreOptions.partitionId.namespaceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.big-query-options.sample-method" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.sampleMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.big-query-options.rows-limit-percent" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.rowsLimitPercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.big-query-options.rows-limit" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.rowsLimit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.big-query-options.table-reference.project-id" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.tableReference.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.big-query-options.table-reference.table-id" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.tableReference.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.big-query-options.table-reference.dataset-id" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.tableReference.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.hybrid-options.labels" => Some(("jobTrigger.inspectJob.storageConfig.hybridOptions.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "job-trigger.inspect-job.storage-config.hybrid-options.required-finding-label-keys" => Some(("jobTrigger.inspectJob.storageConfig.hybridOptions.requiredFindingLabelKeys", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "job-trigger.inspect-job.storage-config.hybrid-options.description" => Some(("jobTrigger.inspectJob.storageConfig.hybridOptions.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.bytes-limit-per-file" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.bytesLimitPerFile", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.sample-method" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.sampleMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.url" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.exclude-regex" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.excludeRegex", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.bucket-name" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.bucketName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.include-regex" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.includeRegex", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.files-limit-percent" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.filesLimitPercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.bytes-limit-per-file-percent" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.bytesLimitPerFilePercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-types" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "job-trigger.inspect-job.inspect-config.exclude-info-types" => Some(("jobTrigger.inspectJob.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "job-trigger.display-name" => Some(("jobTrigger.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "job-trigger.inspect-job.inspect-config.content-options" => Some(("jobTrigger.inspectJob.inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "job-trigger.inspect-job.inspect-config.exclude-info-types" => Some(("jobTrigger.inspectJob.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "job-trigger.inspect-job.inspect-config.include-quote" => Some(("jobTrigger.inspectJob.inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.inspect-config.limits.max-findings-per-request" => Some(("jobTrigger.inspectJob.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "job-trigger.inspect-job.inspect-config.limits.max-findings-per-item" => Some(("jobTrigger.inspectJob.inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.inspect-config.limits.max-findings-per-request" => Some(("jobTrigger.inspectJob.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "job-trigger.inspect-job.inspect-config.min-likelihood" => Some(("jobTrigger.inspectJob.inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "job-trigger.inspect-job.inspect-template-name" => Some(("jobTrigger.inspectJob.inspectTemplateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.big-query-options.rows-limit" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.rowsLimit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.big-query-options.rows-limit-percent" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.rowsLimitPercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.big-query-options.sample-method" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.sampleMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.big-query-options.table-reference.dataset-id" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.tableReference.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.big-query-options.table-reference.project-id" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.tableReference.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.big-query-options.table-reference.table-id" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.tableReference.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.bytes-limit-per-file" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.bytesLimitPerFile", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.bytes-limit-per-file-percent" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.bytesLimitPerFilePercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.bucket-name" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.bucketName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.exclude-regex" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.excludeRegex", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.include-regex" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.includeRegex", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.url" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-types" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.files-limit-percent" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.filesLimitPercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.sample-method" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.sampleMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.datastore-options.kind.name" => Some(("jobTrigger.inspectJob.storageConfig.datastoreOptions.kind.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.datastore-options.partition-id.namespace-id" => Some(("jobTrigger.inspectJob.storageConfig.datastoreOptions.partitionId.namespaceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.datastore-options.partition-id.project-id" => Some(("jobTrigger.inspectJob.storageConfig.datastoreOptions.partitionId.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.hybrid-options.description" => Some(("jobTrigger.inspectJob.storageConfig.hybridOptions.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.hybrid-options.labels" => Some(("jobTrigger.inspectJob.storageConfig.hybridOptions.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "job-trigger.inspect-job.storage-config.hybrid-options.required-finding-label-keys" => Some(("jobTrigger.inspectJob.storageConfig.hybridOptions.requiredFindingLabelKeys", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "job-trigger.inspect-job.storage-config.timespan-config.enable-auto-population-of-timespan-config" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.enableAutoPopulationOfTimespanConfig", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.timespan-config.end-time" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.timespan-config.start-time" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.timespan-config.timestamp-field.name" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.timestampField.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "job-trigger.last-run-time" => Some(("jobTrigger.lastRunTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.create-time" => Some(("jobTrigger.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "job-trigger.name" => Some(("jobTrigger.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.status" => Some(("jobTrigger.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.update-time" => Some(("jobTrigger.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "trigger-id" => Some(("triggerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["big-query-options", "bucket-name", "bytes-limit-per-file", "bytes-limit-per-file-percent", "cloud-storage-options", "content-options", "create-time", "dataset-id", "datastore-options", "description", "display-name", "enable-auto-population-of-timespan-config", "end-time", "exclude-info-types", "exclude-regex", "file-set", "file-types", "files-limit-percent", "hybrid-options", "include-quote", "include-regex", "inspect-config", "inspect-job", "inspect-template-name", "job-trigger", "kind", "labels", "last-run-time", "limits", "location-id", "max-findings-per-item", "max-findings-per-request", "min-likelihood", "name", "namespace-id", "partition-id", "project-id", "regex-file-set", "required-finding-label-keys", "rows-limit", "rows-limit-percent", "sample-method", "start-time", "status", "storage-config", "table-id", "table-reference", "timespan-config", "timestamp-field", "trigger-id", "update-time", "url"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -4151,7 +4153,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "location-id", "filter", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["order-by", "page-size", "filter", "page-token", "location-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4208,45 +4210,45 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "job-trigger.status" => Some(("jobTrigger.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.update-time" => Some(("jobTrigger.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.display-name" => Some(("jobTrigger.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.create-time" => Some(("jobTrigger.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "job-trigger.description" => Some(("jobTrigger.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.timespan-config.timestamp-field.name" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.timestampField.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.timespan-config.end-time" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.timespan-config.start-time" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.timespan-config.enable-auto-population-of-timespan-config" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.enableAutoPopulationOfTimespanConfig", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.datastore-options.kind.name" => Some(("jobTrigger.inspectJob.storageConfig.datastoreOptions.kind.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.datastore-options.partition-id.project-id" => Some(("jobTrigger.inspectJob.storageConfig.datastoreOptions.partitionId.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.datastore-options.partition-id.namespace-id" => Some(("jobTrigger.inspectJob.storageConfig.datastoreOptions.partitionId.namespaceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.big-query-options.sample-method" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.sampleMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.big-query-options.rows-limit-percent" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.rowsLimitPercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.big-query-options.rows-limit" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.rowsLimit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.big-query-options.table-reference.project-id" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.tableReference.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.big-query-options.table-reference.table-id" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.tableReference.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.big-query-options.table-reference.dataset-id" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.tableReference.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.hybrid-options.labels" => Some(("jobTrigger.inspectJob.storageConfig.hybridOptions.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "job-trigger.inspect-job.storage-config.hybrid-options.required-finding-label-keys" => Some(("jobTrigger.inspectJob.storageConfig.hybridOptions.requiredFindingLabelKeys", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "job-trigger.inspect-job.storage-config.hybrid-options.description" => Some(("jobTrigger.inspectJob.storageConfig.hybridOptions.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.bytes-limit-per-file" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.bytesLimitPerFile", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.sample-method" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.sampleMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.url" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.exclude-regex" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.excludeRegex", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.bucket-name" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.bucketName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.include-regex" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.includeRegex", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.files-limit-percent" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.filesLimitPercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.bytes-limit-per-file-percent" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.bytesLimitPerFilePercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-types" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "job-trigger.inspect-job.inspect-config.exclude-info-types" => Some(("jobTrigger.inspectJob.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "job-trigger.display-name" => Some(("jobTrigger.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "job-trigger.inspect-job.inspect-config.content-options" => Some(("jobTrigger.inspectJob.inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "job-trigger.inspect-job.inspect-config.exclude-info-types" => Some(("jobTrigger.inspectJob.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "job-trigger.inspect-job.inspect-config.include-quote" => Some(("jobTrigger.inspectJob.inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.inspect-config.limits.max-findings-per-request" => Some(("jobTrigger.inspectJob.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "job-trigger.inspect-job.inspect-config.limits.max-findings-per-item" => Some(("jobTrigger.inspectJob.inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.inspect-config.limits.max-findings-per-request" => Some(("jobTrigger.inspectJob.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "job-trigger.inspect-job.inspect-config.min-likelihood" => Some(("jobTrigger.inspectJob.inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "job-trigger.inspect-job.inspect-template-name" => Some(("jobTrigger.inspectJob.inspectTemplateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.big-query-options.rows-limit" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.rowsLimit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.big-query-options.rows-limit-percent" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.rowsLimitPercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.big-query-options.sample-method" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.sampleMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.big-query-options.table-reference.dataset-id" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.tableReference.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.big-query-options.table-reference.project-id" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.tableReference.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.big-query-options.table-reference.table-id" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.tableReference.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.bytes-limit-per-file" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.bytesLimitPerFile", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.bytes-limit-per-file-percent" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.bytesLimitPerFilePercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.bucket-name" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.bucketName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.exclude-regex" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.excludeRegex", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.include-regex" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.includeRegex", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.url" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-types" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.files-limit-percent" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.filesLimitPercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.sample-method" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.sampleMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.datastore-options.kind.name" => Some(("jobTrigger.inspectJob.storageConfig.datastoreOptions.kind.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.datastore-options.partition-id.namespace-id" => Some(("jobTrigger.inspectJob.storageConfig.datastoreOptions.partitionId.namespaceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.datastore-options.partition-id.project-id" => Some(("jobTrigger.inspectJob.storageConfig.datastoreOptions.partitionId.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.hybrid-options.description" => Some(("jobTrigger.inspectJob.storageConfig.hybridOptions.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.hybrid-options.labels" => Some(("jobTrigger.inspectJob.storageConfig.hybridOptions.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "job-trigger.inspect-job.storage-config.hybrid-options.required-finding-label-keys" => Some(("jobTrigger.inspectJob.storageConfig.hybridOptions.requiredFindingLabelKeys", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "job-trigger.inspect-job.storage-config.timespan-config.enable-auto-population-of-timespan-config" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.enableAutoPopulationOfTimespanConfig", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.timespan-config.end-time" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.timespan-config.start-time" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.timespan-config.timestamp-field.name" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.timestampField.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "job-trigger.last-run-time" => Some(("jobTrigger.lastRunTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.create-time" => Some(("jobTrigger.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "job-trigger.name" => Some(("jobTrigger.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.status" => Some(("jobTrigger.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.update-time" => Some(("jobTrigger.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "update-mask" => Some(("updateMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["big-query-options", "bucket-name", "bytes-limit-per-file", "bytes-limit-per-file-percent", "cloud-storage-options", "content-options", "create-time", "dataset-id", "datastore-options", "description", "display-name", "enable-auto-population-of-timespan-config", "end-time", "exclude-info-types", "exclude-regex", "file-set", "file-types", "files-limit-percent", "hybrid-options", "include-quote", "include-regex", "inspect-config", "inspect-job", "inspect-template-name", "job-trigger", "kind", "labels", "last-run-time", "limits", "max-findings-per-item", "max-findings-per-request", "min-likelihood", "name", "namespace-id", "partition-id", "project-id", "regex-file-set", "required-finding-label-keys", "rows-limit", "rows-limit-percent", "sample-method", "start-time", "status", "storage-config", "table-id", "table-reference", "timespan-config", "timestamp-field", "update-mask", "update-time", "url"]);
@@ -4333,16 +4335,16 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "deidentify-template-name" => Some(("deidentifyTemplateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "item.byte-item.type" => Some(("item.byteItem.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "item.byte-item.data" => Some(("item.byteItem.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "item.value" => Some(("item.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template-name" => Some(("inspectTemplateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-config.exclude-info-types" => Some(("inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "inspect-config.content-options" => Some(("inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-config.exclude-info-types" => Some(("inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "inspect-config.include-quote" => Some(("inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-config.limits.max-findings-per-request" => Some(("inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "inspect-config.limits.max-findings-per-item" => Some(("inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-config.limits.max-findings-per-request" => Some(("inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "inspect-config.min-likelihood" => Some(("inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template-name" => Some(("inspectTemplateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "item.byte-item.data" => Some(("item.byteItem.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "item.byte-item.type" => Some(("item.byteItem.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "item.value" => Some(("item.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["byte-item", "content-options", "data", "deidentify-template-name", "exclude-info-types", "include-quote", "inspect-config", "inspect-template-name", "item", "limits", "location-id", "max-findings-per-item", "max-findings-per-request", "min-likelihood", "type", "value"]);
@@ -4428,17 +4430,17 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "item.byte-item.type" => Some(("item.byteItem.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "item.byte-item.data" => Some(("item.byteItem.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "item.value" => Some(("item.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-config.exclude-info-types" => Some(("inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "inspect-config.content-options" => Some(("inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-config.exclude-info-types" => Some(("inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "inspect-config.include-quote" => Some(("inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-config.limits.max-findings-per-request" => Some(("inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "inspect-config.limits.max-findings-per-item" => Some(("inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-config.limits.max-findings-per-request" => Some(("inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "inspect-config.min-likelihood" => Some(("inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "inspect-template-name" => Some(("inspectTemplateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "item.byte-item.data" => Some(("item.byteItem.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "item.byte-item.type" => Some(("item.byteItem.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "item.value" => Some(("item.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["byte-item", "content-options", "data", "exclude-info-types", "include-quote", "inspect-config", "inspect-template-name", "item", "limits", "location-id", "max-findings-per-item", "max-findings-per-request", "min-likelihood", "type", "value"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -4523,18 +4525,18 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "item.byte-item.type" => Some(("item.byteItem.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "item.byte-item.data" => Some(("item.byteItem.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "item.value" => Some(("item.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "reidentify-template-name" => Some(("reidentifyTemplateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-config.exclude-info-types" => Some(("inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "inspect-config.content-options" => Some(("inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-config.exclude-info-types" => Some(("inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "inspect-config.include-quote" => Some(("inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-config.limits.max-findings-per-request" => Some(("inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "inspect-config.limits.max-findings-per-item" => Some(("inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-config.limits.max-findings-per-request" => Some(("inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "inspect-config.min-likelihood" => Some(("inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "inspect-template-name" => Some(("inspectTemplateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "item.byte-item.data" => Some(("item.byteItem.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "item.byte-item.type" => Some(("item.byteItem.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "item.value" => Some(("item.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "reidentify-template-name" => Some(("reidentifyTemplateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["byte-item", "content-options", "data", "exclude-info-types", "include-quote", "inspect-config", "inspect-template-name", "item", "limits", "location-id", "max-findings-per-item", "max-findings-per-request", "min-likelihood", "reidentify-template-name", "type", "value"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -4619,11 +4621,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "deidentify-template.update-time" => Some(("deidentifyTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deidentify-template.display-name" => Some(("deidentifyTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deidentify-template.description" => Some(("deidentifyTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deidentify-template.name" => Some(("deidentifyTemplate.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "deidentify-template.create-time" => Some(("deidentifyTemplate.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.description" => Some(("deidentifyTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.display-name" => Some(("deidentifyTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.name" => Some(("deidentifyTemplate.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.update-time" => Some(("deidentifyTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "template-id" => Some(("templateId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
@@ -4822,7 +4824,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "location-id", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "order-by", "location-id", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4879,11 +4881,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "deidentify-template.update-time" => Some(("deidentifyTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deidentify-template.display-name" => Some(("deidentifyTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deidentify-template.description" => Some(("deidentifyTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "deidentify-template.name" => Some(("deidentifyTemplate.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "deidentify-template.create-time" => Some(("deidentifyTemplate.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.description" => Some(("deidentifyTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.display-name" => Some(("deidentifyTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.name" => Some(("deidentifyTemplate.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "deidentify-template.update-time" => Some(("deidentifyTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "update-mask" => Some(("updateMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["create-time", "deidentify-template", "description", "display-name", "name", "update-mask", "update-time"]);
@@ -5053,49 +5055,49 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "risk-job.privacy-metric.numerical-stats-config.field.name" => Some(("riskJob.privacyMetric.numericalStatsConfig.field.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "risk-job.privacy-metric.k-map-estimation-config.region-code" => Some(("riskJob.privacyMetric.kMapEstimationConfig.regionCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "risk-job.privacy-metric.l-diversity-config.sensitive-attribute.name" => Some(("riskJob.privacyMetric.lDiversityConfig.sensitiveAttribute.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "risk-job.privacy-metric.k-anonymity-config.entity-id.field.name" => Some(("riskJob.privacyMetric.kAnonymityConfig.entityId.field.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "risk-job.privacy-metric.categorical-stats-config.field.name" => Some(("riskJob.privacyMetric.categoricalStatsConfig.field.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "risk-job.privacy-metric.delta-presence-estimation-config.region-code" => Some(("riskJob.privacyMetric.deltaPresenceEstimationConfig.regionCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "risk-job.source-table.project-id" => Some(("riskJob.sourceTable.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "risk-job.source-table.table-id" => Some(("riskJob.sourceTable.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "risk-job.source-table.dataset-id" => Some(("riskJob.sourceTable.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-id" => Some(("jobId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.timespan-config.timestamp-field.name" => Some(("inspectJob.storageConfig.timespanConfig.timestampField.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.timespan-config.end-time" => Some(("inspectJob.storageConfig.timespanConfig.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.timespan-config.start-time" => Some(("inspectJob.storageConfig.timespanConfig.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.timespan-config.enable-auto-population-of-timespan-config" => Some(("inspectJob.storageConfig.timespanConfig.enableAutoPopulationOfTimespanConfig", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.datastore-options.kind.name" => Some(("inspectJob.storageConfig.datastoreOptions.kind.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.datastore-options.partition-id.project-id" => Some(("inspectJob.storageConfig.datastoreOptions.partitionId.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.datastore-options.partition-id.namespace-id" => Some(("inspectJob.storageConfig.datastoreOptions.partitionId.namespaceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.big-query-options.sample-method" => Some(("inspectJob.storageConfig.bigQueryOptions.sampleMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.big-query-options.rows-limit-percent" => Some(("inspectJob.storageConfig.bigQueryOptions.rowsLimitPercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.big-query-options.rows-limit" => Some(("inspectJob.storageConfig.bigQueryOptions.rowsLimit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.big-query-options.table-reference.project-id" => Some(("inspectJob.storageConfig.bigQueryOptions.tableReference.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.big-query-options.table-reference.table-id" => Some(("inspectJob.storageConfig.bigQueryOptions.tableReference.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.big-query-options.table-reference.dataset-id" => Some(("inspectJob.storageConfig.bigQueryOptions.tableReference.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.hybrid-options.labels" => Some(("inspectJob.storageConfig.hybridOptions.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "inspect-job.storage-config.hybrid-options.required-finding-label-keys" => Some(("inspectJob.storageConfig.hybridOptions.requiredFindingLabelKeys", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "inspect-job.storage-config.hybrid-options.description" => Some(("inspectJob.storageConfig.hybridOptions.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.cloud-storage-options.bytes-limit-per-file" => Some(("inspectJob.storageConfig.cloudStorageOptions.bytesLimitPerFile", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.cloud-storage-options.sample-method" => Some(("inspectJob.storageConfig.cloudStorageOptions.sampleMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.cloud-storage-options.file-set.url" => Some(("inspectJob.storageConfig.cloudStorageOptions.fileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.exclude-regex" => Some(("inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.excludeRegex", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.bucket-name" => Some(("inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.bucketName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.include-regex" => Some(("inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.includeRegex", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "inspect-job.storage-config.cloud-storage-options.files-limit-percent" => Some(("inspectJob.storageConfig.cloudStorageOptions.filesLimitPercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.cloud-storage-options.bytes-limit-per-file-percent" => Some(("inspectJob.storageConfig.cloudStorageOptions.bytesLimitPerFilePercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-job.storage-config.cloud-storage-options.file-types" => Some(("inspectJob.storageConfig.cloudStorageOptions.fileTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "inspect-job.inspect-config.exclude-info-types" => Some(("inspectJob.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "inspect-job.inspect-config.content-options" => Some(("inspectJob.inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-job.inspect-config.exclude-info-types" => Some(("inspectJob.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "inspect-job.inspect-config.include-quote" => Some(("inspectJob.inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-job.inspect-config.limits.max-findings-per-request" => Some(("inspectJob.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "inspect-job.inspect-config.limits.max-findings-per-item" => Some(("inspectJob.inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-job.inspect-config.limits.max-findings-per-request" => Some(("inspectJob.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "inspect-job.inspect-config.min-likelihood" => Some(("inspectJob.inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "inspect-job.inspect-template-name" => Some(("inspectJob.inspectTemplateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.big-query-options.rows-limit" => Some(("inspectJob.storageConfig.bigQueryOptions.rowsLimit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.big-query-options.rows-limit-percent" => Some(("inspectJob.storageConfig.bigQueryOptions.rowsLimitPercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.big-query-options.sample-method" => Some(("inspectJob.storageConfig.bigQueryOptions.sampleMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.big-query-options.table-reference.dataset-id" => Some(("inspectJob.storageConfig.bigQueryOptions.tableReference.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.big-query-options.table-reference.project-id" => Some(("inspectJob.storageConfig.bigQueryOptions.tableReference.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.big-query-options.table-reference.table-id" => Some(("inspectJob.storageConfig.bigQueryOptions.tableReference.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.cloud-storage-options.bytes-limit-per-file" => Some(("inspectJob.storageConfig.cloudStorageOptions.bytesLimitPerFile", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.cloud-storage-options.bytes-limit-per-file-percent" => Some(("inspectJob.storageConfig.cloudStorageOptions.bytesLimitPerFilePercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.bucket-name" => Some(("inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.bucketName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.exclude-regex" => Some(("inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.excludeRegex", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.include-regex" => Some(("inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.includeRegex", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-job.storage-config.cloud-storage-options.file-set.url" => Some(("inspectJob.storageConfig.cloudStorageOptions.fileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.cloud-storage-options.file-types" => Some(("inspectJob.storageConfig.cloudStorageOptions.fileTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-job.storage-config.cloud-storage-options.files-limit-percent" => Some(("inspectJob.storageConfig.cloudStorageOptions.filesLimitPercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.cloud-storage-options.sample-method" => Some(("inspectJob.storageConfig.cloudStorageOptions.sampleMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.datastore-options.kind.name" => Some(("inspectJob.storageConfig.datastoreOptions.kind.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.datastore-options.partition-id.namespace-id" => Some(("inspectJob.storageConfig.datastoreOptions.partitionId.namespaceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.datastore-options.partition-id.project-id" => Some(("inspectJob.storageConfig.datastoreOptions.partitionId.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.hybrid-options.description" => Some(("inspectJob.storageConfig.hybridOptions.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.hybrid-options.labels" => Some(("inspectJob.storageConfig.hybridOptions.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "inspect-job.storage-config.hybrid-options.required-finding-label-keys" => Some(("inspectJob.storageConfig.hybridOptions.requiredFindingLabelKeys", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-job.storage-config.timespan-config.enable-auto-population-of-timespan-config" => Some(("inspectJob.storageConfig.timespanConfig.enableAutoPopulationOfTimespanConfig", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.timespan-config.end-time" => Some(("inspectJob.storageConfig.timespanConfig.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.timespan-config.start-time" => Some(("inspectJob.storageConfig.timespanConfig.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-job.storage-config.timespan-config.timestamp-field.name" => Some(("inspectJob.storageConfig.timespanConfig.timestampField.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-id" => Some(("jobId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "risk-job.privacy-metric.categorical-stats-config.field.name" => Some(("riskJob.privacyMetric.categoricalStatsConfig.field.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "risk-job.privacy-metric.delta-presence-estimation-config.region-code" => Some(("riskJob.privacyMetric.deltaPresenceEstimationConfig.regionCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "risk-job.privacy-metric.k-anonymity-config.entity-id.field.name" => Some(("riskJob.privacyMetric.kAnonymityConfig.entityId.field.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "risk-job.privacy-metric.k-map-estimation-config.region-code" => Some(("riskJob.privacyMetric.kMapEstimationConfig.regionCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "risk-job.privacy-metric.l-diversity-config.sensitive-attribute.name" => Some(("riskJob.privacyMetric.lDiversityConfig.sensitiveAttribute.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "risk-job.privacy-metric.numerical-stats-config.field.name" => Some(("riskJob.privacyMetric.numericalStatsConfig.field.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "risk-job.source-table.dataset-id" => Some(("riskJob.sourceTable.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "risk-job.source-table.project-id" => Some(("riskJob.sourceTable.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "risk-job.source-table.table-id" => Some(("riskJob.sourceTable.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["big-query-options", "bucket-name", "bytes-limit-per-file", "bytes-limit-per-file-percent", "categorical-stats-config", "cloud-storage-options", "content-options", "dataset-id", "datastore-options", "delta-presence-estimation-config", "description", "enable-auto-population-of-timespan-config", "end-time", "entity-id", "exclude-info-types", "exclude-regex", "field", "file-set", "file-types", "files-limit-percent", "hybrid-options", "include-quote", "include-regex", "inspect-config", "inspect-job", "inspect-template-name", "job-id", "k-anonymity-config", "k-map-estimation-config", "kind", "l-diversity-config", "labels", "limits", "location-id", "max-findings-per-item", "max-findings-per-request", "min-likelihood", "name", "namespace-id", "numerical-stats-config", "partition-id", "privacy-metric", "project-id", "regex-file-set", "region-code", "required-finding-label-keys", "risk-job", "rows-limit", "rows-limit-percent", "sample-method", "sensitive-attribute", "source-table", "start-time", "storage-config", "table-id", "table-reference", "timespan-config", "timestamp-field", "url"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -5368,18 +5370,18 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "hybrid-item.finding-details.container-details.full-path" => Some(("hybridItem.findingDetails.containerDetails.fullPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "hybrid-item.finding-details.container-details.project-id" => Some(("hybridItem.findingDetails.containerDetails.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "hybrid-item.finding-details.container-details.relative-path" => Some(("hybridItem.findingDetails.containerDetails.relativePath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "hybrid-item.finding-details.container-details.root-path" => Some(("hybridItem.findingDetails.containerDetails.rootPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "hybrid-item.finding-details.container-details.type" => Some(("hybridItem.findingDetails.containerDetails.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "hybrid-item.finding-details.container-details.update-time" => Some(("hybridItem.findingDetails.containerDetails.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "hybrid-item.finding-details.container-details.version" => Some(("hybridItem.findingDetails.containerDetails.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "hybrid-item.finding-details.file-offset" => Some(("hybridItem.findingDetails.fileOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "hybrid-item.finding-details.labels" => Some(("hybridItem.findingDetails.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "hybrid-item.finding-details.row-offset" => Some(("hybridItem.findingDetails.rowOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hybrid-item.finding-details.container-details.update-time" => Some(("hybridItem.findingDetails.containerDetails.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hybrid-item.finding-details.container-details.project-id" => Some(("hybridItem.findingDetails.containerDetails.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hybrid-item.finding-details.container-details.root-path" => Some(("hybridItem.findingDetails.containerDetails.rootPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hybrid-item.finding-details.container-details.version" => Some(("hybridItem.findingDetails.containerDetails.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hybrid-item.finding-details.container-details.relative-path" => Some(("hybridItem.findingDetails.containerDetails.relativePath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hybrid-item.finding-details.container-details.full-path" => Some(("hybridItem.findingDetails.containerDetails.fullPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hybrid-item.finding-details.container-details.type" => Some(("hybridItem.findingDetails.containerDetails.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hybrid-item.item.byte-item.type" => Some(("hybridItem.item.byteItem.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "hybrid-item.item.byte-item.data" => Some(("hybridItem.item.byteItem.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "hybrid-item.item.byte-item.type" => Some(("hybridItem.item.byteItem.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "hybrid-item.item.value" => Some(("hybridItem.item.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["byte-item", "container-details", "data", "file-offset", "finding-details", "full-path", "hybrid-item", "item", "labels", "project-id", "relative-path", "root-path", "row-offset", "type", "update-time", "value", "version"]);
@@ -5479,7 +5481,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-size", "filter", "page-token", "location-id", "type"].iter().map(|v|*v));
+                                                                           v.extend(["order-by", "type", "page-token", "page-size", "filter", "location-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -5536,16 +5538,16 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "byte-item.type" => Some(("byteItem.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "byte-item.data" => Some(("byteItem.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-config.exclude-info-types" => Some(("inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-config.content-options" => Some(("inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "inspect-config.include-quote" => Some(("inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-config.limits.max-findings-per-request" => Some(("inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-config.limits.max-findings-per-item" => Some(("inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-config.min-likelihood" => Some(("inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "byte-item.type" => Some(("byteItem.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "include-findings" => Some(("includeFindings", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "inspect-config.content-options" => Some(("inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-config.exclude-info-types" => Some(("inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "inspect-config.include-quote" => Some(("inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "inspect-config.limits.max-findings-per-item" => Some(("inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-config.limits.max-findings-per-request" => Some(("inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-config.min-likelihood" => Some(("inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["byte-item", "content-options", "data", "exclude-info-types", "include-findings", "include-quote", "inspect-config", "limits", "location-id", "max-findings-per-item", "max-findings-per-request", "min-likelihood", "type"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -5630,18 +5632,18 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.update-time" => Some(("inspectTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.display-name" => Some(("inspectTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.description" => Some(("inspectTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.exclude-info-types" => Some(("inspectTemplate.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.content-options" => Some(("inspectTemplate.inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "inspect-template.inspect-config.include-quote" => Some(("inspectTemplate.inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.limits.max-findings-per-request" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.limits.max-findings-per-item" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.min-likelihood" => Some(("inspectTemplate.inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "inspect-template.create-time" => Some(("inspectTemplate.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.description" => Some(("inspectTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.display-name" => Some(("inspectTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.content-options" => Some(("inspectTemplate.inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-template.inspect-config.exclude-info-types" => Some(("inspectTemplate.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.include-quote" => Some(("inspectTemplate.inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.limits.max-findings-per-item" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.limits.max-findings-per-request" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.min-likelihood" => Some(("inspectTemplate.inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "inspect-template.name" => Some(("inspectTemplate.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.update-time" => Some(("inspectTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "template-id" => Some(("templateId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["content-options", "create-time", "description", "display-name", "exclude-info-types", "include-quote", "inspect-config", "inspect-template", "limits", "location-id", "max-findings-per-item", "max-findings-per-request", "min-likelihood", "name", "template-id", "update-time"]);
@@ -5839,7 +5841,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "location-id", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "order-by", "location-id", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -5896,17 +5898,17 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "inspect-template.update-time" => Some(("inspectTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.display-name" => Some(("inspectTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.description" => Some(("inspectTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.exclude-info-types" => Some(("inspectTemplate.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.content-options" => Some(("inspectTemplate.inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "inspect-template.inspect-config.include-quote" => Some(("inspectTemplate.inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.limits.max-findings-per-request" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.limits.max-findings-per-item" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inspect-template.inspect-config.min-likelihood" => Some(("inspectTemplate.inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "inspect-template.create-time" => Some(("inspectTemplate.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.description" => Some(("inspectTemplate.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.display-name" => Some(("inspectTemplate.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.content-options" => Some(("inspectTemplate.inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inspect-template.inspect-config.exclude-info-types" => Some(("inspectTemplate.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.include-quote" => Some(("inspectTemplate.inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.limits.max-findings-per-item" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.limits.max-findings-per-request" => Some(("inspectTemplate.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "inspect-template.inspect-config.min-likelihood" => Some(("inspectTemplate.inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "inspect-template.name" => Some(("inspectTemplate.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inspect-template.update-time" => Some(("inspectTemplate.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "update-mask" => Some(("updateMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["content-options", "create-time", "description", "display-name", "exclude-info-types", "include-quote", "inspect-config", "inspect-template", "limits", "max-findings-per-item", "max-findings-per-request", "min-likelihood", "name", "update-mask", "update-time"]);
@@ -6076,47 +6078,47 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "trigger-id" => Some(("triggerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.status" => Some(("jobTrigger.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.update-time" => Some(("jobTrigger.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.display-name" => Some(("jobTrigger.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.create-time" => Some(("jobTrigger.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "job-trigger.description" => Some(("jobTrigger.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.timespan-config.timestamp-field.name" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.timestampField.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.timespan-config.end-time" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.timespan-config.start-time" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.timespan-config.enable-auto-population-of-timespan-config" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.enableAutoPopulationOfTimespanConfig", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.datastore-options.kind.name" => Some(("jobTrigger.inspectJob.storageConfig.datastoreOptions.kind.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.datastore-options.partition-id.project-id" => Some(("jobTrigger.inspectJob.storageConfig.datastoreOptions.partitionId.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.datastore-options.partition-id.namespace-id" => Some(("jobTrigger.inspectJob.storageConfig.datastoreOptions.partitionId.namespaceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.big-query-options.sample-method" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.sampleMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.big-query-options.rows-limit-percent" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.rowsLimitPercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.big-query-options.rows-limit" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.rowsLimit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.big-query-options.table-reference.project-id" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.tableReference.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.big-query-options.table-reference.table-id" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.tableReference.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.big-query-options.table-reference.dataset-id" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.tableReference.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.hybrid-options.labels" => Some(("jobTrigger.inspectJob.storageConfig.hybridOptions.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "job-trigger.inspect-job.storage-config.hybrid-options.required-finding-label-keys" => Some(("jobTrigger.inspectJob.storageConfig.hybridOptions.requiredFindingLabelKeys", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "job-trigger.inspect-job.storage-config.hybrid-options.description" => Some(("jobTrigger.inspectJob.storageConfig.hybridOptions.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.bytes-limit-per-file" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.bytesLimitPerFile", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.sample-method" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.sampleMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.url" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.exclude-regex" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.excludeRegex", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.bucket-name" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.bucketName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.include-regex" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.includeRegex", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.files-limit-percent" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.filesLimitPercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.bytes-limit-per-file-percent" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.bytesLimitPerFilePercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-types" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "job-trigger.inspect-job.inspect-config.exclude-info-types" => Some(("jobTrigger.inspectJob.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "job-trigger.display-name" => Some(("jobTrigger.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "job-trigger.inspect-job.inspect-config.content-options" => Some(("jobTrigger.inspectJob.inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "job-trigger.inspect-job.inspect-config.exclude-info-types" => Some(("jobTrigger.inspectJob.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "job-trigger.inspect-job.inspect-config.include-quote" => Some(("jobTrigger.inspectJob.inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.inspect-config.limits.max-findings-per-request" => Some(("jobTrigger.inspectJob.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "job-trigger.inspect-job.inspect-config.limits.max-findings-per-item" => Some(("jobTrigger.inspectJob.inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.inspect-config.limits.max-findings-per-request" => Some(("jobTrigger.inspectJob.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "job-trigger.inspect-job.inspect-config.min-likelihood" => Some(("jobTrigger.inspectJob.inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "job-trigger.inspect-job.inspect-template-name" => Some(("jobTrigger.inspectJob.inspectTemplateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.big-query-options.rows-limit" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.rowsLimit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.big-query-options.rows-limit-percent" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.rowsLimitPercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.big-query-options.sample-method" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.sampleMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.big-query-options.table-reference.dataset-id" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.tableReference.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.big-query-options.table-reference.project-id" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.tableReference.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.big-query-options.table-reference.table-id" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.tableReference.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.bytes-limit-per-file" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.bytesLimitPerFile", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.bytes-limit-per-file-percent" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.bytesLimitPerFilePercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.bucket-name" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.bucketName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.exclude-regex" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.excludeRegex", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.include-regex" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.includeRegex", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.url" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-types" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.files-limit-percent" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.filesLimitPercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.sample-method" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.sampleMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.datastore-options.kind.name" => Some(("jobTrigger.inspectJob.storageConfig.datastoreOptions.kind.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.datastore-options.partition-id.namespace-id" => Some(("jobTrigger.inspectJob.storageConfig.datastoreOptions.partitionId.namespaceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.datastore-options.partition-id.project-id" => Some(("jobTrigger.inspectJob.storageConfig.datastoreOptions.partitionId.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.hybrid-options.description" => Some(("jobTrigger.inspectJob.storageConfig.hybridOptions.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.hybrid-options.labels" => Some(("jobTrigger.inspectJob.storageConfig.hybridOptions.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "job-trigger.inspect-job.storage-config.hybrid-options.required-finding-label-keys" => Some(("jobTrigger.inspectJob.storageConfig.hybridOptions.requiredFindingLabelKeys", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "job-trigger.inspect-job.storage-config.timespan-config.enable-auto-population-of-timespan-config" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.enableAutoPopulationOfTimespanConfig", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.timespan-config.end-time" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.timespan-config.start-time" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.timespan-config.timestamp-field.name" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.timestampField.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "job-trigger.last-run-time" => Some(("jobTrigger.lastRunTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.create-time" => Some(("jobTrigger.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "job-trigger.name" => Some(("jobTrigger.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.status" => Some(("jobTrigger.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.update-time" => Some(("jobTrigger.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "trigger-id" => Some(("triggerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["big-query-options", "bucket-name", "bytes-limit-per-file", "bytes-limit-per-file-percent", "cloud-storage-options", "content-options", "create-time", "dataset-id", "datastore-options", "description", "display-name", "enable-auto-population-of-timespan-config", "end-time", "exclude-info-types", "exclude-regex", "file-set", "file-types", "files-limit-percent", "hybrid-options", "include-quote", "include-regex", "inspect-config", "inspect-job", "inspect-template-name", "job-trigger", "kind", "labels", "last-run-time", "limits", "location-id", "max-findings-per-item", "max-findings-per-request", "min-likelihood", "name", "namespace-id", "partition-id", "project-id", "regex-file-set", "required-finding-label-keys", "rows-limit", "rows-limit-percent", "sample-method", "start-time", "status", "storage-config", "table-id", "table-reference", "timespan-config", "timestamp-field", "trigger-id", "update-time", "url"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -6305,18 +6307,18 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "hybrid-item.finding-details.container-details.full-path" => Some(("hybridItem.findingDetails.containerDetails.fullPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "hybrid-item.finding-details.container-details.project-id" => Some(("hybridItem.findingDetails.containerDetails.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "hybrid-item.finding-details.container-details.relative-path" => Some(("hybridItem.findingDetails.containerDetails.relativePath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "hybrid-item.finding-details.container-details.root-path" => Some(("hybridItem.findingDetails.containerDetails.rootPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "hybrid-item.finding-details.container-details.type" => Some(("hybridItem.findingDetails.containerDetails.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "hybrid-item.finding-details.container-details.update-time" => Some(("hybridItem.findingDetails.containerDetails.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "hybrid-item.finding-details.container-details.version" => Some(("hybridItem.findingDetails.containerDetails.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "hybrid-item.finding-details.file-offset" => Some(("hybridItem.findingDetails.fileOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "hybrid-item.finding-details.labels" => Some(("hybridItem.findingDetails.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "hybrid-item.finding-details.row-offset" => Some(("hybridItem.findingDetails.rowOffset", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hybrid-item.finding-details.container-details.update-time" => Some(("hybridItem.findingDetails.containerDetails.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hybrid-item.finding-details.container-details.project-id" => Some(("hybridItem.findingDetails.containerDetails.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hybrid-item.finding-details.container-details.root-path" => Some(("hybridItem.findingDetails.containerDetails.rootPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hybrid-item.finding-details.container-details.version" => Some(("hybridItem.findingDetails.containerDetails.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hybrid-item.finding-details.container-details.relative-path" => Some(("hybridItem.findingDetails.containerDetails.relativePath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hybrid-item.finding-details.container-details.full-path" => Some(("hybridItem.findingDetails.containerDetails.fullPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hybrid-item.finding-details.container-details.type" => Some(("hybridItem.findingDetails.containerDetails.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hybrid-item.item.byte-item.type" => Some(("hybridItem.item.byteItem.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "hybrid-item.item.byte-item.data" => Some(("hybridItem.item.byteItem.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "hybrid-item.item.byte-item.type" => Some(("hybridItem.item.byteItem.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "hybrid-item.item.value" => Some(("hybridItem.item.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["byte-item", "container-details", "data", "file-offset", "finding-details", "full-path", "hybrid-item", "item", "labels", "project-id", "relative-path", "root-path", "row-offset", "type", "update-time", "value", "version"]);
@@ -6413,7 +6415,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "location-id", "filter", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["order-by", "page-size", "filter", "page-token", "location-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -6470,45 +6472,45 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "job-trigger.status" => Some(("jobTrigger.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.update-time" => Some(("jobTrigger.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.display-name" => Some(("jobTrigger.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.create-time" => Some(("jobTrigger.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "job-trigger.description" => Some(("jobTrigger.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.timespan-config.timestamp-field.name" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.timestampField.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.timespan-config.end-time" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.timespan-config.start-time" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.timespan-config.enable-auto-population-of-timespan-config" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.enableAutoPopulationOfTimespanConfig", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.datastore-options.kind.name" => Some(("jobTrigger.inspectJob.storageConfig.datastoreOptions.kind.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.datastore-options.partition-id.project-id" => Some(("jobTrigger.inspectJob.storageConfig.datastoreOptions.partitionId.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.datastore-options.partition-id.namespace-id" => Some(("jobTrigger.inspectJob.storageConfig.datastoreOptions.partitionId.namespaceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.big-query-options.sample-method" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.sampleMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.big-query-options.rows-limit-percent" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.rowsLimitPercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.big-query-options.rows-limit" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.rowsLimit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.big-query-options.table-reference.project-id" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.tableReference.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.big-query-options.table-reference.table-id" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.tableReference.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.big-query-options.table-reference.dataset-id" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.tableReference.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.hybrid-options.labels" => Some(("jobTrigger.inspectJob.storageConfig.hybridOptions.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "job-trigger.inspect-job.storage-config.hybrid-options.required-finding-label-keys" => Some(("jobTrigger.inspectJob.storageConfig.hybridOptions.requiredFindingLabelKeys", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "job-trigger.inspect-job.storage-config.hybrid-options.description" => Some(("jobTrigger.inspectJob.storageConfig.hybridOptions.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.bytes-limit-per-file" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.bytesLimitPerFile", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.sample-method" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.sampleMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.url" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.exclude-regex" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.excludeRegex", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.bucket-name" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.bucketName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.include-regex" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.includeRegex", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.files-limit-percent" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.filesLimitPercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.bytes-limit-per-file-percent" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.bytesLimitPerFilePercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-types" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "job-trigger.inspect-job.inspect-config.exclude-info-types" => Some(("jobTrigger.inspectJob.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "job-trigger.display-name" => Some(("jobTrigger.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "job-trigger.inspect-job.inspect-config.content-options" => Some(("jobTrigger.inspectJob.inspectConfig.contentOptions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "job-trigger.inspect-job.inspect-config.exclude-info-types" => Some(("jobTrigger.inspectJob.inspectConfig.excludeInfoTypes", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "job-trigger.inspect-job.inspect-config.include-quote" => Some(("jobTrigger.inspectJob.inspectConfig.includeQuote", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "job-trigger.inspect-job.inspect-config.limits.max-findings-per-request" => Some(("jobTrigger.inspectJob.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "job-trigger.inspect-job.inspect-config.limits.max-findings-per-item" => Some(("jobTrigger.inspectJob.inspectConfig.limits.maxFindingsPerItem", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.inspect-config.limits.max-findings-per-request" => Some(("jobTrigger.inspectJob.inspectConfig.limits.maxFindingsPerRequest", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "job-trigger.inspect-job.inspect-config.min-likelihood" => Some(("jobTrigger.inspectJob.inspectConfig.minLikelihood", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "job-trigger.inspect-job.inspect-template-name" => Some(("jobTrigger.inspectJob.inspectTemplateName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.big-query-options.rows-limit" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.rowsLimit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.big-query-options.rows-limit-percent" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.rowsLimitPercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.big-query-options.sample-method" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.sampleMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.big-query-options.table-reference.dataset-id" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.tableReference.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.big-query-options.table-reference.project-id" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.tableReference.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.big-query-options.table-reference.table-id" => Some(("jobTrigger.inspectJob.storageConfig.bigQueryOptions.tableReference.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.bytes-limit-per-file" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.bytesLimitPerFile", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.bytes-limit-per-file-percent" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.bytesLimitPerFilePercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.bucket-name" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.bucketName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.exclude-regex" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.excludeRegex", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.regex-file-set.include-regex" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.regexFileSet.includeRegex", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-set.url" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.file-types" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.fileTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.files-limit-percent" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.filesLimitPercent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.cloud-storage-options.sample-method" => Some(("jobTrigger.inspectJob.storageConfig.cloudStorageOptions.sampleMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.datastore-options.kind.name" => Some(("jobTrigger.inspectJob.storageConfig.datastoreOptions.kind.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.datastore-options.partition-id.namespace-id" => Some(("jobTrigger.inspectJob.storageConfig.datastoreOptions.partitionId.namespaceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.datastore-options.partition-id.project-id" => Some(("jobTrigger.inspectJob.storageConfig.datastoreOptions.partitionId.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.hybrid-options.description" => Some(("jobTrigger.inspectJob.storageConfig.hybridOptions.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.hybrid-options.labels" => Some(("jobTrigger.inspectJob.storageConfig.hybridOptions.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "job-trigger.inspect-job.storage-config.hybrid-options.required-finding-label-keys" => Some(("jobTrigger.inspectJob.storageConfig.hybridOptions.requiredFindingLabelKeys", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "job-trigger.inspect-job.storage-config.timespan-config.enable-auto-population-of-timespan-config" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.enableAutoPopulationOfTimespanConfig", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.timespan-config.end-time" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.endTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.timespan-config.start-time" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.inspect-job.storage-config.timespan-config.timestamp-field.name" => Some(("jobTrigger.inspectJob.storageConfig.timespanConfig.timestampField.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "job-trigger.last-run-time" => Some(("jobTrigger.lastRunTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "job-trigger.create-time" => Some(("jobTrigger.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "job-trigger.name" => Some(("jobTrigger.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.status" => Some(("jobTrigger.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "job-trigger.update-time" => Some(("jobTrigger.updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "update-mask" => Some(("updateMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["big-query-options", "bucket-name", "bytes-limit-per-file", "bytes-limit-per-file-percent", "cloud-storage-options", "content-options", "create-time", "dataset-id", "datastore-options", "description", "display-name", "enable-auto-population-of-timespan-config", "end-time", "exclude-info-types", "exclude-regex", "file-set", "file-types", "files-limit-percent", "hybrid-options", "include-quote", "include-regex", "inspect-config", "inspect-job", "inspect-template-name", "job-trigger", "kind", "labels", "last-run-time", "limits", "max-findings-per-item", "max-findings-per-request", "min-likelihood", "name", "namespace-id", "partition-id", "project-id", "regex-file-set", "required-finding-label-keys", "rows-limit", "rows-limit-percent", "sample-method", "start-time", "status", "storage-config", "table-id", "table-reference", "timespan-config", "timestamp-field", "update-mask", "update-time", "url"]);
@@ -6594,20 +6596,20 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "stored-info-type-id" => Some(("storedInfoTypeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.regex.pattern" => Some(("config.regex.pattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.regex.group-indexes" => Some(("config.regex.groupIndexes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
-                    "config.display-name" => Some(("config.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.description" => Some(("config.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.dictionary.word-list.words" => Some(("config.dictionary.wordList.words", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "config.dictionary.cloud-storage-path.path" => Some(("config.dictionary.cloudStoragePath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.large-custom-dictionary.output-path.path" => Some(("config.largeCustomDictionary.outputPath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.large-custom-dictionary.cloud-storage-file-set.url" => Some(("config.largeCustomDictionary.cloudStorageFileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.dictionary.word-list.words" => Some(("config.dictionary.wordList.words", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "config.display-name" => Some(("config.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.large-custom-dictionary.big-query-field.field.name" => Some(("config.largeCustomDictionary.bigQueryField.field.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.large-custom-dictionary.big-query-field.table.dataset-id" => Some(("config.largeCustomDictionary.bigQueryField.table.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.large-custom-dictionary.big-query-field.table.project-id" => Some(("config.largeCustomDictionary.bigQueryField.table.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.large-custom-dictionary.big-query-field.table.table-id" => Some(("config.largeCustomDictionary.bigQueryField.table.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.large-custom-dictionary.big-query-field.table.dataset-id" => Some(("config.largeCustomDictionary.bigQueryField.table.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.large-custom-dictionary.cloud-storage-file-set.url" => Some(("config.largeCustomDictionary.cloudStorageFileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.large-custom-dictionary.output-path.path" => Some(("config.largeCustomDictionary.outputPath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.regex.group-indexes" => Some(("config.regex.groupIndexes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
+                    "config.regex.pattern" => Some(("config.regex.pattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "stored-info-type-id" => Some(("storedInfoTypeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["big-query-field", "cloud-storage-file-set", "cloud-storage-path", "config", "dataset-id", "description", "dictionary", "display-name", "field", "group-indexes", "large-custom-dictionary", "location-id", "name", "output-path", "path", "pattern", "project-id", "regex", "stored-info-type-id", "table", "table-id", "url", "word-list", "words"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -6804,7 +6806,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "location-id", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "order-by", "location-id", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -6861,18 +6863,18 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "config.regex.pattern" => Some(("config.regex.pattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.regex.group-indexes" => Some(("config.regex.groupIndexes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
-                    "config.display-name" => Some(("config.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.description" => Some(("config.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.dictionary.word-list.words" => Some(("config.dictionary.wordList.words", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "config.dictionary.cloud-storage-path.path" => Some(("config.dictionary.cloudStoragePath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.large-custom-dictionary.output-path.path" => Some(("config.largeCustomDictionary.outputPath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.large-custom-dictionary.cloud-storage-file-set.url" => Some(("config.largeCustomDictionary.cloudStorageFileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.dictionary.word-list.words" => Some(("config.dictionary.wordList.words", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "config.display-name" => Some(("config.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.large-custom-dictionary.big-query-field.field.name" => Some(("config.largeCustomDictionary.bigQueryField.field.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.large-custom-dictionary.big-query-field.table.dataset-id" => Some(("config.largeCustomDictionary.bigQueryField.table.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.large-custom-dictionary.big-query-field.table.project-id" => Some(("config.largeCustomDictionary.bigQueryField.table.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.large-custom-dictionary.big-query-field.table.table-id" => Some(("config.largeCustomDictionary.bigQueryField.table.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.large-custom-dictionary.big-query-field.table.dataset-id" => Some(("config.largeCustomDictionary.bigQueryField.table.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.large-custom-dictionary.cloud-storage-file-set.url" => Some(("config.largeCustomDictionary.cloudStorageFileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.large-custom-dictionary.output-path.path" => Some(("config.largeCustomDictionary.outputPath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.regex.group-indexes" => Some(("config.regex.groupIndexes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
+                    "config.regex.pattern" => Some(("config.regex.pattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "update-mask" => Some(("updateMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["big-query-field", "cloud-storage-file-set", "cloud-storage-path", "config", "dataset-id", "description", "dictionary", "display-name", "field", "group-indexes", "large-custom-dictionary", "name", "output-path", "path", "pattern", "project-id", "regex", "table", "table-id", "update-mask", "url", "word-list", "words"]);
@@ -6958,20 +6960,20 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "stored-info-type-id" => Some(("storedInfoTypeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.regex.pattern" => Some(("config.regex.pattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.regex.group-indexes" => Some(("config.regex.groupIndexes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
-                    "config.display-name" => Some(("config.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.description" => Some(("config.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.dictionary.word-list.words" => Some(("config.dictionary.wordList.words", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "config.dictionary.cloud-storage-path.path" => Some(("config.dictionary.cloudStoragePath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.large-custom-dictionary.output-path.path" => Some(("config.largeCustomDictionary.outputPath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.large-custom-dictionary.cloud-storage-file-set.url" => Some(("config.largeCustomDictionary.cloudStorageFileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.dictionary.word-list.words" => Some(("config.dictionary.wordList.words", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "config.display-name" => Some(("config.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.large-custom-dictionary.big-query-field.field.name" => Some(("config.largeCustomDictionary.bigQueryField.field.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.large-custom-dictionary.big-query-field.table.dataset-id" => Some(("config.largeCustomDictionary.bigQueryField.table.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.large-custom-dictionary.big-query-field.table.project-id" => Some(("config.largeCustomDictionary.bigQueryField.table.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.large-custom-dictionary.big-query-field.table.table-id" => Some(("config.largeCustomDictionary.bigQueryField.table.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.large-custom-dictionary.big-query-field.table.dataset-id" => Some(("config.largeCustomDictionary.bigQueryField.table.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.large-custom-dictionary.cloud-storage-file-set.url" => Some(("config.largeCustomDictionary.cloudStorageFileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.large-custom-dictionary.output-path.path" => Some(("config.largeCustomDictionary.outputPath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.regex.group-indexes" => Some(("config.regex.groupIndexes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
+                    "config.regex.pattern" => Some(("config.regex.pattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location-id" => Some(("locationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "stored-info-type-id" => Some(("storedInfoTypeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["big-query-field", "cloud-storage-file-set", "cloud-storage-path", "config", "dataset-id", "description", "dictionary", "display-name", "field", "group-indexes", "large-custom-dictionary", "location-id", "name", "output-path", "path", "pattern", "project-id", "regex", "stored-info-type-id", "table", "table-id", "url", "word-list", "words"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -7168,7 +7170,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "location-id", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "order-by", "location-id", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -7225,18 +7227,18 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "config.regex.pattern" => Some(("config.regex.pattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.regex.group-indexes" => Some(("config.regex.groupIndexes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
-                    "config.display-name" => Some(("config.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.description" => Some(("config.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.dictionary.word-list.words" => Some(("config.dictionary.wordList.words", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "config.dictionary.cloud-storage-path.path" => Some(("config.dictionary.cloudStoragePath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.large-custom-dictionary.output-path.path" => Some(("config.largeCustomDictionary.outputPath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.large-custom-dictionary.cloud-storage-file-set.url" => Some(("config.largeCustomDictionary.cloudStorageFileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.dictionary.word-list.words" => Some(("config.dictionary.wordList.words", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "config.display-name" => Some(("config.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.large-custom-dictionary.big-query-field.field.name" => Some(("config.largeCustomDictionary.bigQueryField.field.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.large-custom-dictionary.big-query-field.table.dataset-id" => Some(("config.largeCustomDictionary.bigQueryField.table.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.large-custom-dictionary.big-query-field.table.project-id" => Some(("config.largeCustomDictionary.bigQueryField.table.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.large-custom-dictionary.big-query-field.table.table-id" => Some(("config.largeCustomDictionary.bigQueryField.table.tableId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.large-custom-dictionary.big-query-field.table.dataset-id" => Some(("config.largeCustomDictionary.bigQueryField.table.datasetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.large-custom-dictionary.cloud-storage-file-set.url" => Some(("config.largeCustomDictionary.cloudStorageFileSet.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.large-custom-dictionary.output-path.path" => Some(("config.largeCustomDictionary.outputPath.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.regex.group-indexes" => Some(("config.regex.groupIndexes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Vec })),
+                    "config.regex.pattern" => Some(("config.regex.pattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "update-mask" => Some(("updateMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["big-query-field", "cloud-storage-file-set", "cloud-storage-path", "config", "dataset-id", "description", "dictionary", "display-name", "field", "group-indexes", "large-custom-dictionary", "name", "output-path", "path", "pattern", "project-id", "regex", "table", "table-id", "update-mask", "url", "word-list", "words"]);
@@ -7640,12 +7642,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "dlp2-secret.json",
+            match client::application_secret_from_directory(&config_dir, "dlp2-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

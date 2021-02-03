@@ -11,12 +11,12 @@ Everything else about the *reseller* *v1_sandbox* API can be found at the
 [official documentation site](https://developers.google.com/google-apps/reseller/).
 # Features
 
-Handle the following *Resources* with ease from the central [hub](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/struct.Reseller.html) ... 
+Handle the following *Resources* with ease from the central [hub](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/Reseller) ... 
 
-* [customers](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/struct.Customer.html)
- * [*get*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/struct.CustomerGetCall.html), [*insert*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/struct.CustomerInsertCall.html), [*patch*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/struct.CustomerPatchCall.html) and [*update*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/struct.CustomerUpdateCall.html)
-* [subscriptions](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/struct.Subscription.html)
- * [*activate*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/struct.SubscriptionActivateCall.html), [*change plan*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/struct.SubscriptionChangePlanCall.html), [*change renewal settings*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/struct.SubscriptionChangeRenewalSettingCall.html), [*change seats*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/struct.SubscriptionChangeSeatCall.html), [*delete*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/struct.SubscriptionDeleteCall.html), [*get*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/struct.SubscriptionGetCall.html), [*insert*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/struct.SubscriptionInsertCall.html), [*list*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/struct.SubscriptionListCall.html), [*start paid service*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/struct.SubscriptionStartPaidServiceCall.html) and [*suspend*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/struct.SubscriptionSuspendCall.html)
+* [customers](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/api::Customer)
+ * [*get*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/api::CustomerGetCall), [*insert*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/api::CustomerInsertCall), [*patch*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/api::CustomerPatchCall) and [*update*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/api::CustomerUpdateCall)
+* [subscriptions](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/api::Subscription)
+ * [*activate*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/api::SubscriptionActivateCall), [*change plan*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/api::SubscriptionChangePlanCall), [*change renewal settings*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/api::SubscriptionChangeRenewalSettingCall), [*change seats*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/api::SubscriptionChangeSeatCall), [*delete*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/api::SubscriptionDeleteCall), [*get*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/api::SubscriptionGetCall), [*insert*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/api::SubscriptionInsertCall), [*list*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/api::SubscriptionListCall), [*start paid service*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/api::SubscriptionStartPaidServiceCall) and [*suspend*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/api::SubscriptionSuspendCall)
 
 
 
@@ -25,17 +25,17 @@ Handle the following *Resources* with ease from the central [hub](https://docs.r
 
 The API is structured into the following primary items:
 
-* **[Hub](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/struct.Reseller.html)**
+* **[Hub](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/Reseller)**
     * a central object to maintain state and allow accessing all *Activities*
-    * creates [*Method Builders*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/trait.MethodsBuilder.html) which in turn
-      allow access to individual [*Call Builders*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/trait.CallBuilder.html)
-* **[Resources](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/trait.Resource.html)**
+    * creates [*Method Builders*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/client::MethodsBuilder) which in turn
+      allow access to individual [*Call Builders*](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/client::CallBuilder)
+* **[Resources](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/client::Resource)**
     * primary types that you can apply *Activities* to
     * a collection of properties and *Parts*
-    * **[Parts](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/trait.Part.html)**
+    * **[Parts](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/client::Part)**
         * a collection of properties
         * never directly used in *Activities*
-* **[Activities](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/trait.CallBuilder.html)**
+* **[Activities](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/client::CallBuilder)**
     * operations to apply to *Resources*
 
 All *structures* are marked with applicable traits to further categorize them and ease browsing.
@@ -49,16 +49,16 @@ let r = hub.resource().activity(...).doit()
 Or specifically ...
 
 ```ignore
-let r = hub.subscriptions().insert(...).doit()
+let r = hub.subscriptions().activate(...).doit()
+let r = hub.subscriptions().change_plan(...).doit()
+let r = hub.subscriptions().change_renewal_settings(...).doit()
+let r = hub.subscriptions().change_seats(...).doit()
 let r = hub.subscriptions().delete(...).doit()
 let r = hub.subscriptions().get(...).doit()
+let r = hub.subscriptions().insert(...).doit()
 let r = hub.subscriptions().list(...).doit()
 let r = hub.subscriptions().start_paid_service(...).doit()
-let r = hub.subscriptions().change_seats(...).doit()
 let r = hub.subscriptions().suspend(...).doit()
-let r = hub.subscriptions().activate(...).doit()
-let r = hub.subscriptions().change_renewal_settings(...).doit()
-let r = hub.subscriptions().change_plan(...).doit()
 ```
 
 The `resource()` and `activity(...)` calls create [builders][builder-pattern]. The second one dealing with `Activities` 
@@ -113,11 +113,11 @@ let mut hub = Reseller::new(hyper::Client::with_connector(hyper::net::HttpsConne
 // execute the final call using `doit()`.
 // Values shown here are possibly random and not representative !
 let result = hub.subscriptions().list()
-             .page_token("eirmod")
-             .max_results(53)
-             .customer_name_prefix("Stet")
-             .customer_id("sed")
-             .customer_auth_token("et")
+             .page_token("et")
+             .max_results(68)
+             .customer_name_prefix("no")
+             .customer_id("ipsum")
+             .customer_auth_token("voluptua.")
              .doit();
 
 match result {
@@ -140,17 +140,17 @@ match result {
 ```
 ## Handling Errors
 
-All errors produced by the system are provided either as [Result](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/enum.Result.html) enumeration as return value of 
+All errors produced by the system are provided either as [Result](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/client::Result) enumeration as return value of
 the doit() methods, or handed as possibly intermediate results to either the 
-[Hub Delegate](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/trait.Delegate.html), or the [Authenticator Delegate](https://docs.rs/yup-oauth2/*/yup_oauth2/trait.AuthenticatorDelegate.html).
+[Hub Delegate](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/client::Delegate), or the [Authenticator Delegate](https://docs.rs/yup-oauth2/*/yup_oauth2/trait.AuthenticatorDelegate.html).
 
 When delegates handle errors or intermediate values, they may have a chance to instruct the system to retry. This 
 makes the system potentially resilient to all kinds of errors.
 
 ## Uploads and Downloads
-If a method supports downloads, the response body, which is part of the [Result](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/enum.Result.html), should be
+If a method supports downloads, the response body, which is part of the [Result](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/client::Result), should be
 read by you to obtain the media.
-If such a method also supports a [Response Result](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/trait.ResponseResult.html), it will return that by default.
+If such a method also supports a [Response Result](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/client::ResponseResult), it will return that by default.
 You can see it as meta-data for the actual media. To trigger a media download, you will have to set up the builder by making
 this call: `.param("alt", "media")`.
 
@@ -160,29 +160,29 @@ Methods supporting uploads can do so using up to 2 different protocols:
 
 ## Customization and Callbacks
 
-You may alter the way an `doit()` method is called by providing a [delegate](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/trait.Delegate.html) to the 
-[Method Builder](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/trait.CallBuilder.html) before making the final `doit()` call. 
+You may alter the way an `doit()` method is called by providing a [delegate](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/client::Delegate) to the 
+[Method Builder](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/client::CallBuilder) before making the final `doit()` call. 
 Respective methods will be called to provide progress information, as well as determine whether the system should 
 retry on failure.
 
-The [delegate trait](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/trait.Delegate.html) is default-implemented, allowing you to customize it with minimal effort.
+The [delegate trait](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/client::Delegate) is default-implemented, allowing you to customize it with minimal effort.
 
 ## Optional Parts in Server-Requests
 
-All structures provided by this library are made to be [encodable](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/trait.RequestValue.html) and 
-[decodable](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/trait.ResponseResult.html) via *json*. Optionals are used to indicate that partial requests are responses 
+All structures provided by this library are made to be [encodable](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/client::RequestValue) and 
+[decodable](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/client::ResponseResult) via *json*. Optionals are used to indicate that partial requests are responses 
 are valid.
-Most optionals are are considered [Parts](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/trait.Part.html) which are identifiable by name, which will be sent to 
+Most optionals are are considered [Parts](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/client::Part) which are identifiable by name, which will be sent to 
 the server to indicate either the set parts of the request or the desired parts in the response.
 
 ## Builder Arguments
 
-Using [method builders](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/trait.CallBuilder.html), you are able to prepare an action call by repeatedly calling it's methods.
+Using [method builders](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/client::CallBuilder), you are able to prepare an action call by repeatedly calling it's methods.
 These will always take a single argument, for which the following statements are true.
 
 * [PODs][wiki-pod] are handed by copy
 * strings are passed as `&str`
-* [request values](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/trait.RequestValue.html) are moved
+* [request values](https://docs.rs/google-reseller1_sandbox/1.0.14+20160329/google_reseller1_sandbox/client::RequestValue) are moved
 
 Arguments will always be copied or cloned into the builder, to make them independent of their original life times.
 

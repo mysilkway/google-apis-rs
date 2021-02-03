@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_dns1 as api;
+extern crate google_dns1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_dns1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Dns<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::Dns<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -69,11 +71,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-serving" => Some(("isServing", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "start-time" => Some(("startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "is-serving" => Some(("isServing", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "start-time" => Some(("startTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["id", "is-serving", "kind", "start-time", "status"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -226,7 +228,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "sort-order", "max-results", "sort-by"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "sort-by", "sort-order", "max-results"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -522,26 +524,26 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "reverse-lookup-config.kind" => Some(("reverseLookupConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name-servers" => Some(("nameServers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "forwarding-config.kind" => Some(("forwardingConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "creation-time" => Some(("creationTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "visibility" => Some(("visibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name-server-set" => Some(("nameServerSet", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "private-visibility-config.kind" => Some(("privateVisibilityConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "dns-name" => Some(("dnsName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "dnssec-config.kind" => Some(("dnssecConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "dnssec-config.state" => Some(("dnssecConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "dnssec-config.non-existence" => Some(("dnssecConfig.nonExistence", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "peering-config.kind" => Some(("peeringConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "peering-config.target-network.kind" => Some(("peeringConfig.targetNetwork.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "peering-config.target-network.deactivate-time" => Some(("peeringConfig.targetNetwork.deactivateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "peering-config.target-network.network-url" => Some(("peeringConfig.targetNetwork.networkUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "dnssec-config.state" => Some(("dnssecConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "forwarding-config.kind" => Some(("forwardingConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name-server-set" => Some(("nameServerSet", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name-servers" => Some(("nameServers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "peering-config.kind" => Some(("peeringConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "peering-config.target-network.deactivate-time" => Some(("peeringConfig.targetNetwork.deactivateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "peering-config.target-network.kind" => Some(("peeringConfig.targetNetwork.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "peering-config.target-network.network-url" => Some(("peeringConfig.targetNetwork.networkUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "private-visibility-config.kind" => Some(("privateVisibilityConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "reverse-lookup-config.kind" => Some(("reverseLookupConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "visibility" => Some(("visibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["creation-time", "deactivate-time", "description", "dns-name", "dnssec-config", "forwarding-config", "id", "kind", "labels", "name", "name-server-set", "name-servers", "network-url", "non-existence", "peering-config", "private-visibility-config", "reverse-lookup-config", "state", "target-network", "visibility"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -796,26 +798,26 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "reverse-lookup-config.kind" => Some(("reverseLookupConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name-servers" => Some(("nameServers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "forwarding-config.kind" => Some(("forwardingConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "creation-time" => Some(("creationTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "visibility" => Some(("visibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name-server-set" => Some(("nameServerSet", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "private-visibility-config.kind" => Some(("privateVisibilityConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "dns-name" => Some(("dnsName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "dnssec-config.kind" => Some(("dnssecConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "dnssec-config.state" => Some(("dnssecConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "dnssec-config.non-existence" => Some(("dnssecConfig.nonExistence", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "peering-config.kind" => Some(("peeringConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "peering-config.target-network.kind" => Some(("peeringConfig.targetNetwork.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "peering-config.target-network.deactivate-time" => Some(("peeringConfig.targetNetwork.deactivateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "peering-config.target-network.network-url" => Some(("peeringConfig.targetNetwork.networkUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "dnssec-config.state" => Some(("dnssecConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "forwarding-config.kind" => Some(("forwardingConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name-server-set" => Some(("nameServerSet", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name-servers" => Some(("nameServers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "peering-config.kind" => Some(("peeringConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "peering-config.target-network.deactivate-time" => Some(("peeringConfig.targetNetwork.deactivateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "peering-config.target-network.kind" => Some(("peeringConfig.targetNetwork.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "peering-config.target-network.network-url" => Some(("peeringConfig.targetNetwork.networkUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "private-visibility-config.kind" => Some(("privateVisibilityConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "reverse-lookup-config.kind" => Some(("reverseLookupConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "visibility" => Some(("visibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["creation-time", "deactivate-time", "description", "dns-name", "dnssec-config", "forwarding-config", "id", "kind", "labels", "name", "name-server-set", "name-servers", "network-url", "non-existence", "peering-config", "private-visibility-config", "reverse-lookup-config", "state", "target-network", "visibility"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -904,26 +906,26 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "reverse-lookup-config.kind" => Some(("reverseLookupConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name-servers" => Some(("nameServers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "forwarding-config.kind" => Some(("forwardingConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "creation-time" => Some(("creationTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "visibility" => Some(("visibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name-server-set" => Some(("nameServerSet", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "private-visibility-config.kind" => Some(("privateVisibilityConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "dns-name" => Some(("dnsName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "dnssec-config.kind" => Some(("dnssecConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "dnssec-config.state" => Some(("dnssecConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "dnssec-config.non-existence" => Some(("dnssecConfig.nonExistence", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "peering-config.kind" => Some(("peeringConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "peering-config.target-network.kind" => Some(("peeringConfig.targetNetwork.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "peering-config.target-network.deactivate-time" => Some(("peeringConfig.targetNetwork.deactivateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "peering-config.target-network.network-url" => Some(("peeringConfig.targetNetwork.networkUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "dnssec-config.state" => Some(("dnssecConfig.state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "forwarding-config.kind" => Some(("forwardingConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name-server-set" => Some(("nameServerSet", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name-servers" => Some(("nameServers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "peering-config.kind" => Some(("peeringConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "peering-config.target-network.deactivate-time" => Some(("peeringConfig.targetNetwork.deactivateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "peering-config.target-network.kind" => Some(("peeringConfig.targetNetwork.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "peering-config.target-network.network-url" => Some(("peeringConfig.targetNetwork.networkUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "private-visibility-config.kind" => Some(("privateVisibilityConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "reverse-lookup-config.kind" => Some(("reverseLookupConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "visibility" => Some(("visibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["creation-time", "deactivate-time", "description", "dns-name", "dnssec-config", "forwarding-config", "id", "kind", "labels", "name", "name-server-set", "name-servers", "network-url", "non-existence", "peering-config", "private-visibility-config", "reverse-lookup-config", "state", "target-network", "visibility"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1013,11 +1015,11 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "alternative-name-server-config.kind" => Some(("alternativeNameServerConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "enable-inbound-forwarding" => Some(("enableInboundForwarding", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "enable-logging" => Some(("enableLogging", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["alternative-name-server-config", "description", "enable-inbound-forwarding", "enable-logging", "id", "kind", "name"]);
@@ -1271,11 +1273,11 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "alternative-name-server-config.kind" => Some(("alternativeNameServerConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "enable-inbound-forwarding" => Some(("enableInboundForwarding", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "enable-logging" => Some(("enableLogging", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["alternative-name-server-config", "description", "enable-inbound-forwarding", "enable-logging", "id", "kind", "name"]);
@@ -1366,11 +1368,11 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "alternative-name-server-config.kind" => Some(("alternativeNameServerConfig.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "enable-inbound-forwarding" => Some(("enableInboundForwarding", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "enable-logging" => Some(("enableLogging", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["alternative-name-server-config", "description", "enable-inbound-forwarding", "enable-logging", "id", "kind", "name"]);
@@ -1524,7 +1526,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "type", "name", "max-results"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "type", "max-results", "name"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1701,12 +1703,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "dns1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "dns1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

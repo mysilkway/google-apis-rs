@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_dialogflow2 as api;
+extern crate google_dialogflow2;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_dialogflow2::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Dialogflow<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::Dialogflow<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -154,8 +156,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "language-code" => Some(("languageCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "entity-type-batch-uri" => Some(("entityTypeBatchUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "language-code" => Some(("languageCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "update-mask" => Some(("updateMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["entity-type-batch-uri", "language-code", "update-mask"]);
@@ -242,9 +244,9 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "auto-expansion-mode" => Some(("autoExpansionMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "enable-fuzzy-extraction" => Some(("enableFuzzyExtraction", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["auto-expansion-mode", "display-name", "enable-fuzzy-extraction", "kind", "name"]);
@@ -471,8 +473,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "language-code" => Some(("languageCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "entity-values" => Some(("entityValues", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "language-code" => Some(("languageCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["entity-values", "language-code"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -704,7 +706,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size", "language-code"].iter().map(|v|*v));
+                                                                           v.extend(["language-code", "page-token", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -762,9 +764,9 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "auto-expansion-mode" => Some(("autoExpansionMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "enable-fuzzy-extraction" => Some(("enableFuzzyExtraction", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["auto-expansion-mode", "display-name", "enable-fuzzy-extraction", "kind", "name"]);
@@ -916,8 +918,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "lifespan-count" => Some(("lifespanCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["lifespan-count", "name"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1165,8 +1167,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "lifespan-count" => Some(("lifespanCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["lifespan-count", "name"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1308,31 +1310,31 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "input-audio" => Some(("inputAudio", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "output-audio-config.sample-rate-hertz" => Some(("outputAudioConfig.sampleRateHertz", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "output-audio-config.audio-encoding" => Some(("outputAudioConfig.audioEncoding", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "output-audio-config.sample-rate-hertz" => Some(("outputAudioConfig.sampleRateHertz", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "output-audio-config.synthesize-speech-config.effects-profile-id" => Some(("outputAudioConfig.synthesizeSpeechConfig.effectsProfileId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "output-audio-config.synthesize-speech-config.voice.ssml-gender" => Some(("outputAudioConfig.synthesizeSpeechConfig.voice.ssmlGender", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "output-audio-config.synthesize-speech-config.voice.name" => Some(("outputAudioConfig.synthesizeSpeechConfig.voice.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "output-audio-config.synthesize-speech-config.speaking-rate" => Some(("outputAudioConfig.synthesizeSpeechConfig.speakingRate", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "output-audio-config.synthesize-speech-config.volume-gain-db" => Some(("outputAudioConfig.synthesizeSpeechConfig.volumeGainDb", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "output-audio-config.synthesize-speech-config.pitch" => Some(("outputAudioConfig.synthesizeSpeechConfig.pitch", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "output-audio-config.synthesize-speech-config.speaking-rate" => Some(("outputAudioConfig.synthesizeSpeechConfig.speakingRate", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "output-audio-config.synthesize-speech-config.voice.name" => Some(("outputAudioConfig.synthesizeSpeechConfig.voice.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "output-audio-config.synthesize-speech-config.voice.ssml-gender" => Some(("outputAudioConfig.synthesizeSpeechConfig.voice.ssmlGender", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "output-audio-config.synthesize-speech-config.volume-gain-db" => Some(("outputAudioConfig.synthesizeSpeechConfig.volumeGainDb", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "output-audio-config-mask" => Some(("outputAudioConfigMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "query-input.text.language-code" => Some(("queryInput.text.languageCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "query-input.text.text" => Some(("queryInput.text.text", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query-input.audio-config.audio-encoding" => Some(("queryInput.audioConfig.audioEncoding", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query-input.audio-config.enable-word-info" => Some(("queryInput.audioConfig.enableWordInfo", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "query-input.audio-config.language-code" => Some(("queryInput.audioConfig.languageCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query-input.audio-config.model" => Some(("queryInput.audioConfig.model", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query-input.audio-config.model-variant" => Some(("queryInput.audioConfig.modelVariant", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query-input.audio-config.phrase-hints" => Some(("queryInput.audioConfig.phraseHints", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "query-input.audio-config.sample-rate-hertz" => Some(("queryInput.audioConfig.sampleRateHertz", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "query-input.audio-config.single-utterance" => Some(("queryInput.audioConfig.singleUtterance", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "query-input.event.language-code" => Some(("queryInput.event.languageCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "query-input.event.name" => Some(("queryInput.event.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "query-input.audio-config.language-code" => Some(("queryInput.audioConfig.languageCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "query-input.audio-config.audio-encoding" => Some(("queryInput.audioConfig.audioEncoding", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "query-input.audio-config.phrase-hints" => Some(("queryInput.audioConfig.phraseHints", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "query-input.audio-config.enable-word-info" => Some(("queryInput.audioConfig.enableWordInfo", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "query-input.audio-config.sample-rate-hertz" => Some(("queryInput.audioConfig.sampleRateHertz", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "query-input.audio-config.model-variant" => Some(("queryInput.audioConfig.modelVariant", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "query-input.audio-config.model" => Some(("queryInput.audioConfig.model", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "query-input.audio-config.single-utterance" => Some(("queryInput.audioConfig.singleUtterance", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "query-params.sentiment-analysis-request-config.analyze-query-text-sentiment" => Some(("queryParams.sentimentAnalysisRequestConfig.analyzeQueryTextSentiment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "query-input.text.language-code" => Some(("queryInput.text.languageCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query-input.text.text" => Some(("queryInput.text.text", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "query-params.geo-location.latitude" => Some(("queryParams.geoLocation.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "query-params.geo-location.longitude" => Some(("queryParams.geoLocation.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "query-params.reset-contexts" => Some(("queryParams.resetContexts", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "query-params.sentiment-analysis-request-config.analyze-query-text-sentiment" => Some(("queryParams.sentimentAnalysisRequestConfig.analyzeQueryTextSentiment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "query-params.time-zone" => Some(("queryParams.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["analyze-query-text-sentiment", "audio-config", "audio-encoding", "effects-profile-id", "enable-word-info", "event", "geo-location", "input-audio", "language-code", "latitude", "longitude", "model", "model-variant", "name", "output-audio-config", "output-audio-config-mask", "phrase-hints", "pitch", "query-input", "query-params", "reset-contexts", "sample-rate-hertz", "sentiment-analysis-request-config", "single-utterance", "speaking-rate", "ssml-gender", "synthesize-speech-config", "text", "time-zone", "voice", "volume-gain-db"]);
@@ -1418,8 +1420,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "entity-override-mode" => Some(("entityOverrideMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["entity-override-mode", "name"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1667,8 +1669,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "entity-override-mode" => Some(("entityOverrideMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["entity-override-mode", "name"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1950,8 +1952,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "agent-uri" => Some(("agentUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "agent-content" => Some(("agentContent", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "agent-uri" => Some(("agentUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["agent-content", "agent-uri"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2120,10 +2122,10 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "language-code" => Some(("languageCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "intent-batch-uri" => Some(("intentBatchUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "update-mask" => Some(("updateMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "intent-view" => Some(("intentView", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "language-code" => Some(("languageCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-mask" => Some(("updateMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["intent-batch-uri", "intent-view", "language-code", "update-mask"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2208,19 +2210,19 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "action" => Some(("action", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "default-response-platforms" => Some(("defaultResponsePlatforms", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "events" => Some(("events", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "input-context-names" => Some(("inputContextNames", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "is-fallback" => Some(("isFallback", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "ml-disabled" => Some(("mlDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "parent-followup-intent-name" => Some(("parentFollowupIntentName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "webhook-state" => Some(("webhookState", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "reset-contexts" => Some(("resetContexts", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "default-response-platforms" => Some(("defaultResponsePlatforms", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "priority" => Some(("priority", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "reset-contexts" => Some(("resetContexts", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "root-followup-intent-name" => Some(("rootFollowupIntentName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "input-context-names" => Some(("inputContextNames", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "action" => Some(("action", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "events" => Some(("events", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "webhook-state" => Some(("webhookState", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["action", "default-response-platforms", "display-name", "events", "input-context-names", "is-fallback", "ml-disabled", "name", "parent-followup-intent-name", "priority", "reset-contexts", "root-followup-intent-name", "webhook-state"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2431,7 +2433,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "intent-view", "page-size", "language-code"].iter().map(|v|*v));
+                                                                           v.extend(["language-code", "intent-view", "page-token", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2488,19 +2490,19 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "action" => Some(("action", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "default-response-platforms" => Some(("defaultResponsePlatforms", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "events" => Some(("events", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "input-context-names" => Some(("inputContextNames", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "is-fallback" => Some(("isFallback", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "ml-disabled" => Some(("mlDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "parent-followup-intent-name" => Some(("parentFollowupIntentName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "webhook-state" => Some(("webhookState", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "reset-contexts" => Some(("resetContexts", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "default-response-platforms" => Some(("defaultResponsePlatforms", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "priority" => Some(("priority", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "reset-contexts" => Some(("resetContexts", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "root-followup-intent-name" => Some(("rootFollowupIntentName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "input-context-names" => Some(("inputContextNames", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "action" => Some(("action", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "events" => Some(("events", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "webhook-state" => Some(("webhookState", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["action", "default-response-platforms", "display-name", "events", "input-context-names", "is-fallback", "ml-disabled", "name", "parent-followup-intent-name", "priority", "reset-contexts", "root-followup-intent-name", "webhook-state"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2538,7 +2540,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["language-code", "update-mask", "intent-view"].iter().map(|v|*v));
+                                                                           v.extend(["language-code", "intent-view", "update-mask"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2595,8 +2597,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "agent-uri" => Some(("agentUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "agent-content" => Some(("agentContent", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "agent-uri" => Some(("agentUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["agent-content", "agent-uri"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2740,8 +2742,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "lifespan-count" => Some(("lifespanCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["lifespan-count", "name"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2989,8 +2991,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "lifespan-count" => Some(("lifespanCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["lifespan-count", "name"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3132,31 +3134,31 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "input-audio" => Some(("inputAudio", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "output-audio-config.sample-rate-hertz" => Some(("outputAudioConfig.sampleRateHertz", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "output-audio-config.audio-encoding" => Some(("outputAudioConfig.audioEncoding", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "output-audio-config.sample-rate-hertz" => Some(("outputAudioConfig.sampleRateHertz", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "output-audio-config.synthesize-speech-config.effects-profile-id" => Some(("outputAudioConfig.synthesizeSpeechConfig.effectsProfileId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "output-audio-config.synthesize-speech-config.voice.ssml-gender" => Some(("outputAudioConfig.synthesizeSpeechConfig.voice.ssmlGender", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "output-audio-config.synthesize-speech-config.voice.name" => Some(("outputAudioConfig.synthesizeSpeechConfig.voice.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "output-audio-config.synthesize-speech-config.speaking-rate" => Some(("outputAudioConfig.synthesizeSpeechConfig.speakingRate", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "output-audio-config.synthesize-speech-config.volume-gain-db" => Some(("outputAudioConfig.synthesizeSpeechConfig.volumeGainDb", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "output-audio-config.synthesize-speech-config.pitch" => Some(("outputAudioConfig.synthesizeSpeechConfig.pitch", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "output-audio-config.synthesize-speech-config.speaking-rate" => Some(("outputAudioConfig.synthesizeSpeechConfig.speakingRate", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "output-audio-config.synthesize-speech-config.voice.name" => Some(("outputAudioConfig.synthesizeSpeechConfig.voice.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "output-audio-config.synthesize-speech-config.voice.ssml-gender" => Some(("outputAudioConfig.synthesizeSpeechConfig.voice.ssmlGender", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "output-audio-config.synthesize-speech-config.volume-gain-db" => Some(("outputAudioConfig.synthesizeSpeechConfig.volumeGainDb", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "output-audio-config-mask" => Some(("outputAudioConfigMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "query-input.text.language-code" => Some(("queryInput.text.languageCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "query-input.text.text" => Some(("queryInput.text.text", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query-input.audio-config.audio-encoding" => Some(("queryInput.audioConfig.audioEncoding", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query-input.audio-config.enable-word-info" => Some(("queryInput.audioConfig.enableWordInfo", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "query-input.audio-config.language-code" => Some(("queryInput.audioConfig.languageCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query-input.audio-config.model" => Some(("queryInput.audioConfig.model", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query-input.audio-config.model-variant" => Some(("queryInput.audioConfig.modelVariant", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query-input.audio-config.phrase-hints" => Some(("queryInput.audioConfig.phraseHints", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "query-input.audio-config.sample-rate-hertz" => Some(("queryInput.audioConfig.sampleRateHertz", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "query-input.audio-config.single-utterance" => Some(("queryInput.audioConfig.singleUtterance", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "query-input.event.language-code" => Some(("queryInput.event.languageCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "query-input.event.name" => Some(("queryInput.event.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "query-input.audio-config.language-code" => Some(("queryInput.audioConfig.languageCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "query-input.audio-config.audio-encoding" => Some(("queryInput.audioConfig.audioEncoding", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "query-input.audio-config.phrase-hints" => Some(("queryInput.audioConfig.phraseHints", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "query-input.audio-config.enable-word-info" => Some(("queryInput.audioConfig.enableWordInfo", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "query-input.audio-config.sample-rate-hertz" => Some(("queryInput.audioConfig.sampleRateHertz", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "query-input.audio-config.model-variant" => Some(("queryInput.audioConfig.modelVariant", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "query-input.audio-config.model" => Some(("queryInput.audioConfig.model", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "query-input.audio-config.single-utterance" => Some(("queryInput.audioConfig.singleUtterance", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "query-params.sentiment-analysis-request-config.analyze-query-text-sentiment" => Some(("queryParams.sentimentAnalysisRequestConfig.analyzeQueryTextSentiment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "query-input.text.language-code" => Some(("queryInput.text.languageCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query-input.text.text" => Some(("queryInput.text.text", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "query-params.geo-location.latitude" => Some(("queryParams.geoLocation.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "query-params.geo-location.longitude" => Some(("queryParams.geoLocation.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "query-params.reset-contexts" => Some(("queryParams.resetContexts", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "query-params.sentiment-analysis-request-config.analyze-query-text-sentiment" => Some(("queryParams.sentimentAnalysisRequestConfig.analyzeQueryTextSentiment", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "query-params.time-zone" => Some(("queryParams.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["analyze-query-text-sentiment", "audio-config", "audio-encoding", "effects-profile-id", "enable-word-info", "event", "geo-location", "input-audio", "language-code", "latitude", "longitude", "model", "model-variant", "name", "output-audio-config", "output-audio-config-mask", "phrase-hints", "pitch", "query-input", "query-params", "reset-contexts", "sample-rate-hertz", "sentiment-analysis-request-config", "single-utterance", "speaking-rate", "ssml-gender", "synthesize-speech-config", "text", "time-zone", "voice", "volume-gain-db"]);
@@ -3242,8 +3244,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "entity-override-mode" => Some(("entityOverrideMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["entity-override-mode", "name"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3491,8 +3493,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "entity-override-mode" => Some(("entityOverrideMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["entity-override-mode", "name"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3665,14 +3667,14 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "enabled" => Some(("enabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "enabled" => Some(("enabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "generic-web-service.is-cloud-function" => Some(("genericWebService.isCloudFunction", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "generic-web-service.request-headers" => Some(("genericWebService.requestHeaders", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "generic-web-service.username" => Some(("genericWebService.username", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "generic-web-service.password" => Some(("genericWebService.password", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "generic-web-service.request-headers" => Some(("genericWebService.requestHeaders", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "generic-web-service.uri" => Some(("genericWebService.uri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "generic-web-service.username" => Some(("genericWebService.username", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["display-name", "enabled", "generic-web-service", "is-cloud-function", "name", "password", "request-headers", "uri", "username"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3974,7 +3976,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "page-size", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4140,7 +4142,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "page-size", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4197,18 +4199,18 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "avatar-uri" => Some(("avatarUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "parent" => Some(("parent", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "default-language-code" => Some(("defaultLanguageCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "api-version" => Some(("apiVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "avatar-uri" => Some(("avatarUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "classification-threshold" => Some(("classificationThreshold", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "default-language-code" => Some(("defaultLanguageCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "enable-logging" => Some(("enableLogging", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "match-mode" => Some(("matchMode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "parent" => Some(("parent", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "supported-language-codes" => Some(("supportedLanguageCodes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "tier" => Some(("tier", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "time-zone" => Some(("timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "classification-threshold" => Some(("classificationThreshold", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["api-version", "avatar-uri", "classification-threshold", "default-language-code", "description", "display-name", "enable-logging", "match-mode", "parent", "supported-language-codes", "tier", "time-zone"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -4483,12 +4485,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "dialogflow2-secret.json",
+            match client::application_secret_from_directory(&config_dir, "dialogflow2-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_clouderrorreporting1_beta1 as api;
+extern crate google_clouderrorreporting1_beta1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_clouderrorreporting1_beta1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Clouderrorreporting<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::Clouderrorreporting<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -138,7 +140,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["service-filter-resource-type", "time-range-period", "page-size", "service-filter-service", "page-token", "service-filter-version", "group-id"].iter().map(|v|*v));
+                                                                           v.extend(["service-filter-service", "group-id", "time-range-period", "service-filter-version", "page-size", "page-token", "service-filter-resource-type"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -195,21 +197,21 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "service-context.resource-type" => Some(("serviceContext.resourceType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-context.version" => Some(("serviceContext.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-context.service" => Some(("serviceContext.service", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "event-time" => Some(("eventTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message" => Some(("message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "context.http-request.response-status-code" => Some(("context.httpRequest.responseStatusCode", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "context.http-request.url" => Some(("context.httpRequest.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "context.http-request.method" => Some(("context.httpRequest.method", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "context.http-request.referrer" => Some(("context.httpRequest.referrer", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "context.http-request.remote-ip" => Some(("context.httpRequest.remoteIp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "context.http-request.response-status-code" => Some(("context.httpRequest.responseStatusCode", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "context.http-request.url" => Some(("context.httpRequest.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "context.http-request.user-agent" => Some(("context.httpRequest.userAgent", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "context.http-request.method" => Some(("context.httpRequest.method", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "context.report-location.line-number" => Some(("context.reportLocation.lineNumber", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "context.report-location.function-name" => Some(("context.reportLocation.functionName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "context.report-location.file-path" => Some(("context.reportLocation.filePath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "context.report-location.function-name" => Some(("context.reportLocation.functionName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "context.report-location.line-number" => Some(("context.reportLocation.lineNumber", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "context.user" => Some(("context.user", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "event-time" => Some(("eventTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message" => Some(("message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-context.resource-type" => Some(("serviceContext.resourceType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-context.service" => Some(("serviceContext.service", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-context.version" => Some(("serviceContext.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["context", "event-time", "file-path", "function-name", "http-request", "line-number", "message", "method", "referrer", "remote-ip", "report-location", "resource-type", "response-status-code", "service", "service-context", "url", "user", "user-agent", "version"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -323,7 +325,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["service-filter-resource-type", "time-range-period", "timed-count-duration", "page-size", "alignment-time", "service-filter-service", "group-id", "page-token", "service-filter-version", "order", "alignment"].iter().map(|v|*v));
+                                                                           v.extend(["alignment", "service-filter-service", "alignment-time", "group-id", "time-range-period", "timed-count-duration", "order", "service-filter-version", "page-size", "page-token", "service-filter-resource-type"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -545,12 +547,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "clouderrorreporting1-beta1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "clouderrorreporting1-beta1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

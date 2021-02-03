@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_sheets4 as api;
+extern crate google_sheets4;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_sheets4::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Sheets<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::Sheets<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -69,9 +71,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "response-ranges" => Some(("responseRanges", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "include-spreadsheet-in-response" => Some(("includeSpreadsheetInResponse", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "response-include-grid-data" => Some(("responseIncludeGridData", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "response-ranges" => Some(("responseRanges", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["include-spreadsheet-in-response", "response-include-grid-data", "response-ranges"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -156,95 +158,95 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "spreadsheet-id" => Some(("spreadsheetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "properties.title" => Some(("properties.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "properties.locale" => Some(("properties.locale", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "properties.auto-recalc" => Some(("properties.autoRecalc", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "properties.spreadsheet-theme.primary-font-family" => Some(("properties.spreadsheetTheme.primaryFontFamily", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "properties.default-format.padding.top" => Some(("properties.defaultFormat.padding.top", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "properties.default-format.padding.right" => Some(("properties.defaultFormat.padding.right", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "properties.default-format.padding.left" => Some(("properties.defaultFormat.padding.left", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "properties.default-format.padding.bottom" => Some(("properties.defaultFormat.padding.bottom", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "properties.default-format.number-format.pattern" => Some(("properties.defaultFormat.numberFormat.pattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "properties.default-format.number-format.type" => Some(("properties.defaultFormat.numberFormat.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "properties.default-format.text-direction" => Some(("properties.defaultFormat.textDirection", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "properties.default-format.background-color-style.theme-color" => Some(("properties.defaultFormat.backgroundColorStyle.themeColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "properties.default-format.background-color-style.rgb-color.blue" => Some(("properties.defaultFormat.backgroundColorStyle.rgbColor.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.background-color-style.rgb-color.alpha" => Some(("properties.defaultFormat.backgroundColorStyle.rgbColor.alpha", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.background-color-style.rgb-color.green" => Some(("properties.defaultFormat.backgroundColorStyle.rgbColor.green", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.background-color-style.rgb-color.red" => Some(("properties.defaultFormat.backgroundColorStyle.rgbColor.red", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.horizontal-alignment" => Some(("properties.defaultFormat.horizontalAlignment", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "properties.default-format.background-color.blue" => Some(("properties.defaultFormat.backgroundColor.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "properties.default-format.background-color.alpha" => Some(("properties.defaultFormat.backgroundColor.alpha", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.background-color.blue" => Some(("properties.defaultFormat.backgroundColor.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "properties.default-format.background-color.green" => Some(("properties.defaultFormat.backgroundColor.green", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "properties.default-format.background-color.red" => Some(("properties.defaultFormat.backgroundColor.red", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.vertical-alignment" => Some(("properties.defaultFormat.verticalAlignment", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.top.color.blue" => Some(("properties.defaultFormat.borders.top.color.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.top.color.alpha" => Some(("properties.defaultFormat.borders.top.color.alpha", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.top.color.green" => Some(("properties.defaultFormat.borders.top.color.green", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.top.color.red" => Some(("properties.defaultFormat.borders.top.color.red", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.top.width" => Some(("properties.defaultFormat.borders.top.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.top.color-style.theme-color" => Some(("properties.defaultFormat.borders.top.colorStyle.themeColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.top.color-style.rgb-color.blue" => Some(("properties.defaultFormat.borders.top.colorStyle.rgbColor.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.top.color-style.rgb-color.alpha" => Some(("properties.defaultFormat.borders.top.colorStyle.rgbColor.alpha", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.top.color-style.rgb-color.green" => Some(("properties.defaultFormat.borders.top.colorStyle.rgbColor.green", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.top.color-style.rgb-color.red" => Some(("properties.defaultFormat.borders.top.colorStyle.rgbColor.red", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.top.style" => Some(("properties.defaultFormat.borders.top.style", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.right.color.blue" => Some(("properties.defaultFormat.borders.right.color.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.right.color.alpha" => Some(("properties.defaultFormat.borders.right.color.alpha", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.right.color.green" => Some(("properties.defaultFormat.borders.right.color.green", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.right.color.red" => Some(("properties.defaultFormat.borders.right.color.red", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.right.width" => Some(("properties.defaultFormat.borders.right.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.right.color-style.theme-color" => Some(("properties.defaultFormat.borders.right.colorStyle.themeColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.right.color-style.rgb-color.blue" => Some(("properties.defaultFormat.borders.right.colorStyle.rgbColor.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.right.color-style.rgb-color.alpha" => Some(("properties.defaultFormat.borders.right.colorStyle.rgbColor.alpha", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.right.color-style.rgb-color.green" => Some(("properties.defaultFormat.borders.right.colorStyle.rgbColor.green", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.right.color-style.rgb-color.red" => Some(("properties.defaultFormat.borders.right.colorStyle.rgbColor.red", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.right.style" => Some(("properties.defaultFormat.borders.right.style", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.left.color.blue" => Some(("properties.defaultFormat.borders.left.color.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.left.color.alpha" => Some(("properties.defaultFormat.borders.left.color.alpha", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.left.color.green" => Some(("properties.defaultFormat.borders.left.color.green", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.left.color.red" => Some(("properties.defaultFormat.borders.left.color.red", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.left.width" => Some(("properties.defaultFormat.borders.left.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.left.color-style.theme-color" => Some(("properties.defaultFormat.borders.left.colorStyle.themeColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.left.color-style.rgb-color.blue" => Some(("properties.defaultFormat.borders.left.colorStyle.rgbColor.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.left.color-style.rgb-color.alpha" => Some(("properties.defaultFormat.borders.left.colorStyle.rgbColor.alpha", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.left.color-style.rgb-color.green" => Some(("properties.defaultFormat.borders.left.colorStyle.rgbColor.green", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.left.color-style.rgb-color.red" => Some(("properties.defaultFormat.borders.left.colorStyle.rgbColor.red", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.left.style" => Some(("properties.defaultFormat.borders.left.style", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.bottom.color.blue" => Some(("properties.defaultFormat.borders.bottom.color.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.background-color-style.rgb-color.alpha" => Some(("properties.defaultFormat.backgroundColorStyle.rgbColor.alpha", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.background-color-style.rgb-color.blue" => Some(("properties.defaultFormat.backgroundColorStyle.rgbColor.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.background-color-style.rgb-color.green" => Some(("properties.defaultFormat.backgroundColorStyle.rgbColor.green", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.background-color-style.rgb-color.red" => Some(("properties.defaultFormat.backgroundColorStyle.rgbColor.red", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.background-color-style.theme-color" => Some(("properties.defaultFormat.backgroundColorStyle.themeColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "properties.default-format.borders.bottom.color.alpha" => Some(("properties.defaultFormat.borders.bottom.color.alpha", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.bottom.color.blue" => Some(("properties.defaultFormat.borders.bottom.color.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "properties.default-format.borders.bottom.color.green" => Some(("properties.defaultFormat.borders.bottom.color.green", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "properties.default-format.borders.bottom.color.red" => Some(("properties.defaultFormat.borders.bottom.color.red", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.bottom.width" => Some(("properties.defaultFormat.borders.bottom.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.bottom.color-style.theme-color" => Some(("properties.defaultFormat.borders.bottom.colorStyle.themeColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "properties.default-format.borders.bottom.color-style.rgb-color.blue" => Some(("properties.defaultFormat.borders.bottom.colorStyle.rgbColor.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "properties.default-format.borders.bottom.color-style.rgb-color.alpha" => Some(("properties.defaultFormat.borders.bottom.colorStyle.rgbColor.alpha", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.bottom.color-style.rgb-color.blue" => Some(("properties.defaultFormat.borders.bottom.colorStyle.rgbColor.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "properties.default-format.borders.bottom.color-style.rgb-color.green" => Some(("properties.defaultFormat.borders.bottom.colorStyle.rgbColor.green", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "properties.default-format.borders.bottom.color-style.rgb-color.red" => Some(("properties.defaultFormat.borders.bottom.colorStyle.rgbColor.red", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.bottom.color-style.theme-color" => Some(("properties.defaultFormat.borders.bottom.colorStyle.themeColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "properties.default-format.borders.bottom.style" => Some(("properties.defaultFormat.borders.bottom.style", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "properties.default-format.wrap-strategy" => Some(("properties.defaultFormat.wrapStrategy", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.bottom.width" => Some(("properties.defaultFormat.borders.bottom.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.left.color.alpha" => Some(("properties.defaultFormat.borders.left.color.alpha", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.left.color.blue" => Some(("properties.defaultFormat.borders.left.color.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.left.color.green" => Some(("properties.defaultFormat.borders.left.color.green", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.left.color.red" => Some(("properties.defaultFormat.borders.left.color.red", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.left.color-style.rgb-color.alpha" => Some(("properties.defaultFormat.borders.left.colorStyle.rgbColor.alpha", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.left.color-style.rgb-color.blue" => Some(("properties.defaultFormat.borders.left.colorStyle.rgbColor.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.left.color-style.rgb-color.green" => Some(("properties.defaultFormat.borders.left.colorStyle.rgbColor.green", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.left.color-style.rgb-color.red" => Some(("properties.defaultFormat.borders.left.colorStyle.rgbColor.red", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.left.color-style.theme-color" => Some(("properties.defaultFormat.borders.left.colorStyle.themeColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.left.style" => Some(("properties.defaultFormat.borders.left.style", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.left.width" => Some(("properties.defaultFormat.borders.left.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.right.color.alpha" => Some(("properties.defaultFormat.borders.right.color.alpha", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.right.color.blue" => Some(("properties.defaultFormat.borders.right.color.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.right.color.green" => Some(("properties.defaultFormat.borders.right.color.green", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.right.color.red" => Some(("properties.defaultFormat.borders.right.color.red", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.right.color-style.rgb-color.alpha" => Some(("properties.defaultFormat.borders.right.colorStyle.rgbColor.alpha", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.right.color-style.rgb-color.blue" => Some(("properties.defaultFormat.borders.right.colorStyle.rgbColor.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.right.color-style.rgb-color.green" => Some(("properties.defaultFormat.borders.right.colorStyle.rgbColor.green", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.right.color-style.rgb-color.red" => Some(("properties.defaultFormat.borders.right.colorStyle.rgbColor.red", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.right.color-style.theme-color" => Some(("properties.defaultFormat.borders.right.colorStyle.themeColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.right.style" => Some(("properties.defaultFormat.borders.right.style", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.right.width" => Some(("properties.defaultFormat.borders.right.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.top.color.alpha" => Some(("properties.defaultFormat.borders.top.color.alpha", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.top.color.blue" => Some(("properties.defaultFormat.borders.top.color.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.top.color.green" => Some(("properties.defaultFormat.borders.top.color.green", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.top.color.red" => Some(("properties.defaultFormat.borders.top.color.red", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.top.color-style.rgb-color.alpha" => Some(("properties.defaultFormat.borders.top.colorStyle.rgbColor.alpha", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.top.color-style.rgb-color.blue" => Some(("properties.defaultFormat.borders.top.colorStyle.rgbColor.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.top.color-style.rgb-color.green" => Some(("properties.defaultFormat.borders.top.colorStyle.rgbColor.green", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.top.color-style.rgb-color.red" => Some(("properties.defaultFormat.borders.top.colorStyle.rgbColor.red", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.top.color-style.theme-color" => Some(("properties.defaultFormat.borders.top.colorStyle.themeColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.top.style" => Some(("properties.defaultFormat.borders.top.style", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "properties.default-format.borders.top.width" => Some(("properties.defaultFormat.borders.top.width", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "properties.default-format.horizontal-alignment" => Some(("properties.defaultFormat.horizontalAlignment", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "properties.default-format.hyperlink-display-type" => Some(("properties.defaultFormat.hyperlinkDisplayType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "properties.default-format.text-format.foreground-color.blue" => Some(("properties.defaultFormat.textFormat.foregroundColor.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.text-format.foreground-color.alpha" => Some(("properties.defaultFormat.textFormat.foregroundColor.alpha", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.text-format.foreground-color.green" => Some(("properties.defaultFormat.textFormat.foregroundColor.green", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.text-format.foreground-color.red" => Some(("properties.defaultFormat.textFormat.foregroundColor.red", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.number-format.pattern" => Some(("properties.defaultFormat.numberFormat.pattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "properties.default-format.number-format.type" => Some(("properties.defaultFormat.numberFormat.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "properties.default-format.padding.bottom" => Some(("properties.defaultFormat.padding.bottom", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "properties.default-format.padding.left" => Some(("properties.defaultFormat.padding.left", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "properties.default-format.padding.right" => Some(("properties.defaultFormat.padding.right", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "properties.default-format.padding.top" => Some(("properties.defaultFormat.padding.top", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "properties.default-format.text-direction" => Some(("properties.defaultFormat.textDirection", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "properties.default-format.text-format.bold" => Some(("properties.defaultFormat.textFormat.bold", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "properties.default-format.text-format.foreground-color-style.theme-color" => Some(("properties.defaultFormat.textFormat.foregroundColorStyle.themeColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "properties.default-format.text-format.foreground-color-style.rgb-color.blue" => Some(("properties.defaultFormat.textFormat.foregroundColorStyle.rgbColor.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.text-format.foreground-color-style.rgb-color.alpha" => Some(("properties.defaultFormat.textFormat.foregroundColorStyle.rgbColor.alpha", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.text-format.foreground-color-style.rgb-color.green" => Some(("properties.defaultFormat.textFormat.foregroundColorStyle.rgbColor.green", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.text-format.foreground-color-style.rgb-color.red" => Some(("properties.defaultFormat.textFormat.foregroundColorStyle.rgbColor.red", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "properties.default-format.text-format.strikethrough" => Some(("properties.defaultFormat.textFormat.strikethrough", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "properties.default-format.text-format.font-family" => Some(("properties.defaultFormat.textFormat.fontFamily", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "properties.default-format.text-format.font-size" => Some(("properties.defaultFormat.textFormat.fontSize", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "properties.default-format.text-format.foreground-color.alpha" => Some(("properties.defaultFormat.textFormat.foregroundColor.alpha", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.text-format.foreground-color.blue" => Some(("properties.defaultFormat.textFormat.foregroundColor.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.text-format.foreground-color.green" => Some(("properties.defaultFormat.textFormat.foregroundColor.green", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.text-format.foreground-color.red" => Some(("properties.defaultFormat.textFormat.foregroundColor.red", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.text-format.foreground-color-style.rgb-color.alpha" => Some(("properties.defaultFormat.textFormat.foregroundColorStyle.rgbColor.alpha", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.text-format.foreground-color-style.rgb-color.blue" => Some(("properties.defaultFormat.textFormat.foregroundColorStyle.rgbColor.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.text-format.foreground-color-style.rgb-color.green" => Some(("properties.defaultFormat.textFormat.foregroundColorStyle.rgbColor.green", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.text-format.foreground-color-style.rgb-color.red" => Some(("properties.defaultFormat.textFormat.foregroundColorStyle.rgbColor.red", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "properties.default-format.text-format.foreground-color-style.theme-color" => Some(("properties.defaultFormat.textFormat.foregroundColorStyle.themeColor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "properties.default-format.text-format.italic" => Some(("properties.defaultFormat.textFormat.italic", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "properties.default-format.text-format.strikethrough" => Some(("properties.defaultFormat.textFormat.strikethrough", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "properties.default-format.text-format.underline" => Some(("properties.defaultFormat.textFormat.underline", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "properties.default-format.text-rotation.angle" => Some(("properties.defaultFormat.textRotation.angle", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "properties.default-format.text-rotation.vertical" => Some(("properties.defaultFormat.textRotation.vertical", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "properties.default-format.vertical-alignment" => Some(("properties.defaultFormat.verticalAlignment", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "properties.default-format.wrap-strategy" => Some(("properties.defaultFormat.wrapStrategy", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "properties.iterative-calculation-settings.convergence-threshold" => Some(("properties.iterativeCalculationSettings.convergenceThreshold", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "properties.iterative-calculation-settings.max-iterations" => Some(("properties.iterativeCalculationSettings.maxIterations", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "properties.locale" => Some(("properties.locale", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "properties.spreadsheet-theme.primary-font-family" => Some(("properties.spreadsheetTheme.primaryFontFamily", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "properties.time-zone" => Some(("properties.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "properties.title" => Some(("properties.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "spreadsheet-id" => Some(("spreadsheetId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "spreadsheet-url" => Some(("spreadsheetUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["alpha", "angle", "auto-recalc", "background-color", "background-color-style", "blue", "bold", "borders", "bottom", "color", "color-style", "convergence-threshold", "default-format", "font-family", "font-size", "foreground-color", "foreground-color-style", "green", "horizontal-alignment", "hyperlink-display-type", "italic", "iterative-calculation-settings", "left", "locale", "max-iterations", "number-format", "padding", "pattern", "primary-font-family", "properties", "red", "rgb-color", "right", "spreadsheet-id", "spreadsheet-theme", "spreadsheet-url", "strikethrough", "style", "text-direction", "text-format", "text-rotation", "theme-color", "time-zone", "title", "top", "type", "underline", "vertical", "vertical-alignment", "width", "wrap-strategy"]);
@@ -697,8 +699,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "range" => Some(("range", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "major-dimension" => Some(("majorDimension", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "range" => Some(("range", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["major-dimension", "range"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -742,7 +744,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["include-values-in-response", "insert-data-option", "response-value-render-option", "value-input-option", "response-date-time-render-option"].iter().map(|v|*v));
+                                                                           v.extend(["value-input-option", "insert-data-option", "include-values-in-response", "response-date-time-render-option", "response-value-render-option"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -976,7 +978,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["ranges", "value-render-option", "date-time-render-option", "major-dimension"].iter().map(|v|*v));
+                                                                           v.extend(["value-render-option", "ranges", "date-time-render-option", "major-dimension"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1034,8 +1036,8 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "date-time-render-option" => Some(("dateTimeRenderOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "value-render-option" => Some(("valueRenderOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "major-dimension" => Some(("majorDimension", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "value-render-option" => Some(("valueRenderOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["date-time-render-option", "major-dimension", "value-render-option"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1120,10 +1122,10 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "value-input-option" => Some(("valueInputOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "include-values-in-response" => Some(("includeValuesInResponse", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "response-value-render-option" => Some(("responseValueRenderOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "response-date-time-render-option" => Some(("responseDateTimeRenderOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "response-value-render-option" => Some(("responseValueRenderOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "value-input-option" => Some(("valueInputOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["include-values-in-response", "response-date-time-render-option", "response-value-render-option", "value-input-option"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1208,10 +1210,10 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "value-input-option" => Some(("valueInputOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "include-values-in-response" => Some(("includeValuesInResponse", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "response-value-render-option" => Some(("responseValueRenderOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "response-date-time-render-option" => Some(("responseDateTimeRenderOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "response-value-render-option" => Some(("responseValueRenderOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "value-input-option" => Some(("valueInputOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["include-values-in-response", "response-date-time-render-option", "response-value-render-option", "value-input-option"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1385,7 +1387,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["date-time-render-option", "value-render-option", "major-dimension"].iter().map(|v|*v));
+                                                                           v.extend(["value-render-option", "date-time-render-option", "major-dimension"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1442,8 +1444,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "range" => Some(("range", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "major-dimension" => Some(("majorDimension", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "range" => Some(("range", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["major-dimension", "range"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1484,7 +1486,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["include-values-in-response", "response-value-render-option", "value-input-option", "response-date-time-render-option"].iter().map(|v|*v));
+                                                                           v.extend(["include-values-in-response", "value-input-option", "response-date-time-render-option", "response-value-render-option"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1601,12 +1603,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "sheets4-secret.json",
+            match client::application_secret_from_directory(&config_dir, "sheets4-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

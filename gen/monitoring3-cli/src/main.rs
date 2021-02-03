@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_monitoring3 as api;
+extern crate google_monitoring3;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_monitoring3::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Monitoring<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::Monitoring<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -70,19 +72,19 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "combiner" => Some(("combiner", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creation-record.mutated-by" => Some(("creationRecord.mutatedBy", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "creation-record.mutate-time" => Some(("creationRecord.mutateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creation-record.mutated-by" => Some(("creationRecord.mutatedBy", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "documentation.content" => Some(("documentation.content", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "documentation.mime-type" => Some(("documentation.mimeType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "enabled" => Some(("enabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "validity.message" => Some(("validity.message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "validity.code" => Some(("validity.code", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "user-labels" => Some(("userLabels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "notification-channels" => Some(("notificationChannels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "mutation-record.mutated-by" => Some(("mutationRecord.mutatedBy", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "mutation-record.mutate-time" => Some(("mutationRecord.mutateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mutation-record.mutated-by" => Some(("mutationRecord.mutatedBy", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notification-channels" => Some(("notificationChannels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "user-labels" => Some(("userLabels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "validity.code" => Some(("validity.code", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "validity.message" => Some(("validity.message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["code", "combiner", "content", "creation-record", "display-name", "documentation", "enabled", "message", "mime-type", "mutate-time", "mutated-by", "mutation-record", "name", "notification-channels", "user-labels", "validity"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -279,7 +281,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "filter", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["order-by", "page-size", "page-token", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -337,19 +339,19 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "combiner" => Some(("combiner", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creation-record.mutated-by" => Some(("creationRecord.mutatedBy", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "creation-record.mutate-time" => Some(("creationRecord.mutateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creation-record.mutated-by" => Some(("creationRecord.mutatedBy", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "documentation.content" => Some(("documentation.content", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "documentation.mime-type" => Some(("documentation.mimeType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "enabled" => Some(("enabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "validity.message" => Some(("validity.message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "validity.code" => Some(("validity.code", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "user-labels" => Some(("userLabels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "notification-channels" => Some(("notificationChannels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "mutation-record.mutated-by" => Some(("mutationRecord.mutatedBy", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "mutation-record.mutate-time" => Some(("mutationRecord.mutateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mutation-record.mutated-by" => Some(("mutationRecord.mutatedBy", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notification-channels" => Some(("notificationChannels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "user-labels" => Some(("userLabels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "validity.code" => Some(("validity.code", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "validity.message" => Some(("validity.message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["code", "combiner", "content", "creation-record", "display-name", "documentation", "enabled", "message", "mime-type", "mutate-time", "mutated-by", "mutation-record", "name", "notification-channels", "user-labels", "validity"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -438,9 +440,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "collectd-version" => Some(("collectdVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "resource.labels" => Some(("resource.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "resource.type" => Some(("resource.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "collectd-version" => Some(("collectdVersion", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["collectd-version", "labels", "resource", "type"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -525,11 +527,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "filter" => Some(("filter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "parent-name" => Some(("parentName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "filter" => Some(("filter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "is-cluster" => Some(("isCluster", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "parent-name" => Some(("parentName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["display-name", "filter", "is-cluster", "name", "parent-name"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -737,7 +739,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["children-of-group", "page-token", "ancestors-of-group", "descendants-of-group", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["children-of-group", "page-size", "page-token", "ancestors-of-group", "descendants-of-group"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -805,7 +807,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["interval-start-time", "page-token", "filter", "page-size", "interval-end-time"].iter().map(|v|*v));
+                                                                           v.extend(["interval-start-time", "interval-end-time", "page-size", "page-token", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -862,11 +864,11 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "filter" => Some(("filter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "parent-name" => Some(("parentName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "filter" => Some(("filter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "is-cluster" => Some(("isCluster", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "parent-name" => Some(("parentName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["display-name", "filter", "is-cluster", "name", "parent-name"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -955,18 +957,18 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "metric-kind" => Some(("metricKind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "value-type" => Some(("valueType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "launch-stage" => Some(("launchStage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "unit" => Some(("unit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "monitored-resource-types" => Some(("monitoredResourceTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "metadata.launch-stage" => Some(("metadata.launchStage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.ingest-delay" => Some(("metadata.ingestDelay", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metadata.launch-stage" => Some(("metadata.launchStage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "metadata.sample-period" => Some(("metadata.samplePeriod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "metric-kind" => Some(("metricKind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "monitored-resource-types" => Some(("monitoredResourceTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "unit" => Some(("unit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "value-type" => Some(("valueType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["description", "display-name", "ingest-delay", "launch-stage", "metadata", "metric-kind", "monitored-resource-types", "name", "sample-period", "type", "unit", "value-type"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1160,7 +1162,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1274,7 +1276,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1385,7 +1387,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1442,14 +1444,14 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "enabled" => Some(("enabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "user-labels" => Some(("userLabels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "verification-status" => Some(("verificationStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "user-labels" => Some(("userLabels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "verification-status" => Some(("verificationStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["description", "display-name", "enabled", "labels", "name", "type", "user-labels", "verification-status"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1735,7 +1737,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "filter", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["order-by", "page-size", "page-token", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1792,14 +1794,14 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "enabled" => Some(("enabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "user-labels" => Some(("userLabels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "verification-status" => Some(("verificationStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "user-labels" => Some(("userLabels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "verification-status" => Some(("verificationStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["description", "display-name", "enabled", "labels", "name", "type", "user-labels", "verification-status"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2170,7 +2172,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-size", "interval-start-time", "aggregation-alignment-period", "aggregation-per-series-aligner", "filter", "page-token", "aggregation-cross-series-reducer", "interval-end-time", "aggregation-group-by-fields", "view"].iter().map(|v|*v));
+                                                                           v.extend(["aggregation-per-series-aligner", "interval-start-time", "page-token", "page-size", "view", "order-by", "interval-end-time", "filter", "aggregation-alignment-period", "aggregation-cross-series-reducer", "aggregation-group-by-fields"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2227,8 +2229,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "page-token" => Some(("pageToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "page-size" => Some(("pageSize", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "page-token" => Some(("pageToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "query" => Some(("query", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["page-size", "page-token", "query"]);
@@ -2314,27 +2316,27 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "resource-group.resource-type" => Some(("resourceGroup.resourceType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "resource-group.group-id" => Some(("resourceGroup.groupId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-internal" => Some(("isInternal", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "tcp-check.port" => Some(("tcpCheck.port", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "period" => Some(("period", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "selected-regions" => Some(("selectedRegions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "monitored-resource.labels" => Some(("monitoredResource.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "monitored-resource.type" => Some(("monitoredResource.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "http-check.body" => Some(("httpCheck.body", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "http-check.use-ssl" => Some(("httpCheck.useSsl", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "http-check.content-type" => Some(("httpCheck.contentType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "http-check.request-method" => Some(("httpCheck.requestMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "http-check.headers" => Some(("httpCheck.headers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "http-check.auth-info.username" => Some(("httpCheck.authInfo.username", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "http-check.auth-info.password" => Some(("httpCheck.authInfo.password", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "http-check.validate-ssl" => Some(("httpCheck.validateSsl", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "http-check.auth-info.username" => Some(("httpCheck.authInfo.username", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "http-check.body" => Some(("httpCheck.body", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "http-check.content-type" => Some(("httpCheck.contentType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "http-check.headers" => Some(("httpCheck.headers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "http-check.mask-headers" => Some(("httpCheck.maskHeaders", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "http-check.path" => Some(("httpCheck.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "http-check.port" => Some(("httpCheck.port", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "http-check.request-method" => Some(("httpCheck.requestMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "http-check.use-ssl" => Some(("httpCheck.useSsl", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "http-check.validate-ssl" => Some(("httpCheck.validateSsl", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "is-internal" => Some(("isInternal", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "monitored-resource.labels" => Some(("monitoredResource.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "monitored-resource.type" => Some(("monitoredResource.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "period" => Some(("period", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "resource-group.group-id" => Some(("resourceGroup.groupId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "resource-group.resource-type" => Some(("resourceGroup.resourceType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "selected-regions" => Some(("selectedRegions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "tcp-check.port" => Some(("tcpCheck.port", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "timeout" => Some(("timeout", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["auth-info", "body", "content-type", "display-name", "group-id", "headers", "http-check", "is-internal", "labels", "mask-headers", "monitored-resource", "name", "password", "path", "period", "port", "request-method", "resource-group", "resource-type", "selected-regions", "tcp-check", "timeout", "type", "use-ssl", "username", "validate-ssl"]);
@@ -2526,7 +2528,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2583,27 +2585,27 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "resource-group.resource-type" => Some(("resourceGroup.resourceType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "resource-group.group-id" => Some(("resourceGroup.groupId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-internal" => Some(("isInternal", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "tcp-check.port" => Some(("tcpCheck.port", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "period" => Some(("period", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "selected-regions" => Some(("selectedRegions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "monitored-resource.labels" => Some(("monitoredResource.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "monitored-resource.type" => Some(("monitoredResource.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "http-check.body" => Some(("httpCheck.body", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "http-check.use-ssl" => Some(("httpCheck.useSsl", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "http-check.content-type" => Some(("httpCheck.contentType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "http-check.request-method" => Some(("httpCheck.requestMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "http-check.headers" => Some(("httpCheck.headers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "http-check.auth-info.username" => Some(("httpCheck.authInfo.username", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "http-check.auth-info.password" => Some(("httpCheck.authInfo.password", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "http-check.validate-ssl" => Some(("httpCheck.validateSsl", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "http-check.auth-info.username" => Some(("httpCheck.authInfo.username", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "http-check.body" => Some(("httpCheck.body", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "http-check.content-type" => Some(("httpCheck.contentType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "http-check.headers" => Some(("httpCheck.headers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "http-check.mask-headers" => Some(("httpCheck.maskHeaders", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "http-check.path" => Some(("httpCheck.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "http-check.port" => Some(("httpCheck.port", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "http-check.request-method" => Some(("httpCheck.requestMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "http-check.use-ssl" => Some(("httpCheck.useSsl", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "http-check.validate-ssl" => Some(("httpCheck.validateSsl", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "is-internal" => Some(("isInternal", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "monitored-resource.labels" => Some(("monitoredResource.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "monitored-resource.type" => Some(("monitoredResource.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "period" => Some(("period", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "resource-group.group-id" => Some(("resourceGroup.groupId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "resource-group.resource-type" => Some(("resourceGroup.resourceType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "selected-regions" => Some(("selectedRegions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "tcp-check.port" => Some(("tcpCheck.port", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "timeout" => Some(("timeout", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["auth-info", "body", "content-type", "display-name", "group-id", "headers", "http-check", "is-internal", "labels", "mask-headers", "monitored-resource", "name", "password", "path", "period", "port", "request-method", "resource-group", "resource-type", "selected-regions", "tcp-check", "timeout", "type", "use-ssl", "username", "validate-ssl"]);
@@ -2693,18 +2695,18 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "cloud-endpoints.service" => Some(("cloudEndpoints.service", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "mesh-istio.mesh-uid" => Some(("meshIstio.meshUid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "mesh-istio.service-namespace" => Some(("meshIstio.serviceNamespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "mesh-istio.service-name" => Some(("meshIstio.serviceName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "telemetry.resource-name" => Some(("telemetry.resourceName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "cluster-istio.cluster-name" => Some(("clusterIstio.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "cluster-istio.service-namespace" => Some(("clusterIstio.serviceNamespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "cluster-istio.service-name" => Some(("clusterIstio.serviceName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "cluster-istio.location" => Some(("clusterIstio.location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "app-engine.module-id" => Some(("appEngine.moduleId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "cloud-endpoints.service" => Some(("cloudEndpoints.service", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "cluster-istio.cluster-name" => Some(("clusterIstio.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "cluster-istio.location" => Some(("clusterIstio.location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "cluster-istio.service-name" => Some(("clusterIstio.serviceName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "cluster-istio.service-namespace" => Some(("clusterIstio.serviceNamespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mesh-istio.mesh-uid" => Some(("meshIstio.meshUid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mesh-istio.service-name" => Some(("meshIstio.serviceName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mesh-istio.service-namespace" => Some(("meshIstio.serviceNamespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "telemetry.resource-name" => Some(("telemetry.resourceName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["app-engine", "cloud-endpoints", "cluster-istio", "cluster-name", "display-name", "location", "mesh-istio", "mesh-uid", "module-id", "name", "resource-name", "service", "service-name", "service-namespace", "telemetry"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2902,7 +2904,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2959,18 +2961,18 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "cloud-endpoints.service" => Some(("cloudEndpoints.service", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "mesh-istio.mesh-uid" => Some(("meshIstio.meshUid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "mesh-istio.service-namespace" => Some(("meshIstio.serviceNamespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "mesh-istio.service-name" => Some(("meshIstio.serviceName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "telemetry.resource-name" => Some(("telemetry.resourceName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "cluster-istio.cluster-name" => Some(("clusterIstio.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "cluster-istio.service-namespace" => Some(("clusterIstio.serviceNamespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "cluster-istio.service-name" => Some(("clusterIstio.serviceName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "cluster-istio.location" => Some(("clusterIstio.location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "app-engine.module-id" => Some(("appEngine.moduleId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "cloud-endpoints.service" => Some(("cloudEndpoints.service", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "cluster-istio.cluster-name" => Some(("clusterIstio.clusterName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "cluster-istio.location" => Some(("clusterIstio.location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "cluster-istio.service-name" => Some(("clusterIstio.serviceName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "cluster-istio.service-namespace" => Some(("clusterIstio.serviceNamespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mesh-istio.mesh-uid" => Some(("meshIstio.meshUid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mesh-istio.service-name" => Some(("meshIstio.serviceName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mesh-istio.service-namespace" => Some(("meshIstio.serviceNamespace", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "telemetry.resource-name" => Some(("telemetry.resourceName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["app-engine", "cloud-endpoints", "cluster-istio", "cluster-name", "display-name", "location", "mesh-istio", "mesh-uid", "module-id", "name", "resource-name", "service", "service-name", "service-namespace", "telemetry"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3059,40 +3061,40 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "calendar-period" => Some(("calendarPeriod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "goal" => Some(("goal", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "calendar-period" => Some(("calendarPeriod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "rolling-period" => Some(("rollingPeriod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "service-level-indicator.basic-sli.latency.threshold" => Some(("serviceLevelIndicator.basicSli.latency.threshold", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-level-indicator.basic-sli.version" => Some(("serviceLevelIndicator.basicSli.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "service-level-indicator.basic-sli.method" => Some(("serviceLevelIndicator.basicSli.method", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "service-level-indicator.basic-sli.location" => Some(("serviceLevelIndicator.basicSli.location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "service-level-indicator.basic-sli.method" => Some(("serviceLevelIndicator.basicSli.method", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "service-level-indicator.basic-sli.version" => Some(("serviceLevelIndicator.basicSli.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "service-level-indicator.request-based.distribution-cut.distribution-filter" => Some(("serviceLevelIndicator.requestBased.distributionCut.distributionFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-level-indicator.request-based.distribution-cut.range.max" => Some(("serviceLevelIndicator.requestBased.distributionCut.range.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "service-level-indicator.request-based.distribution-cut.range.min" => Some(("serviceLevelIndicator.requestBased.distributionCut.range.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "service-level-indicator.request-based.good-total-ratio.bad-service-filter" => Some(("serviceLevelIndicator.requestBased.goodTotalRatio.badServiceFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-level-indicator.request-based.good-total-ratio.good-service-filter" => Some(("serviceLevelIndicator.requestBased.goodTotalRatio.goodServiceFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-level-indicator.request-based.good-total-ratio.total-service-filter" => Some(("serviceLevelIndicator.requestBased.goodTotalRatio.totalServiceFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-level-indicator.windows-based.good-bad-metric-filter" => Some(("serviceLevelIndicator.windowsBased.goodBadMetricFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-level-indicator.windows-based.good-total-ratio-threshold.basic-sli-performance.latency.threshold" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.basicSliPerformance.latency.threshold", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-level-indicator.windows-based.good-total-ratio-threshold.basic-sli-performance.location" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.basicSliPerformance.location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "service-level-indicator.windows-based.good-total-ratio-threshold.basic-sli-performance.method" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.basicSliPerformance.method", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "service-level-indicator.windows-based.good-total-ratio-threshold.basic-sli-performance.version" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.basicSliPerformance.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "service-level-indicator.windows-based.good-total-ratio-threshold.performance.distribution-cut.distribution-filter" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.performance.distributionCut.distributionFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-level-indicator.windows-based.good-total-ratio-threshold.performance.distribution-cut.range.max" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.performance.distributionCut.range.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "service-level-indicator.windows-based.good-total-ratio-threshold.performance.distribution-cut.range.min" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.performance.distributionCut.range.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "service-level-indicator.windows-based.good-total-ratio-threshold.performance.good-total-ratio.bad-service-filter" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.performance.goodTotalRatio.badServiceFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-level-indicator.windows-based.good-total-ratio-threshold.performance.good-total-ratio.good-service-filter" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.performance.goodTotalRatio.goodServiceFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-level-indicator.windows-based.good-total-ratio-threshold.performance.good-total-ratio.total-service-filter" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.performance.goodTotalRatio.totalServiceFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-level-indicator.windows-based.good-total-ratio-threshold.threshold" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.threshold", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "service-level-indicator.windows-based.metric-mean-in-range.range.max" => Some(("serviceLevelIndicator.windowsBased.metricMeanInRange.range.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "service-level-indicator.windows-based.metric-mean-in-range.range.min" => Some(("serviceLevelIndicator.windowsBased.metricMeanInRange.range.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "service-level-indicator.windows-based.metric-mean-in-range.time-series" => Some(("serviceLevelIndicator.windowsBased.metricMeanInRange.timeSeries", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-level-indicator.windows-based.good-bad-metric-filter" => Some(("serviceLevelIndicator.windowsBased.goodBadMetricFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-level-indicator.windows-based.good-total-ratio-threshold.threshold" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.threshold", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "service-level-indicator.windows-based.good-total-ratio-threshold.basic-sli-performance.latency.threshold" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.basicSliPerformance.latency.threshold", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-level-indicator.windows-based.good-total-ratio-threshold.basic-sli-performance.version" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.basicSliPerformance.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "service-level-indicator.windows-based.good-total-ratio-threshold.basic-sli-performance.method" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.basicSliPerformance.method", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "service-level-indicator.windows-based.good-total-ratio-threshold.basic-sli-performance.location" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.basicSliPerformance.location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "service-level-indicator.windows-based.good-total-ratio-threshold.performance.distribution-cut.range.max" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.performance.distributionCut.range.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "service-level-indicator.windows-based.good-total-ratio-threshold.performance.distribution-cut.range.min" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.performance.distributionCut.range.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "service-level-indicator.windows-based.good-total-ratio-threshold.performance.distribution-cut.distribution-filter" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.performance.distributionCut.distributionFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-level-indicator.windows-based.good-total-ratio-threshold.performance.good-total-ratio.bad-service-filter" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.performance.goodTotalRatio.badServiceFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-level-indicator.windows-based.good-total-ratio-threshold.performance.good-total-ratio.total-service-filter" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.performance.goodTotalRatio.totalServiceFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-level-indicator.windows-based.good-total-ratio-threshold.performance.good-total-ratio.good-service-filter" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.performance.goodTotalRatio.goodServiceFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "service-level-indicator.windows-based.metric-sum-in-range.range.max" => Some(("serviceLevelIndicator.windowsBased.metricSumInRange.range.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "service-level-indicator.windows-based.metric-sum-in-range.range.min" => Some(("serviceLevelIndicator.windowsBased.metricSumInRange.range.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "service-level-indicator.windows-based.metric-sum-in-range.time-series" => Some(("serviceLevelIndicator.windowsBased.metricSumInRange.timeSeries", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "service-level-indicator.windows-based.window-period" => Some(("serviceLevelIndicator.windowsBased.windowPeriod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-level-indicator.request-based.distribution-cut.range.max" => Some(("serviceLevelIndicator.requestBased.distributionCut.range.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "service-level-indicator.request-based.distribution-cut.range.min" => Some(("serviceLevelIndicator.requestBased.distributionCut.range.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "service-level-indicator.request-based.distribution-cut.distribution-filter" => Some(("serviceLevelIndicator.requestBased.distributionCut.distributionFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-level-indicator.request-based.good-total-ratio.bad-service-filter" => Some(("serviceLevelIndicator.requestBased.goodTotalRatio.badServiceFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-level-indicator.request-based.good-total-ratio.total-service-filter" => Some(("serviceLevelIndicator.requestBased.goodTotalRatio.totalServiceFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-level-indicator.request-based.good-total-ratio.good-service-filter" => Some(("serviceLevelIndicator.requestBased.goodTotalRatio.goodServiceFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "rolling-period" => Some(("rollingPeriod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["bad-service-filter", "basic-sli", "basic-sli-performance", "calendar-period", "display-name", "distribution-cut", "distribution-filter", "goal", "good-bad-metric-filter", "good-service-filter", "good-total-ratio", "good-total-ratio-threshold", "latency", "location", "max", "method", "metric-mean-in-range", "metric-sum-in-range", "min", "name", "performance", "range", "request-based", "rolling-period", "service-level-indicator", "threshold", "time-series", "total-service-filter", "version", "window-period", "windows-based"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3297,7 +3299,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size", "view"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "page-size", "view", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3354,40 +3356,40 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "calendar-period" => Some(("calendarPeriod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "goal" => Some(("goal", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "calendar-period" => Some(("calendarPeriod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "rolling-period" => Some(("rollingPeriod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "service-level-indicator.basic-sli.latency.threshold" => Some(("serviceLevelIndicator.basicSli.latency.threshold", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-level-indicator.basic-sli.version" => Some(("serviceLevelIndicator.basicSli.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "service-level-indicator.basic-sli.method" => Some(("serviceLevelIndicator.basicSli.method", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "service-level-indicator.basic-sli.location" => Some(("serviceLevelIndicator.basicSli.location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "service-level-indicator.basic-sli.method" => Some(("serviceLevelIndicator.basicSli.method", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "service-level-indicator.basic-sli.version" => Some(("serviceLevelIndicator.basicSli.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "service-level-indicator.request-based.distribution-cut.distribution-filter" => Some(("serviceLevelIndicator.requestBased.distributionCut.distributionFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-level-indicator.request-based.distribution-cut.range.max" => Some(("serviceLevelIndicator.requestBased.distributionCut.range.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "service-level-indicator.request-based.distribution-cut.range.min" => Some(("serviceLevelIndicator.requestBased.distributionCut.range.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "service-level-indicator.request-based.good-total-ratio.bad-service-filter" => Some(("serviceLevelIndicator.requestBased.goodTotalRatio.badServiceFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-level-indicator.request-based.good-total-ratio.good-service-filter" => Some(("serviceLevelIndicator.requestBased.goodTotalRatio.goodServiceFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-level-indicator.request-based.good-total-ratio.total-service-filter" => Some(("serviceLevelIndicator.requestBased.goodTotalRatio.totalServiceFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-level-indicator.windows-based.good-bad-metric-filter" => Some(("serviceLevelIndicator.windowsBased.goodBadMetricFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-level-indicator.windows-based.good-total-ratio-threshold.basic-sli-performance.latency.threshold" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.basicSliPerformance.latency.threshold", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-level-indicator.windows-based.good-total-ratio-threshold.basic-sli-performance.location" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.basicSliPerformance.location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "service-level-indicator.windows-based.good-total-ratio-threshold.basic-sli-performance.method" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.basicSliPerformance.method", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "service-level-indicator.windows-based.good-total-ratio-threshold.basic-sli-performance.version" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.basicSliPerformance.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "service-level-indicator.windows-based.good-total-ratio-threshold.performance.distribution-cut.distribution-filter" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.performance.distributionCut.distributionFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-level-indicator.windows-based.good-total-ratio-threshold.performance.distribution-cut.range.max" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.performance.distributionCut.range.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "service-level-indicator.windows-based.good-total-ratio-threshold.performance.distribution-cut.range.min" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.performance.distributionCut.range.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "service-level-indicator.windows-based.good-total-ratio-threshold.performance.good-total-ratio.bad-service-filter" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.performance.goodTotalRatio.badServiceFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-level-indicator.windows-based.good-total-ratio-threshold.performance.good-total-ratio.good-service-filter" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.performance.goodTotalRatio.goodServiceFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-level-indicator.windows-based.good-total-ratio-threshold.performance.good-total-ratio.total-service-filter" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.performance.goodTotalRatio.totalServiceFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "service-level-indicator.windows-based.good-total-ratio-threshold.threshold" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.threshold", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "service-level-indicator.windows-based.metric-mean-in-range.range.max" => Some(("serviceLevelIndicator.windowsBased.metricMeanInRange.range.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "service-level-indicator.windows-based.metric-mean-in-range.range.min" => Some(("serviceLevelIndicator.windowsBased.metricMeanInRange.range.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "service-level-indicator.windows-based.metric-mean-in-range.time-series" => Some(("serviceLevelIndicator.windowsBased.metricMeanInRange.timeSeries", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-level-indicator.windows-based.good-bad-metric-filter" => Some(("serviceLevelIndicator.windowsBased.goodBadMetricFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-level-indicator.windows-based.good-total-ratio-threshold.threshold" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.threshold", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "service-level-indicator.windows-based.good-total-ratio-threshold.basic-sli-performance.latency.threshold" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.basicSliPerformance.latency.threshold", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-level-indicator.windows-based.good-total-ratio-threshold.basic-sli-performance.version" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.basicSliPerformance.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "service-level-indicator.windows-based.good-total-ratio-threshold.basic-sli-performance.method" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.basicSliPerformance.method", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "service-level-indicator.windows-based.good-total-ratio-threshold.basic-sli-performance.location" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.basicSliPerformance.location", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "service-level-indicator.windows-based.good-total-ratio-threshold.performance.distribution-cut.range.max" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.performance.distributionCut.range.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "service-level-indicator.windows-based.good-total-ratio-threshold.performance.distribution-cut.range.min" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.performance.distributionCut.range.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "service-level-indicator.windows-based.good-total-ratio-threshold.performance.distribution-cut.distribution-filter" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.performance.distributionCut.distributionFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-level-indicator.windows-based.good-total-ratio-threshold.performance.good-total-ratio.bad-service-filter" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.performance.goodTotalRatio.badServiceFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-level-indicator.windows-based.good-total-ratio-threshold.performance.good-total-ratio.total-service-filter" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.performance.goodTotalRatio.totalServiceFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-level-indicator.windows-based.good-total-ratio-threshold.performance.good-total-ratio.good-service-filter" => Some(("serviceLevelIndicator.windowsBased.goodTotalRatioThreshold.performance.goodTotalRatio.goodServiceFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "service-level-indicator.windows-based.metric-sum-in-range.range.max" => Some(("serviceLevelIndicator.windowsBased.metricSumInRange.range.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "service-level-indicator.windows-based.metric-sum-in-range.range.min" => Some(("serviceLevelIndicator.windowsBased.metricSumInRange.range.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "service-level-indicator.windows-based.metric-sum-in-range.time-series" => Some(("serviceLevelIndicator.windowsBased.metricSumInRange.timeSeries", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "service-level-indicator.windows-based.window-period" => Some(("serviceLevelIndicator.windowsBased.windowPeriod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-level-indicator.request-based.distribution-cut.range.max" => Some(("serviceLevelIndicator.requestBased.distributionCut.range.max", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "service-level-indicator.request-based.distribution-cut.range.min" => Some(("serviceLevelIndicator.requestBased.distributionCut.range.min", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "service-level-indicator.request-based.distribution-cut.distribution-filter" => Some(("serviceLevelIndicator.requestBased.distributionCut.distributionFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-level-indicator.request-based.good-total-ratio.bad-service-filter" => Some(("serviceLevelIndicator.requestBased.goodTotalRatio.badServiceFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-level-indicator.request-based.good-total-ratio.total-service-filter" => Some(("serviceLevelIndicator.requestBased.goodTotalRatio.totalServiceFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "service-level-indicator.request-based.good-total-ratio.good-service-filter" => Some(("serviceLevelIndicator.requestBased.goodTotalRatio.goodServiceFilter", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "rolling-period" => Some(("rollingPeriod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["bad-service-filter", "basic-sli", "basic-sli-performance", "calendar-period", "display-name", "distribution-cut", "distribution-filter", "goal", "good-bad-metric-filter", "good-service-filter", "good-total-ratio", "good-total-ratio-threshold", "latency", "location", "max", "method", "metric-mean-in-range", "metric-sum-in-range", "min", "name", "performance", "range", "request-based", "rolling-period", "service-level-indicator", "threshold", "time-series", "total-service-filter", "version", "window-period", "windows-based"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3478,7 +3480,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3701,12 +3703,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "monitoring3-secret.json",
+            match client::application_secret_from_directory(&config_dir, "monitoring3-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

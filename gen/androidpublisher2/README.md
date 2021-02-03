@@ -11,27 +11,27 @@ Everything else about the *Android Publisher* *v2* API can be found at the
 [official documentation site](https://developers.google.com/android-publisher).
 # Features
 
-Handle the following *Resources* with ease from the central [hub](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.AndroidPublisher.html) ... 
+Handle the following *Resources* with ease from the central [hub](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/AndroidPublisher) ... 
 
 * edits
- * [*apklistings delete*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditApklistingDeleteCall.html), [*apklistings deleteall*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditApklistingDeleteallCall.html), [*apklistings get*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditApklistingGetCall.html), [*apklistings list*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditApklistingListCall.html), [*apklistings patch*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditApklistingPatchCall.html), [*apklistings update*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditApklistingUpdateCall.html), [*apks addexternallyhosted*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditApkAddexternallyhostedCall.html), [*apks list*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditApkListCall.html), [*apks upload*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditApkUploadCall.html), [*bundles list*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditBundleListCall.html), [*bundles upload*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditBundleUploadCall.html), [*commit*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditCommitCall.html), [*delete*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditDeleteCall.html), [*deobfuscationfiles upload*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditDeobfuscationfileUploadCall.html), [*details get*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditDetailGetCall.html), [*details patch*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditDetailPatchCall.html), [*details update*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditDetailUpdateCall.html), [*expansionfiles get*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditExpansionfileGetCall.html), [*expansionfiles patch*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditExpansionfilePatchCall.html), [*expansionfiles update*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditExpansionfileUpdateCall.html), [*expansionfiles upload*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditExpansionfileUploadCall.html), [*get*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditGetCall.html), [*images delete*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditImageDeleteCall.html), [*images deleteall*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditImageDeleteallCall.html), [*images list*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditImageListCall.html), [*images upload*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditImageUploadCall.html), [*insert*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditInsertCall.html), [*listings delete*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditListingDeleteCall.html), [*listings deleteall*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditListingDeleteallCall.html), [*listings get*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditListingGetCall.html), [*listings list*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditListingListCall.html), [*listings patch*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditListingPatchCall.html), [*listings update*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditListingUpdateCall.html), [*testers get*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditTesterGetCall.html), [*testers patch*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditTesterPatchCall.html), [*testers update*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditTesterUpdateCall.html), [*tracks get*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditTrackGetCall.html), [*tracks list*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditTrackListCall.html), [*tracks patch*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditTrackPatchCall.html), [*tracks update*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditTrackUpdateCall.html) and [*validate*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditValidateCall.html)
+ * [*apklistings delete*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditApklistingDeleteCall), [*apklistings deleteall*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditApklistingDeleteallCall), [*apklistings get*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditApklistingGetCall), [*apklistings list*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditApklistingListCall), [*apklistings patch*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditApklistingPatchCall), [*apklistings update*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditApklistingUpdateCall), [*apks addexternallyhosted*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditApkAddexternallyhostedCall), [*apks list*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditApkListCall), [*apks upload*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditApkUploadCall), [*bundles list*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditBundleListCall), [*bundles upload*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditBundleUploadCall), [*commit*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditCommitCall), [*delete*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditDeleteCall), [*deobfuscationfiles upload*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditDeobfuscationfileUploadCall), [*details get*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditDetailGetCall), [*details patch*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditDetailPatchCall), [*details update*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditDetailUpdateCall), [*expansionfiles get*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditExpansionfileGetCall), [*expansionfiles patch*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditExpansionfilePatchCall), [*expansionfiles update*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditExpansionfileUpdateCall), [*expansionfiles upload*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditExpansionfileUploadCall), [*get*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditGetCall), [*images delete*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditImageDeleteCall), [*images deleteall*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditImageDeleteallCall), [*images list*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditImageListCall), [*images upload*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditImageUploadCall), [*insert*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditInsertCall), [*listings delete*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditListingDeleteCall), [*listings deleteall*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditListingDeleteallCall), [*listings get*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditListingGetCall), [*listings list*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditListingListCall), [*listings patch*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditListingPatchCall), [*listings update*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditListingUpdateCall), [*testers get*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditTesterGetCall), [*testers patch*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditTesterPatchCall), [*testers update*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditTesterUpdateCall), [*tracks get*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditTrackGetCall), [*tracks list*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditTrackListCall), [*tracks patch*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditTrackPatchCall), [*tracks update*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditTrackUpdateCall) and [*validate*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditValidateCall)
 * inappproducts
- * [*delete*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.InappproductDeleteCall.html), [*get*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.InappproductGetCall.html), [*insert*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.InappproductInsertCall.html), [*list*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.InappproductListCall.html), [*patch*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.InappproductPatchCall.html) and [*update*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.InappproductUpdateCall.html)
+ * [*delete*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::InappproductDeleteCall), [*get*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::InappproductGetCall), [*insert*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::InappproductInsertCall), [*list*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::InappproductListCall), [*patch*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::InappproductPatchCall) and [*update*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::InappproductUpdateCall)
 * orders
- * [*refund*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.OrderRefundCall.html)
+ * [*refund*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::OrderRefundCall)
 * purchases
- * [*products get*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.PurchaseProductGetCall.html), [*subscriptions cancel*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.PurchaseSubscriptionCancelCall.html), [*subscriptions defer*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.PurchaseSubscriptionDeferCall.html), [*subscriptions get*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.PurchaseSubscriptionGetCall.html), [*subscriptions refund*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.PurchaseSubscriptionRefundCall.html), [*subscriptions revoke*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.PurchaseSubscriptionRevokeCall.html) and [*voidedpurchases list*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.PurchaseVoidedpurchaseListCall.html)
-* [reviews](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.Review.html)
- * [*get*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.ReviewGetCall.html), [*list*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.ReviewListCall.html) and [*reply*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.ReviewReplyCall.html)
+ * [*products get*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::PurchaseProductGetCall), [*subscriptions cancel*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::PurchaseSubscriptionCancelCall), [*subscriptions defer*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::PurchaseSubscriptionDeferCall), [*subscriptions get*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::PurchaseSubscriptionGetCall), [*subscriptions refund*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::PurchaseSubscriptionRefundCall), [*subscriptions revoke*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::PurchaseSubscriptionRevokeCall) and [*voidedpurchases list*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::PurchaseVoidedpurchaseListCall)
+* [reviews](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::Review)
+ * [*get*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::ReviewGetCall), [*list*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::ReviewListCall) and [*reply*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::ReviewReplyCall)
 
 
 Upload supported by ...
 
-* [*deobfuscationfiles upload edits*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditDeobfuscationfileUploadCall.html)
-* [*images upload edits*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditImageUploadCall.html)
-* [*apks upload edits*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditApkUploadCall.html)
-* [*expansionfiles upload edits*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditExpansionfileUploadCall.html)
-* [*bundles upload edits*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.EditBundleUploadCall.html)
+* [*apks upload edits*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditApkUploadCall)
+* [*bundles upload edits*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditBundleUploadCall)
+* [*deobfuscationfiles upload edits*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditDeobfuscationfileUploadCall)
+* [*expansionfiles upload edits*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditExpansionfileUploadCall)
+* [*images upload edits*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/api::EditImageUploadCall)
 
 
 
@@ -39,17 +39,17 @@ Upload supported by ...
 
 The API is structured into the following primary items:
 
-* **[Hub](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/struct.AndroidPublisher.html)**
+* **[Hub](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/AndroidPublisher)**
     * a central object to maintain state and allow accessing all *Activities*
-    * creates [*Method Builders*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/trait.MethodsBuilder.html) which in turn
-      allow access to individual [*Call Builders*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/trait.CallBuilder.html)
-* **[Resources](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/trait.Resource.html)**
+    * creates [*Method Builders*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/client::MethodsBuilder) which in turn
+      allow access to individual [*Call Builders*](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/client::CallBuilder)
+* **[Resources](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/client::Resource)**
     * primary types that you can apply *Activities* to
     * a collection of properties and *Parts*
-    * **[Parts](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/trait.Part.html)**
+    * **[Parts](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/client::Part)**
         * a collection of properties
         * never directly used in *Activities*
-* **[Activities](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/trait.CallBuilder.html)**
+* **[Activities](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/client::CallBuilder)**
     * operations to apply to *Resources*
 
 All *structures* are marked with applicable traits to further categorize them and ease browsing.
@@ -63,9 +63,9 @@ let r = hub.resource().activity(...).doit()
 Or specifically ...
 
 ```ignore
-let r = hub.inappproducts().patch(...).doit()
-let r = hub.inappproducts().insert(...).doit()
 let r = hub.inappproducts().get(...).doit()
+let r = hub.inappproducts().insert(...).doit()
+let r = hub.inappproducts().patch(...).doit()
 let r = hub.inappproducts().update(...).doit()
 ```
 
@@ -100,7 +100,7 @@ extern crate hyper;
 extern crate hyper_rustls;
 extern crate yup_oauth2 as oauth2;
 extern crate google_androidpublisher2 as androidpublisher2;
-use androidpublisher2::InAppProduct;
+use androidpublisher2::api::InAppProduct;
 use androidpublisher2::{Result, Error};
 use std::default::Default;
 use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
@@ -127,7 +127,7 @@ let mut req = InAppProduct::default();
 // execute the final call using `doit()`.
 // Values shown here are possibly random and not representative !
 let result = hub.inappproducts().patch(req, "packageName", "sku")
-             .auto_convert_missing_prices(false)
+             .auto_convert_missing_prices(true)
              .doit();
 
 match result {
@@ -150,17 +150,17 @@ match result {
 ```
 ## Handling Errors
 
-All errors produced by the system are provided either as [Result](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/enum.Result.html) enumeration as return value of 
+All errors produced by the system are provided either as [Result](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/client::Result) enumeration as return value of
 the doit() methods, or handed as possibly intermediate results to either the 
-[Hub Delegate](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/trait.Delegate.html), or the [Authenticator Delegate](https://docs.rs/yup-oauth2/*/yup_oauth2/trait.AuthenticatorDelegate.html).
+[Hub Delegate](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/client::Delegate), or the [Authenticator Delegate](https://docs.rs/yup-oauth2/*/yup_oauth2/trait.AuthenticatorDelegate.html).
 
 When delegates handle errors or intermediate values, they may have a chance to instruct the system to retry. This 
 makes the system potentially resilient to all kinds of errors.
 
 ## Uploads and Downloads
-If a method supports downloads, the response body, which is part of the [Result](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/enum.Result.html), should be
+If a method supports downloads, the response body, which is part of the [Result](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/client::Result), should be
 read by you to obtain the media.
-If such a method also supports a [Response Result](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/trait.ResponseResult.html), it will return that by default.
+If such a method also supports a [Response Result](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/client::ResponseResult), it will return that by default.
 You can see it as meta-data for the actual media. To trigger a media download, you will have to set up the builder by making
 this call: `.param("alt", "media")`.
 
@@ -170,29 +170,29 @@ Methods supporting uploads can do so using up to 2 different protocols:
 
 ## Customization and Callbacks
 
-You may alter the way an `doit()` method is called by providing a [delegate](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/trait.Delegate.html) to the 
-[Method Builder](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/trait.CallBuilder.html) before making the final `doit()` call. 
+You may alter the way an `doit()` method is called by providing a [delegate](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/client::Delegate) to the 
+[Method Builder](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/client::CallBuilder) before making the final `doit()` call. 
 Respective methods will be called to provide progress information, as well as determine whether the system should 
 retry on failure.
 
-The [delegate trait](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/trait.Delegate.html) is default-implemented, allowing you to customize it with minimal effort.
+The [delegate trait](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/client::Delegate) is default-implemented, allowing you to customize it with minimal effort.
 
 ## Optional Parts in Server-Requests
 
-All structures provided by this library are made to be [encodable](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/trait.RequestValue.html) and 
-[decodable](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/trait.ResponseResult.html) via *json*. Optionals are used to indicate that partial requests are responses 
+All structures provided by this library are made to be [encodable](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/client::RequestValue) and 
+[decodable](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/client::ResponseResult) via *json*. Optionals are used to indicate that partial requests are responses 
 are valid.
-Most optionals are are considered [Parts](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/trait.Part.html) which are identifiable by name, which will be sent to 
+Most optionals are are considered [Parts](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/client::Part) which are identifiable by name, which will be sent to 
 the server to indicate either the set parts of the request or the desired parts in the response.
 
 ## Builder Arguments
 
-Using [method builders](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/trait.CallBuilder.html), you are able to prepare an action call by repeatedly calling it's methods.
+Using [method builders](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/client::CallBuilder), you are able to prepare an action call by repeatedly calling it's methods.
 These will always take a single argument, for which the following statements are true.
 
 * [PODs][wiki-pod] are handed by copy
 * strings are passed as `&str`
-* [request values](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/trait.RequestValue.html) are moved
+* [request values](https://docs.rs/google-androidpublisher2/1.0.14+20200331/google_androidpublisher2/client::RequestValue) are moved
 
 Arguments will always be copied or cloned into the builder, to make them independent of their original life times.
 

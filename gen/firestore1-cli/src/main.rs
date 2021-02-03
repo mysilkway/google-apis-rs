@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_firestore1 as api;
+extern crate google_firestore1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_firestore1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Firestore<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::Firestore<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -183,9 +185,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "index-config.uses-ancestor-config" => Some(("indexConfig.usesAncestorConfig", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "index-config.ancestor-field" => Some(("indexConfig.ancestorField", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "index-config.reverting" => Some(("indexConfig.reverting", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "index-config.uses-ancestor-config" => Some(("indexConfig.usesAncestorConfig", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["ancestor-field", "index-config", "name", "reverting", "uses-ancestor-config"]);
@@ -275,8 +277,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "query-scope" => Some(("queryScope", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "query-scope" => Some(("queryScope", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["name", "query-scope", "state"]);
@@ -528,12 +530,12 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "new-transaction.read-write.retry-transaction" => Some(("newTransaction.readWrite.retryTransaction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "new-transaction.read-only.read-time" => Some(("newTransaction.readOnly.readTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transaction" => Some(("transaction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "mask.field-paths" => Some(("mask.fieldPaths", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "documents" => Some(("documents", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "mask.field-paths" => Some(("mask.fieldPaths", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "new-transaction.read-only.read-time" => Some(("newTransaction.readOnly.readTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "new-transaction.read-write.retry-transaction" => Some(("newTransaction.readWrite.retryTransaction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "read-time" => Some(("readTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transaction" => Some(("transaction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["documents", "field-paths", "mask", "new-transaction", "read-only", "read-time", "read-write", "retry-transaction", "transaction"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -618,8 +620,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "options.read-write.retry-transaction" => Some(("options.readWrite.retryTransaction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "options.read-only.read-time" => Some(("options.readOnly.readTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "options.read-write.retry-transaction" => Some(("options.readWrite.retryTransaction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["options", "read-only", "read-time", "read-write", "retry-transaction"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -789,9 +791,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["create-time", "name", "update-time"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -947,7 +949,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["mask-field-paths", "transaction", "read-time"].iter().map(|v|*v));
+                                                                           v.extend(["transaction", "mask-field-paths", "read-time"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1021,7 +1023,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "show-missing", "transaction", "page-size", "mask-field-paths", "page-token", "read-time"].iter().map(|v|*v));
+                                                                           v.extend(["show-missing", "order-by", "page-size", "mask-field-paths", "page-token", "transaction", "read-time"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1078,8 +1080,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "page-token" => Some(("pageToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "page-size" => Some(("pageSize", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "page-token" => Some(("pageToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["page-size", "page-token"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1164,32 +1166,32 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "add-target.documents.documents" => Some(("addTarget.documents.documents", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "add-target.resume-token" => Some(("addTarget.resumeToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "add-target.target-id" => Some(("addTarget.targetId", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "add-target.once" => Some(("addTarget.once", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "add-target.query.parent" => Some(("addTarget.query.parent", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "add-target.query.structured-query.end-at.before" => Some(("addTarget.query.structuredQuery.endAt.before", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "add-target.query.structured-query.limit" => Some(("addTarget.query.structuredQuery.limit", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "add-target.query.structured-query.offset" => Some(("addTarget.query.structuredQuery.offset", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "add-target.query.structured-query.start-at.before" => Some(("addTarget.query.structuredQuery.startAt.before", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "add-target.query.structured-query.where.composite-filter.op" => Some(("addTarget.query.structuredQuery.where.compositeFilter.op", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "add-target.query.structured-query.where.field-filter.field.field-path" => Some(("addTarget.query.structuredQuery.where.fieldFilter.field.fieldPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "add-target.query.structured-query.where.field-filter.value.bytes-value" => Some(("addTarget.query.structuredQuery.where.fieldFilter.value.bytesValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "add-target.query.structured-query.where.field-filter.value.timestamp-value" => Some(("addTarget.query.structuredQuery.where.fieldFilter.value.timestampValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "add-target.query.structured-query.where.field-filter.value.null-value" => Some(("addTarget.query.structuredQuery.where.fieldFilter.value.nullValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "add-target.query.structured-query.where.field-filter.value.reference-value" => Some(("addTarget.query.structuredQuery.where.fieldFilter.value.referenceValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "add-target.query.structured-query.where.field-filter.value.double-value" => Some(("addTarget.query.structuredQuery.where.fieldFilter.value.doubleValue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "add-target.query.structured-query.where.field-filter.value.string-value" => Some(("addTarget.query.structuredQuery.where.fieldFilter.value.stringValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "add-target.query.structured-query.where.field-filter.op" => Some(("addTarget.query.structuredQuery.where.fieldFilter.op", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "add-target.query.structured-query.where.field-filter.value.boolean-value" => Some(("addTarget.query.structuredQuery.where.fieldFilter.value.booleanValue", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "add-target.query.structured-query.where.field-filter.value.integer-value" => Some(("addTarget.query.structuredQuery.where.fieldFilter.value.integerValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "add-target.query.structured-query.where.field-filter.value.bytes-value" => Some(("addTarget.query.structuredQuery.where.fieldFilter.value.bytesValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "add-target.query.structured-query.where.field-filter.value.double-value" => Some(("addTarget.query.structuredQuery.where.fieldFilter.value.doubleValue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "add-target.query.structured-query.where.field-filter.value.geo-point-value.latitude" => Some(("addTarget.query.structuredQuery.where.fieldFilter.value.geoPointValue.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "add-target.query.structured-query.where.field-filter.value.geo-point-value.longitude" => Some(("addTarget.query.structuredQuery.where.fieldFilter.value.geoPointValue.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "add-target.query.structured-query.where.field-filter.op" => Some(("addTarget.query.structuredQuery.where.fieldFilter.op", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "add-target.query.structured-query.where.field-filter.value.integer-value" => Some(("addTarget.query.structuredQuery.where.fieldFilter.value.integerValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "add-target.query.structured-query.where.field-filter.value.null-value" => Some(("addTarget.query.structuredQuery.where.fieldFilter.value.nullValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "add-target.query.structured-query.where.field-filter.value.reference-value" => Some(("addTarget.query.structuredQuery.where.fieldFilter.value.referenceValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "add-target.query.structured-query.where.field-filter.value.string-value" => Some(("addTarget.query.structuredQuery.where.fieldFilter.value.stringValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "add-target.query.structured-query.where.field-filter.value.timestamp-value" => Some(("addTarget.query.structuredQuery.where.fieldFilter.value.timestampValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "add-target.query.structured-query.where.unary-filter.field.field-path" => Some(("addTarget.query.structuredQuery.where.unaryFilter.field.fieldPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "add-target.query.structured-query.where.unary-filter.op" => Some(("addTarget.query.structuredQuery.where.unaryFilter.op", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "add-target.query.structured-query.start-at.before" => Some(("addTarget.query.structuredQuery.startAt.before", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "add-target.query.structured-query.end-at.before" => Some(("addTarget.query.structuredQuery.endAt.before", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "add-target.query.structured-query.offset" => Some(("addTarget.query.structuredQuery.offset", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "add-target.query.parent" => Some(("addTarget.query.parent", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "add-target.once" => Some(("addTarget.once", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "add-target.read-time" => Some(("addTarget.readTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "add-target.resume-token" => Some(("addTarget.resumeToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "add-target.target-id" => Some(("addTarget.targetId", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "remove-target" => Some(("removeTarget", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["add-target", "before", "boolean-value", "bytes-value", "composite-filter", "documents", "double-value", "end-at", "field", "field-filter", "field-path", "geo-point-value", "integer-value", "labels", "latitude", "limit", "longitude", "null-value", "offset", "once", "op", "parent", "query", "read-time", "reference-value", "remove-target", "resume-token", "start-at", "string-value", "structured-query", "target-id", "timestamp-value", "unary-filter", "value", "where"]);
@@ -1275,9 +1277,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["create-time", "name", "update-time"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1318,7 +1320,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["current-document-update-time", "mask-field-paths", "update-mask-field-paths", "current-document-exists"].iter().map(|v|*v));
+                                                                           v.extend(["current-document-update-time", "update-mask-field-paths", "mask-field-paths", "current-document-exists"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1460,29 +1462,29 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "new-transaction.read-write.retry-transaction" => Some(("newTransaction.readWrite.retryTransaction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "new-transaction.read-only.read-time" => Some(("newTransaction.readOnly.readTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transaction" => Some(("transaction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "new-transaction.read-write.retry-transaction" => Some(("newTransaction.readWrite.retryTransaction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "read-time" => Some(("readTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "structured-query.end-at.before" => Some(("structuredQuery.endAt.before", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "structured-query.limit" => Some(("structuredQuery.limit", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "structured-query.offset" => Some(("structuredQuery.offset", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "structured-query.start-at.before" => Some(("structuredQuery.startAt.before", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "structured-query.where.composite-filter.op" => Some(("structuredQuery.where.compositeFilter.op", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "structured-query.where.field-filter.field.field-path" => Some(("structuredQuery.where.fieldFilter.field.fieldPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "structured-query.where.field-filter.value.bytes-value" => Some(("structuredQuery.where.fieldFilter.value.bytesValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "structured-query.where.field-filter.value.timestamp-value" => Some(("structuredQuery.where.fieldFilter.value.timestampValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "structured-query.where.field-filter.value.null-value" => Some(("structuredQuery.where.fieldFilter.value.nullValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "structured-query.where.field-filter.value.reference-value" => Some(("structuredQuery.where.fieldFilter.value.referenceValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "structured-query.where.field-filter.value.double-value" => Some(("structuredQuery.where.fieldFilter.value.doubleValue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "structured-query.where.field-filter.value.string-value" => Some(("structuredQuery.where.fieldFilter.value.stringValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "structured-query.where.field-filter.op" => Some(("structuredQuery.where.fieldFilter.op", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "structured-query.where.field-filter.value.boolean-value" => Some(("structuredQuery.where.fieldFilter.value.booleanValue", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "structured-query.where.field-filter.value.integer-value" => Some(("structuredQuery.where.fieldFilter.value.integerValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "structured-query.where.field-filter.value.bytes-value" => Some(("structuredQuery.where.fieldFilter.value.bytesValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "structured-query.where.field-filter.value.double-value" => Some(("structuredQuery.where.fieldFilter.value.doubleValue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "structured-query.where.field-filter.value.geo-point-value.latitude" => Some(("structuredQuery.where.fieldFilter.value.geoPointValue.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "structured-query.where.field-filter.value.geo-point-value.longitude" => Some(("structuredQuery.where.fieldFilter.value.geoPointValue.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "structured-query.where.field-filter.op" => Some(("structuredQuery.where.fieldFilter.op", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "structured-query.where.field-filter.value.integer-value" => Some(("structuredQuery.where.fieldFilter.value.integerValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "structured-query.where.field-filter.value.null-value" => Some(("structuredQuery.where.fieldFilter.value.nullValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "structured-query.where.field-filter.value.reference-value" => Some(("structuredQuery.where.fieldFilter.value.referenceValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "structured-query.where.field-filter.value.string-value" => Some(("structuredQuery.where.fieldFilter.value.stringValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "structured-query.where.field-filter.value.timestamp-value" => Some(("structuredQuery.where.fieldFilter.value.timestampValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "structured-query.where.unary-filter.field.field-path" => Some(("structuredQuery.where.unaryFilter.field.fieldPath", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "structured-query.where.unary-filter.op" => Some(("structuredQuery.where.unaryFilter.op", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "structured-query.start-at.before" => Some(("structuredQuery.startAt.before", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "structured-query.end-at.before" => Some(("structuredQuery.endAt.before", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "structured-query.offset" => Some(("structuredQuery.offset", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "read-time" => Some(("readTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transaction" => Some(("transaction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["before", "boolean-value", "bytes-value", "composite-filter", "double-value", "end-at", "field", "field-filter", "field-path", "geo-point-value", "integer-value", "latitude", "limit", "longitude", "new-transaction", "null-value", "offset", "op", "read-only", "read-time", "read-write", "reference-value", "retry-transaction", "start-at", "string-value", "structured-query", "timestamp-value", "transaction", "unary-filter", "value", "where"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1568,8 +1570,8 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "stream-token" => Some(("streamToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "stream-id" => Some(("streamId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "stream-token" => Some(("streamToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["labels", "stream-id", "stream-token"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1654,8 +1656,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "output-uri-prefix" => Some(("outputUriPrefix", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "collection-ids" => Some(("collectionIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "output-uri-prefix" => Some(("outputUriPrefix", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["collection-ids", "output-uri-prefix"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1740,8 +1742,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "input-uri-prefix" => Some(("inputUriPrefix", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "collection-ids" => Some(("collectionIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "input-uri-prefix" => Some(("inputUriPrefix", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["collection-ids", "input-uri-prefix"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2283,12 +2285,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "firestore1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "firestore1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

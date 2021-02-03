@@ -11,22 +11,22 @@ Everything else about the *safebrowsing* *v4* API can be found at the
 [official documentation site](https://developers.google.com/safe-browsing/).
 # Features
 
-Handle the following *Resources* with ease from the central [hub](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/struct.Safebrowsing.html) ... 
+Handle the following *Resources* with ease from the central [hub](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/Safebrowsing) ... 
 
 * encoded full hashes
- * [*get*](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/struct.EncodedFullHasheGetCall.html)
+ * [*get*](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/api::EncodedFullHasheGetCall)
 * encoded updates
- * [*get*](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/struct.EncodedUpdateGetCall.html)
+ * [*get*](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/api::EncodedUpdateGetCall)
 * full hashes
- * [*find*](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/struct.FullHasheFindCall.html)
-* [threat hits](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/struct.ThreatHit.html)
- * [*create*](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/struct.ThreatHitCreateCall.html)
+ * [*find*](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/api::FullHasheFindCall)
+* [threat hits](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/api::ThreatHit)
+ * [*create*](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/api::ThreatHitCreateCall)
 * threat list updates
- * [*fetch*](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/struct.ThreatListUpdateFetchCall.html)
+ * [*fetch*](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/api::ThreatListUpdateFetchCall)
 * threat lists
- * [*list*](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/struct.ThreatListListCall.html)
+ * [*list*](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/api::ThreatListListCall)
 * threat matches
- * [*find*](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/struct.ThreatMatcheFindCall.html)
+ * [*find*](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/api::ThreatMatcheFindCall)
 
 
 
@@ -35,17 +35,17 @@ Handle the following *Resources* with ease from the central [hub](https://docs.r
 
 The API is structured into the following primary items:
 
-* **[Hub](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/struct.Safebrowsing.html)**
+* **[Hub](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/Safebrowsing)**
     * a central object to maintain state and allow accessing all *Activities*
-    * creates [*Method Builders*](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/trait.MethodsBuilder.html) which in turn
-      allow access to individual [*Call Builders*](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/trait.CallBuilder.html)
-* **[Resources](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/trait.Resource.html)**
+    * creates [*Method Builders*](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/client::MethodsBuilder) which in turn
+      allow access to individual [*Call Builders*](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/client::CallBuilder)
+* **[Resources](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/client::Resource)**
     * primary types that you can apply *Activities* to
     * a collection of properties and *Parts*
-    * **[Parts](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/trait.Part.html)**
+    * **[Parts](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/client::Part)**
         * a collection of properties
         * never directly used in *Activities*
-* **[Activities](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/trait.CallBuilder.html)**
+* **[Activities](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/client::CallBuilder)**
     * operations to apply to *Resources*
 
 All *structures* are marked with applicable traits to further categorize them and ease browsing.
@@ -59,8 +59,8 @@ let r = hub.resource().activity(...).doit()
 Or specifically ...
 
 ```ignore
-let r = hub.full_hashes().find(...).doit()
 let r = hub.encoded_full_hashes().get(...).doit()
+let r = hub.full_hashes().find(...).doit()
 ```
 
 The `resource()` and `activity(...)` calls create [builders][builder-pattern]. The second one dealing with `Activities` 
@@ -115,8 +115,8 @@ let mut hub = Safebrowsing::new(hyper::Client::with_connector(hyper::net::HttpsC
 // execute the final call using `doit()`.
 // Values shown here are possibly random and not representative !
 let result = hub.encoded_full_hashes().get("encodedRequest")
-             .client_version("sit")
-             .client_id("Stet")
+             .client_version("magna")
+             .client_id("no")
              .doit();
 
 match result {
@@ -139,17 +139,17 @@ match result {
 ```
 ## Handling Errors
 
-All errors produced by the system are provided either as [Result](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/enum.Result.html) enumeration as return value of 
+All errors produced by the system are provided either as [Result](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/client::Result) enumeration as return value of
 the doit() methods, or handed as possibly intermediate results to either the 
-[Hub Delegate](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/trait.Delegate.html), or the [Authenticator Delegate](https://docs.rs/yup-oauth2/*/yup_oauth2/trait.AuthenticatorDelegate.html).
+[Hub Delegate](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/client::Delegate), or the [Authenticator Delegate](https://docs.rs/yup-oauth2/*/yup_oauth2/trait.AuthenticatorDelegate.html).
 
 When delegates handle errors or intermediate values, they may have a chance to instruct the system to retry. This 
 makes the system potentially resilient to all kinds of errors.
 
 ## Uploads and Downloads
-If a method supports downloads, the response body, which is part of the [Result](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/enum.Result.html), should be
+If a method supports downloads, the response body, which is part of the [Result](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/client::Result), should be
 read by you to obtain the media.
-If such a method also supports a [Response Result](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/trait.ResponseResult.html), it will return that by default.
+If such a method also supports a [Response Result](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/client::ResponseResult), it will return that by default.
 You can see it as meta-data for the actual media. To trigger a media download, you will have to set up the builder by making
 this call: `.param("alt", "media")`.
 
@@ -159,29 +159,29 @@ Methods supporting uploads can do so using up to 2 different protocols:
 
 ## Customization and Callbacks
 
-You may alter the way an `doit()` method is called by providing a [delegate](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/trait.Delegate.html) to the 
-[Method Builder](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/trait.CallBuilder.html) before making the final `doit()` call. 
+You may alter the way an `doit()` method is called by providing a [delegate](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/client::Delegate) to the 
+[Method Builder](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/client::CallBuilder) before making the final `doit()` call. 
 Respective methods will be called to provide progress information, as well as determine whether the system should 
 retry on failure.
 
-The [delegate trait](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/trait.Delegate.html) is default-implemented, allowing you to customize it with minimal effort.
+The [delegate trait](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/client::Delegate) is default-implemented, allowing you to customize it with minimal effort.
 
 ## Optional Parts in Server-Requests
 
-All structures provided by this library are made to be [encodable](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/trait.RequestValue.html) and 
-[decodable](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/trait.ResponseResult.html) via *json*. Optionals are used to indicate that partial requests are responses 
+All structures provided by this library are made to be [encodable](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/client::RequestValue) and 
+[decodable](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/client::ResponseResult) via *json*. Optionals are used to indicate that partial requests are responses 
 are valid.
-Most optionals are are considered [Parts](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/trait.Part.html) which are identifiable by name, which will be sent to 
+Most optionals are are considered [Parts](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/client::Part) which are identifiable by name, which will be sent to 
 the server to indicate either the set parts of the request or the desired parts in the response.
 
 ## Builder Arguments
 
-Using [method builders](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/trait.CallBuilder.html), you are able to prepare an action call by repeatedly calling it's methods.
+Using [method builders](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/client::CallBuilder), you are able to prepare an action call by repeatedly calling it's methods.
 These will always take a single argument, for which the following statements are true.
 
 * [PODs][wiki-pod] are handed by copy
 * strings are passed as `&str`
-* [request values](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/trait.RequestValue.html) are moved
+* [request values](https://docs.rs/google-safebrowsing4/1.0.14+20200621/google_safebrowsing4/client::RequestValue) are moved
 
 Arguments will always be copied or cloned into the builder, to make them independent of their original life times.
 

@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_displayvideo1 as api;
+extern crate google_displayvideo1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_displayvideo1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::DisplayVideo<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::DisplayVideo<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -249,7 +251,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "filter", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "order-by", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -306,28 +308,28 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "campaign-flight.planned-spend-amount-micros" => Some(("campaignFlight.plannedSpendAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "campaign-flight.planned-dates.start-date.year" => Some(("campaignFlight.plannedDates.startDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "campaign-flight.planned-dates.start-date.day" => Some(("campaignFlight.plannedDates.startDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "campaign-flight.planned-dates.start-date.month" => Some(("campaignFlight.plannedDates.startDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "campaign-flight.planned-dates.end-date.year" => Some(("campaignFlight.plannedDates.endDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "campaign-flight.planned-dates.end-date.day" => Some(("campaignFlight.plannedDates.endDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "campaign-flight.planned-dates.end-date.month" => Some(("campaignFlight.plannedDates.endDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "campaign-id" => Some(("campaignId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "campaign-goal.performance-goal.performance-goal-type" => Some(("campaignGoal.performanceGoal.performanceGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "campaign-goal.performance-goal.performance-goal-string" => Some(("campaignGoal.performanceGoal.performanceGoalString", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "campaign-goal.performance-goal.performance-goal-percentage-micros" => Some(("campaignGoal.performanceGoal.performanceGoalPercentageMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "campaign-goal.performance-goal.performance-goal-amount-micros" => Some(("campaignGoal.performanceGoal.performanceGoalAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "campaign-flight.planned-dates.end-date.year" => Some(("campaignFlight.plannedDates.endDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "campaign-flight.planned-dates.start-date.day" => Some(("campaignFlight.plannedDates.startDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "campaign-flight.planned-dates.start-date.month" => Some(("campaignFlight.plannedDates.startDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "campaign-flight.planned-dates.start-date.year" => Some(("campaignFlight.plannedDates.startDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "campaign-flight.planned-spend-amount-micros" => Some(("campaignFlight.plannedSpendAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "campaign-goal.campaign-goal-type" => Some(("campaignGoal.campaignGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "campaign-goal.performance-goal.performance-goal-amount-micros" => Some(("campaignGoal.performanceGoal.performanceGoalAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "campaign-goal.performance-goal.performance-goal-percentage-micros" => Some(("campaignGoal.performanceGoal.performanceGoalPercentageMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "campaign-goal.performance-goal.performance-goal-string" => Some(("campaignGoal.performanceGoal.performanceGoalString", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "campaign-goal.performance-goal.performance-goal-type" => Some(("campaignGoal.performanceGoal.performanceGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "campaign-id" => Some(("campaignId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "entity-status" => Some(("entityStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "frequency-cap.max-impressions" => Some(("frequencyCap.maxImpressions", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "frequency-cap.time-unit" => Some(("frequencyCap.timeUnit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "frequency-cap.time-unit-count" => Some(("frequencyCap.timeUnitCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "frequency-cap.unlimited" => Some(("frequencyCap.unlimited", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "frequency-cap.max-impressions" => Some(("frequencyCap.maxImpressions", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "entity-status" => Some(("entityStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["advertiser-id", "campaign-flight", "campaign-goal", "campaign-goal-type", "campaign-id", "day", "display-name", "end-date", "entity-status", "frequency-cap", "max-impressions", "month", "name", "performance-goal", "performance-goal-amount-micros", "performance-goal-percentage-micros", "performance-goal-string", "performance-goal-type", "planned-dates", "planned-spend-amount-micros", "start-date", "time-unit", "time-unit-count", "unlimited", "update-time", "year"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -524,7 +526,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "filter", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "order-by", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -581,28 +583,28 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "campaign-flight.planned-spend-amount-micros" => Some(("campaignFlight.plannedSpendAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "campaign-flight.planned-dates.start-date.year" => Some(("campaignFlight.plannedDates.startDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "campaign-flight.planned-dates.start-date.day" => Some(("campaignFlight.plannedDates.startDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "campaign-flight.planned-dates.start-date.month" => Some(("campaignFlight.plannedDates.startDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "campaign-flight.planned-dates.end-date.year" => Some(("campaignFlight.plannedDates.endDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "campaign-flight.planned-dates.end-date.day" => Some(("campaignFlight.plannedDates.endDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "campaign-flight.planned-dates.end-date.month" => Some(("campaignFlight.plannedDates.endDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "campaign-id" => Some(("campaignId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "campaign-goal.performance-goal.performance-goal-type" => Some(("campaignGoal.performanceGoal.performanceGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "campaign-goal.performance-goal.performance-goal-string" => Some(("campaignGoal.performanceGoal.performanceGoalString", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "campaign-goal.performance-goal.performance-goal-percentage-micros" => Some(("campaignGoal.performanceGoal.performanceGoalPercentageMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "campaign-goal.performance-goal.performance-goal-amount-micros" => Some(("campaignGoal.performanceGoal.performanceGoalAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "campaign-flight.planned-dates.end-date.year" => Some(("campaignFlight.plannedDates.endDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "campaign-flight.planned-dates.start-date.day" => Some(("campaignFlight.plannedDates.startDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "campaign-flight.planned-dates.start-date.month" => Some(("campaignFlight.plannedDates.startDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "campaign-flight.planned-dates.start-date.year" => Some(("campaignFlight.plannedDates.startDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "campaign-flight.planned-spend-amount-micros" => Some(("campaignFlight.plannedSpendAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "campaign-goal.campaign-goal-type" => Some(("campaignGoal.campaignGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "campaign-goal.performance-goal.performance-goal-amount-micros" => Some(("campaignGoal.performanceGoal.performanceGoalAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "campaign-goal.performance-goal.performance-goal-percentage-micros" => Some(("campaignGoal.performanceGoal.performanceGoalPercentageMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "campaign-goal.performance-goal.performance-goal-string" => Some(("campaignGoal.performanceGoal.performanceGoalString", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "campaign-goal.performance-goal.performance-goal-type" => Some(("campaignGoal.performanceGoal.performanceGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "campaign-id" => Some(("campaignId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "entity-status" => Some(("entityStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "frequency-cap.max-impressions" => Some(("frequencyCap.maxImpressions", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "frequency-cap.time-unit" => Some(("frequencyCap.timeUnit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "frequency-cap.time-unit-count" => Some(("frequencyCap.timeUnitCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "frequency-cap.unlimited" => Some(("frequencyCap.unlimited", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "frequency-cap.max-impressions" => Some(("frequencyCap.maxImpressions", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "entity-status" => Some(("entityStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["advertiser-id", "campaign-flight", "campaign-goal", "campaign-goal-type", "campaign-id", "day", "display-name", "end-date", "entity-status", "frequency-cap", "max-impressions", "month", "name", "performance-goal", "performance-goal-amount-micros", "performance-goal-percentage-micros", "performance-goal-string", "performance-goal-type", "planned-dates", "planned-spend-amount-micros", "start-date", "time-unit", "time-unit-count", "unlimited", "update-time", "year"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -692,10 +694,10 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "partner-id" => Some(("partnerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "channel-id" => Some(("channelId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "partner-id" => Some(("partnerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["advertiser-id", "channel-id", "display-name", "name", "partner-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -851,7 +853,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "partner-id", "filter", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["order-by", "page-size", "filter", "partner-id", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -909,10 +911,10 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "partner-id" => Some(("partnerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "channel-id" => Some(("channelId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "partner-id" => Some(("partnerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["advertiser-id", "channel-id", "display-name", "name", "partner-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1091,8 +1093,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "url-or-app-id" => Some(("urlOrAppId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "url-or-app-id" => Some(("urlOrAppId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["name", "url-or-app-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1248,7 +1250,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "partner-id", "filter", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["order-by", "page-size", "filter", "partner-id", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1305,32 +1307,32 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "integration-details.integration-code" => Some(("integrationDetails.integrationCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "integration-details.details" => Some(("integrationDetails.details", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "entity-status" => Some(("entityStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "serving-config.exempt-tv-from-viewability-targeting" => Some(("servingConfig.exemptTvFromViewabilityTargeting", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "creative-config.oba-compliance-disabled" => Some(("creativeConfig.obaComplianceDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "creative-config.dynamic-creative-enabled" => Some(("creativeConfig.dynamicCreativeEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "creative-config.video-creative-data-sharing-authorized" => Some(("creativeConfig.videoCreativeDataSharingAuthorized", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "creative-config.ias-client-id" => Some(("creativeConfig.iasClientId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "partner-id" => Some(("partnerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "ad-server-config.third-party-only-config.pixel-order-id-reporting-enabled" => Some(("adServerConfig.thirdPartyOnlyConfig.pixelOrderIdReportingEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "ad-server-config.cm-hybrid-config.cm-account-id" => Some(("adServerConfig.cmHybridConfig.cmAccountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "ad-server-config.cm-hybrid-config.dv360-to-cm-data-sharing-enabled" => Some(("adServerConfig.cmHybridConfig.dv360ToCmDataSharingEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "ad-server-config.cm-hybrid-config.dv360-to-cm-cost-reporting-enabled" => Some(("adServerConfig.cmHybridConfig.dv360ToCmCostReportingEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "ad-server-config.cm-hybrid-config.cm-floodlight-linking-authorized" => Some(("adServerConfig.cmHybridConfig.cmFloodlightLinkingAuthorized", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "ad-server-config.cm-hybrid-config.cm-floodlight-config-id" => Some(("adServerConfig.cmHybridConfig.cmFloodlightConfigId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "ad-server-config.cm-hybrid-config.cm-floodlight-linking-authorized" => Some(("adServerConfig.cmHybridConfig.cmFloodlightLinkingAuthorized", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "ad-server-config.cm-hybrid-config.cm-syncable-site-ids" => Some(("adServerConfig.cmHybridConfig.cmSyncableSiteIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "ad-server-config.cm-hybrid-config.dv360-to-cm-cost-reporting-enabled" => Some(("adServerConfig.cmHybridConfig.dv360ToCmCostReportingEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "ad-server-config.cm-hybrid-config.dv360-to-cm-data-sharing-enabled" => Some(("adServerConfig.cmHybridConfig.dv360ToCmDataSharingEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "ad-server-config.third-party-only-config.pixel-order-id-reporting-enabled" => Some(("adServerConfig.thirdPartyOnlyConfig.pixelOrderIdReportingEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creative-config.dynamic-creative-enabled" => Some(("creativeConfig.dynamicCreativeEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "creative-config.ias-client-id" => Some(("creativeConfig.iasClientId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creative-config.oba-compliance-disabled" => Some(("creativeConfig.obaComplianceDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "creative-config.video-creative-data-sharing-authorized" => Some(("creativeConfig.videoCreativeDataSharingAuthorized", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "data-access-config.sdf-config.override-partner-sdf-config" => Some(("dataAccessConfig.sdfConfig.overridePartnerSdfConfig", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "data-access-config.sdf-config.sdf-config.version" => Some(("dataAccessConfig.sdfConfig.sdfConfig.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "data-access-config.sdf-config.sdf-config.admin-email" => Some(("dataAccessConfig.sdfConfig.sdfConfig.adminEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "general-config.time-zone" => Some(("generalConfig.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "data-access-config.sdf-config.sdf-config.version" => Some(("dataAccessConfig.sdfConfig.sdfConfig.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "entity-status" => Some(("entityStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "general-config.currency-code" => Some(("generalConfig.currencyCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "general-config.domain-url" => Some(("generalConfig.domainUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "general-config.time-zone" => Some(("generalConfig.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "integration-details.details" => Some(("integrationDetails.details", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "integration-details.integration-code" => Some(("integrationDetails.integrationCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "partner-id" => Some(("partnerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "serving-config.exempt-tv-from-viewability-targeting" => Some(("servingConfig.exemptTvFromViewabilityTargeting", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["ad-server-config", "admin-email", "advertiser-id", "cm-account-id", "cm-floodlight-config-id", "cm-floodlight-linking-authorized", "cm-hybrid-config", "cm-syncable-site-ids", "creative-config", "currency-code", "data-access-config", "details", "display-name", "domain-url", "dv360-to-cm-cost-reporting-enabled", "dv360-to-cm-data-sharing-enabled", "dynamic-creative-enabled", "entity-status", "exempt-tv-from-viewability-targeting", "general-config", "ias-client-id", "integration-code", "integration-details", "name", "oba-compliance-disabled", "override-partner-sdf-config", "partner-id", "pixel-order-id-reporting-enabled", "sdf-config", "serving-config", "third-party-only-config", "time-zone", "update-time", "version", "video-creative-data-sharing-authorized"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1415,60 +1417,60 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "oba-icon.resource-url" => Some(("obaIcon.resourceUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "oba-icon.dimensions.width-pixels" => Some(("obaIcon.dimensions.widthPixels", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "appended-tag" => Some(("appendedTag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "cm-placement-id" => Some(("cmPlacementId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "cm-tracking-ad.cm-ad-id" => Some(("cmTrackingAd.cmAdId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "cm-tracking-ad.cm-creative-id" => Some(("cmTrackingAd.cmCreativeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "cm-tracking-ad.cm-placement-id" => Some(("cmTrackingAd.cmPlacementId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "companion-creative-ids" => Some(("companionCreativeIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creative-attributes" => Some(("creativeAttributes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "creative-id" => Some(("creativeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creative-type" => Some(("creativeType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "dimensions.height-pixels" => Some(("dimensions.heightPixels", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "dimensions.width-pixels" => Some(("dimensions.widthPixels", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "dynamic" => Some(("dynamic", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "entity-status" => Some(("entityStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "expand-on-hover" => Some(("expandOnHover", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "expanding-direction" => Some(("expandingDirection", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "hosting-source" => Some(("hostingSource", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "html5-video" => Some(("html5Video", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "ias-campaign-monitoring" => Some(("iasCampaignMonitoring", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "integration-code" => Some(("integrationCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "js-tracker-url" => Some(("jsTrackerUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "line-item-ids" => Some(("lineItemIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "media-duration" => Some(("mediaDuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notes" => Some(("notes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "oba-icon.click-tracking-url" => Some(("obaIcon.clickTrackingUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "oba-icon.dimensions.height-pixels" => Some(("obaIcon.dimensions.heightPixels", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "oba-icon.resource-mime-type" => Some(("obaIcon.resourceMimeType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "oba-icon.program" => Some(("obaIcon.program", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "oba-icon.view-tracking-url" => Some(("obaIcon.viewTrackingUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "oba-icon.dimensions.width-pixels" => Some(("obaIcon.dimensions.widthPixels", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "oba-icon.landing-page-url" => Some(("obaIcon.landingPageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "oba-icon.position" => Some(("obaIcon.position", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "oba-icon.click-tracking-url" => Some(("obaIcon.clickTrackingUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "ias-campaign-monitoring" => Some(("iasCampaignMonitoring", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "html5-video" => Some(("html5Video", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "dynamic" => Some(("dynamic", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "entity-status" => Some(("entityStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "skip-offset.seconds" => Some(("skipOffset.seconds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "skip-offset.percentage" => Some(("skipOffset.percentage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "integration-code" => Some(("integrationCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creative-id" => Some(("creativeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "progress-offset.seconds" => Some(("progressOffset.seconds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "oba-icon.program" => Some(("obaIcon.program", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "oba-icon.resource-mime-type" => Some(("obaIcon.resourceMimeType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "oba-icon.resource-url" => Some(("obaIcon.resourceUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "oba-icon.view-tracking-url" => Some(("obaIcon.viewTrackingUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "progress-offset.percentage" => Some(("progressOffset.percentage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "cm-tracking-ad.cm-creative-id" => Some(("cmTrackingAd.cmCreativeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "cm-tracking-ad.cm-ad-id" => Some(("cmTrackingAd.cmAdId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "cm-tracking-ad.cm-placement-id" => Some(("cmTrackingAd.cmPlacementId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "dimensions.width-pixels" => Some(("dimensions.widthPixels", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "dimensions.height-pixels" => Some(("dimensions.heightPixels", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "creative-attributes" => Some(("creativeAttributes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "universal-ad-id.id" => Some(("universalAdId.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "universal-ad-id.registry" => Some(("universalAdId.registry", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "expanding-direction" => Some(("expandingDirection", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "progress-offset.seconds" => Some(("progressOffset.seconds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "require-html5" => Some(("requireHtml5", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "require-mraid" => Some(("requireMraid", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "require-ping-for-attribution" => Some(("requirePingForAttribution", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "review-status.approval-status" => Some(("reviewStatus.approvalStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "review-status.content-and-policy-review-status" => Some(("reviewStatus.contentAndPolicyReviewStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "review-status.creative-and-landing-page-review-status" => Some(("reviewStatus.creativeAndLandingPageReviewStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "line-item-ids" => Some(("lineItemIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "vast-tag-url" => Some(("vastTagUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creative-type" => Some(("creativeType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "companion-creative-ids" => Some(("companionCreativeIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "expand-on-hover" => Some(("expandOnHover", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "vpaid" => Some(("vpaid", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "require-html5" => Some(("requireHtml5", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "notes" => Some(("notes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-tag" => Some(("thirdPartyTag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "appended-tag" => Some(("appendedTag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "media-duration" => Some(("mediaDuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "require-mraid" => Some(("requireMraid", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "cm-placement-id" => Some(("cmPlacementId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hosting-source" => Some(("hostingSource", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "tracker-urls" => Some(("trackerUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "skip-offset.percentage" => Some(("skipOffset.percentage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "skip-offset.seconds" => Some(("skipOffset.seconds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "skippable" => Some(("skippable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "js-tracker-url" => Some(("jsTrackerUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-tag" => Some(("thirdPartyTag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "tracker-urls" => Some(("trackerUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "universal-ad-id.id" => Some(("universalAdId.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "universal-ad-id.registry" => Some(("universalAdId.registry", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vast-tag-url" => Some(("vastTagUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vpaid" => Some(("vpaid", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["advertiser-id", "appended-tag", "approval-status", "click-tracking-url", "cm-ad-id", "cm-creative-id", "cm-placement-id", "cm-tracking-ad", "companion-creative-ids", "content-and-policy-review-status", "create-time", "creative-and-landing-page-review-status", "creative-attributes", "creative-id", "creative-type", "dimensions", "display-name", "dynamic", "entity-status", "expand-on-hover", "expanding-direction", "height-pixels", "hosting-source", "html5-video", "ias-campaign-monitoring", "id", "integration-code", "js-tracker-url", "landing-page-url", "line-item-ids", "media-duration", "name", "notes", "oba-icon", "percentage", "position", "program", "progress-offset", "registry", "require-html5", "require-mraid", "require-ping-for-attribution", "resource-mime-type", "resource-url", "review-status", "seconds", "skip-offset", "skippable", "third-party-tag", "tracker-urls", "universal-ad-id", "update-time", "vast-tag-url", "view-tracking-url", "vpaid", "width-pixels"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1665,7 +1667,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "filter", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "order-by", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1722,60 +1724,60 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "oba-icon.resource-url" => Some(("obaIcon.resourceUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "oba-icon.dimensions.width-pixels" => Some(("obaIcon.dimensions.widthPixels", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "appended-tag" => Some(("appendedTag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "cm-placement-id" => Some(("cmPlacementId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "cm-tracking-ad.cm-ad-id" => Some(("cmTrackingAd.cmAdId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "cm-tracking-ad.cm-creative-id" => Some(("cmTrackingAd.cmCreativeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "cm-tracking-ad.cm-placement-id" => Some(("cmTrackingAd.cmPlacementId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "companion-creative-ids" => Some(("companionCreativeIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creative-attributes" => Some(("creativeAttributes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "creative-id" => Some(("creativeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creative-type" => Some(("creativeType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "dimensions.height-pixels" => Some(("dimensions.heightPixels", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "dimensions.width-pixels" => Some(("dimensions.widthPixels", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "dynamic" => Some(("dynamic", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "entity-status" => Some(("entityStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "expand-on-hover" => Some(("expandOnHover", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "expanding-direction" => Some(("expandingDirection", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "hosting-source" => Some(("hostingSource", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "html5-video" => Some(("html5Video", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "ias-campaign-monitoring" => Some(("iasCampaignMonitoring", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "integration-code" => Some(("integrationCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "js-tracker-url" => Some(("jsTrackerUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "line-item-ids" => Some(("lineItemIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "media-duration" => Some(("mediaDuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notes" => Some(("notes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "oba-icon.click-tracking-url" => Some(("obaIcon.clickTrackingUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "oba-icon.dimensions.height-pixels" => Some(("obaIcon.dimensions.heightPixels", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "oba-icon.resource-mime-type" => Some(("obaIcon.resourceMimeType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "oba-icon.program" => Some(("obaIcon.program", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "oba-icon.view-tracking-url" => Some(("obaIcon.viewTrackingUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "oba-icon.dimensions.width-pixels" => Some(("obaIcon.dimensions.widthPixels", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "oba-icon.landing-page-url" => Some(("obaIcon.landingPageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "oba-icon.position" => Some(("obaIcon.position", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "oba-icon.click-tracking-url" => Some(("obaIcon.clickTrackingUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "ias-campaign-monitoring" => Some(("iasCampaignMonitoring", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "html5-video" => Some(("html5Video", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "dynamic" => Some(("dynamic", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "entity-status" => Some(("entityStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "skip-offset.seconds" => Some(("skipOffset.seconds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "skip-offset.percentage" => Some(("skipOffset.percentage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "integration-code" => Some(("integrationCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creative-id" => Some(("creativeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "progress-offset.seconds" => Some(("progressOffset.seconds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "oba-icon.program" => Some(("obaIcon.program", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "oba-icon.resource-mime-type" => Some(("obaIcon.resourceMimeType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "oba-icon.resource-url" => Some(("obaIcon.resourceUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "oba-icon.view-tracking-url" => Some(("obaIcon.viewTrackingUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "progress-offset.percentage" => Some(("progressOffset.percentage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "cm-tracking-ad.cm-creative-id" => Some(("cmTrackingAd.cmCreativeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "cm-tracking-ad.cm-ad-id" => Some(("cmTrackingAd.cmAdId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "cm-tracking-ad.cm-placement-id" => Some(("cmTrackingAd.cmPlacementId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "dimensions.width-pixels" => Some(("dimensions.widthPixels", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "dimensions.height-pixels" => Some(("dimensions.heightPixels", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "creative-attributes" => Some(("creativeAttributes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "universal-ad-id.id" => Some(("universalAdId.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "universal-ad-id.registry" => Some(("universalAdId.registry", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "expanding-direction" => Some(("expandingDirection", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "progress-offset.seconds" => Some(("progressOffset.seconds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "require-html5" => Some(("requireHtml5", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "require-mraid" => Some(("requireMraid", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "require-ping-for-attribution" => Some(("requirePingForAttribution", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "review-status.approval-status" => Some(("reviewStatus.approvalStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "review-status.content-and-policy-review-status" => Some(("reviewStatus.contentAndPolicyReviewStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "review-status.creative-and-landing-page-review-status" => Some(("reviewStatus.creativeAndLandingPageReviewStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "line-item-ids" => Some(("lineItemIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "vast-tag-url" => Some(("vastTagUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creative-type" => Some(("creativeType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "companion-creative-ids" => Some(("companionCreativeIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "expand-on-hover" => Some(("expandOnHover", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "vpaid" => Some(("vpaid", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "require-html5" => Some(("requireHtml5", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "notes" => Some(("notes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-tag" => Some(("thirdPartyTag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "appended-tag" => Some(("appendedTag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "media-duration" => Some(("mediaDuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "require-mraid" => Some(("requireMraid", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "cm-placement-id" => Some(("cmPlacementId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "hosting-source" => Some(("hostingSource", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "tracker-urls" => Some(("trackerUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "skip-offset.percentage" => Some(("skipOffset.percentage", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "skip-offset.seconds" => Some(("skipOffset.seconds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "skippable" => Some(("skippable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "js-tracker-url" => Some(("jsTrackerUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-tag" => Some(("thirdPartyTag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "tracker-urls" => Some(("trackerUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "universal-ad-id.id" => Some(("universalAdId.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "universal-ad-id.registry" => Some(("universalAdId.registry", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vast-tag-url" => Some(("vastTagUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "vpaid" => Some(("vpaid", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["advertiser-id", "appended-tag", "approval-status", "click-tracking-url", "cm-ad-id", "cm-creative-id", "cm-placement-id", "cm-tracking-ad", "companion-creative-ids", "content-and-policy-review-status", "create-time", "creative-and-landing-page-review-status", "creative-attributes", "creative-id", "creative-type", "dimensions", "display-name", "dynamic", "entity-status", "expand-on-hover", "expanding-direction", "height-pixels", "hosting-source", "html5-video", "ias-campaign-monitoring", "id", "integration-code", "js-tracker-url", "landing-page-url", "line-item-ids", "media-duration", "name", "notes", "oba-icon", "percentage", "position", "program", "progress-offset", "registry", "require-html5", "require-mraid", "require-ping-for-attribution", "resource-mime-type", "resource-url", "review-status", "seconds", "skip-offset", "skippable", "third-party-tag", "tracker-urls", "universal-ad-id", "update-time", "vast-tag-url", "view-tracking-url", "vpaid", "width-pixels"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1968,35 +1970,35 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "bid-strategy.maximize-spend-auto-bid.performance-goal-type" => Some(("bidStrategy.maximizeSpendAutoBid.performanceGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "bid-strategy.fixed-bid.bid-amount-micros" => Some(("bidStrategy.fixedBid.bidAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "bid-strategy.maximize-spend-auto-bid.max-average-cpm-bid-amount-micros" => Some(("bidStrategy.maximizeSpendAutoBid.maxAverageCpmBidAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "bid-strategy.performance-goal-auto-bid.performance-goal-type" => Some(("bidStrategy.performanceGoalAutoBid.performanceGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "bid-strategy.maximize-spend-auto-bid.performance-goal-type" => Some(("bidStrategy.maximizeSpendAutoBid.performanceGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "bid-strategy.performance-goal-auto-bid.max-average-cpm-bid-amount-micros" => Some(("bidStrategy.performanceGoalAutoBid.maxAverageCpmBidAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "bid-strategy.performance-goal-auto-bid.performance-goal-amount-micros" => Some(("bidStrategy.performanceGoalAutoBid.performanceGoalAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "bid-strategy.fixed-bid.bid-amount-micros" => Some(("bidStrategy.fixedBid.bidAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "integration-details.integration-code" => Some(("integrationDetails.integrationCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "integration-details.details" => Some(("integrationDetails.details", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "insertion-order-id" => Some(("insertionOrderId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "campaign-id" => Some(("campaignId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "bid-strategy.performance-goal-auto-bid.performance-goal-type" => Some(("bidStrategy.performanceGoalAutoBid.performanceGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "budget.automation-type" => Some(("budget.automationType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "budget.budget-unit" => Some(("budget.budgetUnit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "campaign-id" => Some(("campaignId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "entity-status" => Some(("entityStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "frequency-cap.max-impressions" => Some(("frequencyCap.maxImpressions", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "frequency-cap.time-unit" => Some(("frequencyCap.timeUnit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "frequency-cap.time-unit-count" => Some(("frequencyCap.timeUnitCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "frequency-cap.unlimited" => Some(("frequencyCap.unlimited", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "frequency-cap.max-impressions" => Some(("frequencyCap.maxImpressions", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "entity-status" => Some(("entityStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "pacing.pacing-type" => Some(("pacing.pacingType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "insertion-order-id" => Some(("insertionOrderId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "integration-details.details" => Some(("integrationDetails.details", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "integration-details.integration-code" => Some(("integrationDetails.integrationCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "pacing.daily-max-impressions" => Some(("pacing.dailyMaxImpressions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "pacing.daily-max-micros" => Some(("pacing.dailyMaxMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "pacing.pacing-period" => Some(("pacing.pacingPeriod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "performance-goal.performance-goal-type" => Some(("performanceGoal.performanceGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "performance-goal.performance-goal-string" => Some(("performanceGoal.performanceGoalString", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "performance-goal.performance-goal-percentage-micros" => Some(("performanceGoal.performanceGoalPercentageMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "pacing.pacing-type" => Some(("pacing.pacingType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "performance-goal.performance-goal-amount-micros" => Some(("performanceGoal.performanceGoalAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "performance-goal.performance-goal-percentage-micros" => Some(("performanceGoal.performanceGoalPercentageMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "performance-goal.performance-goal-string" => Some(("performanceGoal.performanceGoalString", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "performance-goal.performance-goal-type" => Some(("performanceGoal.performanceGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["advertiser-id", "automation-type", "bid-amount-micros", "bid-strategy", "budget", "budget-unit", "campaign-id", "daily-max-impressions", "daily-max-micros", "details", "display-name", "entity-status", "fixed-bid", "frequency-cap", "insertion-order-id", "integration-code", "integration-details", "max-average-cpm-bid-amount-micros", "max-impressions", "maximize-spend-auto-bid", "name", "pacing", "pacing-period", "pacing-type", "performance-goal", "performance-goal-amount-micros", "performance-goal-auto-bid", "performance-goal-percentage-micros", "performance-goal-string", "performance-goal-type", "time-unit", "time-unit-count", "unlimited", "update-time"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2193,7 +2195,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "filter", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "order-by", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2250,35 +2252,35 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "bid-strategy.maximize-spend-auto-bid.performance-goal-type" => Some(("bidStrategy.maximizeSpendAutoBid.performanceGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "bid-strategy.fixed-bid.bid-amount-micros" => Some(("bidStrategy.fixedBid.bidAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "bid-strategy.maximize-spend-auto-bid.max-average-cpm-bid-amount-micros" => Some(("bidStrategy.maximizeSpendAutoBid.maxAverageCpmBidAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "bid-strategy.performance-goal-auto-bid.performance-goal-type" => Some(("bidStrategy.performanceGoalAutoBid.performanceGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "bid-strategy.maximize-spend-auto-bid.performance-goal-type" => Some(("bidStrategy.maximizeSpendAutoBid.performanceGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "bid-strategy.performance-goal-auto-bid.max-average-cpm-bid-amount-micros" => Some(("bidStrategy.performanceGoalAutoBid.maxAverageCpmBidAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "bid-strategy.performance-goal-auto-bid.performance-goal-amount-micros" => Some(("bidStrategy.performanceGoalAutoBid.performanceGoalAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "bid-strategy.fixed-bid.bid-amount-micros" => Some(("bidStrategy.fixedBid.bidAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "integration-details.integration-code" => Some(("integrationDetails.integrationCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "integration-details.details" => Some(("integrationDetails.details", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "insertion-order-id" => Some(("insertionOrderId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "campaign-id" => Some(("campaignId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "bid-strategy.performance-goal-auto-bid.performance-goal-type" => Some(("bidStrategy.performanceGoalAutoBid.performanceGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "budget.automation-type" => Some(("budget.automationType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "budget.budget-unit" => Some(("budget.budgetUnit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "campaign-id" => Some(("campaignId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "entity-status" => Some(("entityStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "frequency-cap.max-impressions" => Some(("frequencyCap.maxImpressions", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "frequency-cap.time-unit" => Some(("frequencyCap.timeUnit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "frequency-cap.time-unit-count" => Some(("frequencyCap.timeUnitCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "frequency-cap.unlimited" => Some(("frequencyCap.unlimited", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "frequency-cap.max-impressions" => Some(("frequencyCap.maxImpressions", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "entity-status" => Some(("entityStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "pacing.pacing-type" => Some(("pacing.pacingType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "insertion-order-id" => Some(("insertionOrderId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "integration-details.details" => Some(("integrationDetails.details", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "integration-details.integration-code" => Some(("integrationDetails.integrationCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "pacing.daily-max-impressions" => Some(("pacing.dailyMaxImpressions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "pacing.daily-max-micros" => Some(("pacing.dailyMaxMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "pacing.pacing-period" => Some(("pacing.pacingPeriod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "performance-goal.performance-goal-type" => Some(("performanceGoal.performanceGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "performance-goal.performance-goal-string" => Some(("performanceGoal.performanceGoalString", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "performance-goal.performance-goal-percentage-micros" => Some(("performanceGoal.performanceGoalPercentageMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "pacing.pacing-type" => Some(("pacing.pacingType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "performance-goal.performance-goal-amount-micros" => Some(("performanceGoal.performanceGoalAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "performance-goal.performance-goal-percentage-micros" => Some(("performanceGoal.performanceGoalPercentageMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "performance-goal.performance-goal-string" => Some(("performanceGoal.performanceGoalString", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "performance-goal.performance-goal-type" => Some(("performanceGoal.performanceGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["advertiser-id", "automation-type", "bid-amount-micros", "bid-strategy", "budget", "budget-unit", "campaign-id", "daily-max-impressions", "daily-max-micros", "details", "display-name", "entity-status", "fixed-bid", "frequency-cap", "insertion-order-id", "integration-code", "integration-details", "max-average-cpm-bid-amount-micros", "max-impressions", "maximize-spend-auto-bid", "name", "pacing", "pacing-period", "pacing-type", "performance-goal", "performance-goal-amount-micros", "performance-goal-auto-bid", "performance-goal-percentage-micros", "performance-goal-string", "performance-goal-type", "time-unit", "time-unit-count", "unlimited", "update-time"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2459,7 +2461,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "filter", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "order-by", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2516,46 +2518,46 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "bid-strategy.maximize-spend-auto-bid.performance-goal-type" => Some(("bidStrategy.maximizeSpendAutoBid.performanceGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "bid-strategy.fixed-bid.bid-amount-micros" => Some(("bidStrategy.fixedBid.bidAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "bid-strategy.maximize-spend-auto-bid.max-average-cpm-bid-amount-micros" => Some(("bidStrategy.maximizeSpendAutoBid.maxAverageCpmBidAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "bid-strategy.performance-goal-auto-bid.performance-goal-type" => Some(("bidStrategy.performanceGoalAutoBid.performanceGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "bid-strategy.maximize-spend-auto-bid.performance-goal-type" => Some(("bidStrategy.maximizeSpendAutoBid.performanceGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "bid-strategy.performance-goal-auto-bid.max-average-cpm-bid-amount-micros" => Some(("bidStrategy.performanceGoalAutoBid.maxAverageCpmBidAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "bid-strategy.performance-goal-auto-bid.performance-goal-amount-micros" => Some(("bidStrategy.performanceGoalAutoBid.performanceGoalAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "bid-strategy.fixed-bid.bid-amount-micros" => Some(("bidStrategy.fixedBid.bidAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "integration-details.integration-code" => Some(("integrationDetails.integrationCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "integration-details.details" => Some(("integrationDetails.details", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "flight.flight-date-type" => Some(("flight.flightDateType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "flight.date-range.start-date.year" => Some(("flight.dateRange.startDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "flight.date-range.start-date.day" => Some(("flight.dateRange.startDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "flight.date-range.start-date.month" => Some(("flight.dateRange.startDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "flight.date-range.end-date.year" => Some(("flight.dateRange.endDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "bid-strategy.performance-goal-auto-bid.performance-goal-type" => Some(("bidStrategy.performanceGoalAutoBid.performanceGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "budget.budget-allocation-type" => Some(("budget.budgetAllocationType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "budget.budget-unit" => Some(("budget.budgetUnit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "budget.max-amount" => Some(("budget.maxAmount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "campaign-id" => Some(("campaignId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conversion-counting.post-view-count-percentage-millis" => Some(("conversionCounting.postViewCountPercentageMillis", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "creative-ids" => Some(("creativeIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "entity-status" => Some(("entityStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "flight.date-range.end-date.day" => Some(("flight.dateRange.endDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "flight.date-range.end-date.month" => Some(("flight.dateRange.endDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inventory-source-ids" => Some(("inventorySourceIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "insertion-order-id" => Some(("insertionOrderId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "campaign-id" => Some(("campaignId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creative-ids" => Some(("creativeIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "conversion-counting.post-view-count-percentage-millis" => Some(("conversionCounting.postViewCountPercentageMillis", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "flight.date-range.end-date.year" => Some(("flight.dateRange.endDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "flight.date-range.start-date.day" => Some(("flight.dateRange.startDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "flight.date-range.start-date.month" => Some(("flight.dateRange.startDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "flight.date-range.start-date.year" => Some(("flight.dateRange.startDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "flight.flight-date-type" => Some(("flight.flightDateType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "frequency-cap.max-impressions" => Some(("frequencyCap.maxImpressions", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "frequency-cap.time-unit" => Some(("frequencyCap.timeUnit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "frequency-cap.time-unit-count" => Some(("frequencyCap.timeUnitCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "frequency-cap.unlimited" => Some(("frequencyCap.unlimited", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "frequency-cap.max-impressions" => Some(("frequencyCap.maxImpressions", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "insertion-order-id" => Some(("insertionOrderId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "integration-details.details" => Some(("integrationDetails.details", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "integration-details.integration-code" => Some(("integrationDetails.integrationCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inventory-source-ids" => Some(("inventorySourceIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "line-item-id" => Some(("lineItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "line-item-type" => Some(("lineItemType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "partner-revenue-model.markup-amount" => Some(("partnerRevenueModel.markupAmount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "partner-revenue-model.markup-type" => Some(("partnerRevenueModel.markupType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "entity-status" => Some(("entityStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "pacing.pacing-type" => Some(("pacing.pacingType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "pacing.daily-max-impressions" => Some(("pacing.dailyMaxImpressions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "pacing.daily-max-micros" => Some(("pacing.dailyMaxMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "pacing.pacing-period" => Some(("pacing.pacingPeriod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "line-item-id" => Some(("lineItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "budget.budget-unit" => Some(("budget.budgetUnit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "budget.budget-allocation-type" => Some(("budget.budgetAllocationType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "budget.max-amount" => Some(("budget.maxAmount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "pacing.pacing-type" => Some(("pacing.pacingType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "partner-revenue-model.markup-amount" => Some(("partnerRevenueModel.markupAmount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "partner-revenue-model.markup-type" => Some(("partnerRevenueModel.markupType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["advertiser-id", "bid-amount-micros", "bid-strategy", "budget", "budget-allocation-type", "budget-unit", "campaign-id", "conversion-counting", "creative-ids", "daily-max-impressions", "daily-max-micros", "date-range", "day", "details", "display-name", "end-date", "entity-status", "fixed-bid", "flight", "flight-date-type", "frequency-cap", "insertion-order-id", "integration-code", "integration-details", "inventory-source-ids", "line-item-id", "line-item-type", "markup-amount", "markup-type", "max-amount", "max-average-cpm-bid-amount-micros", "max-impressions", "maximize-spend-auto-bid", "month", "name", "pacing", "pacing-period", "pacing-type", "partner-revenue-model", "performance-goal-amount-micros", "performance-goal-auto-bid", "performance-goal-type", "post-view-count-percentage-millis", "start-date", "time-unit", "time-unit-count", "unlimited", "update-time", "year"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2752,7 +2754,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "filter", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "order-by", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2809,46 +2811,46 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "bid-strategy.maximize-spend-auto-bid.performance-goal-type" => Some(("bidStrategy.maximizeSpendAutoBid.performanceGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "bid-strategy.fixed-bid.bid-amount-micros" => Some(("bidStrategy.fixedBid.bidAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "bid-strategy.maximize-spend-auto-bid.max-average-cpm-bid-amount-micros" => Some(("bidStrategy.maximizeSpendAutoBid.maxAverageCpmBidAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "bid-strategy.performance-goal-auto-bid.performance-goal-type" => Some(("bidStrategy.performanceGoalAutoBid.performanceGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "bid-strategy.maximize-spend-auto-bid.performance-goal-type" => Some(("bidStrategy.maximizeSpendAutoBid.performanceGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "bid-strategy.performance-goal-auto-bid.max-average-cpm-bid-amount-micros" => Some(("bidStrategy.performanceGoalAutoBid.maxAverageCpmBidAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "bid-strategy.performance-goal-auto-bid.performance-goal-amount-micros" => Some(("bidStrategy.performanceGoalAutoBid.performanceGoalAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "bid-strategy.fixed-bid.bid-amount-micros" => Some(("bidStrategy.fixedBid.bidAmountMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "integration-details.integration-code" => Some(("integrationDetails.integrationCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "integration-details.details" => Some(("integrationDetails.details", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "flight.flight-date-type" => Some(("flight.flightDateType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "flight.date-range.start-date.year" => Some(("flight.dateRange.startDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "flight.date-range.start-date.day" => Some(("flight.dateRange.startDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "flight.date-range.start-date.month" => Some(("flight.dateRange.startDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "flight.date-range.end-date.year" => Some(("flight.dateRange.endDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "bid-strategy.performance-goal-auto-bid.performance-goal-type" => Some(("bidStrategy.performanceGoalAutoBid.performanceGoalType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "budget.budget-allocation-type" => Some(("budget.budgetAllocationType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "budget.budget-unit" => Some(("budget.budgetUnit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "budget.max-amount" => Some(("budget.maxAmount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "campaign-id" => Some(("campaignId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "conversion-counting.post-view-count-percentage-millis" => Some(("conversionCounting.postViewCountPercentageMillis", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "creative-ids" => Some(("creativeIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "entity-status" => Some(("entityStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "flight.date-range.end-date.day" => Some(("flight.dateRange.endDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "flight.date-range.end-date.month" => Some(("flight.dateRange.endDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "inventory-source-ids" => Some(("inventorySourceIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "insertion-order-id" => Some(("insertionOrderId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "campaign-id" => Some(("campaignId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creative-ids" => Some(("creativeIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "conversion-counting.post-view-count-percentage-millis" => Some(("conversionCounting.postViewCountPercentageMillis", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "flight.date-range.end-date.year" => Some(("flight.dateRange.endDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "flight.date-range.start-date.day" => Some(("flight.dateRange.startDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "flight.date-range.start-date.month" => Some(("flight.dateRange.startDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "flight.date-range.start-date.year" => Some(("flight.dateRange.startDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "flight.flight-date-type" => Some(("flight.flightDateType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "frequency-cap.max-impressions" => Some(("frequencyCap.maxImpressions", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "frequency-cap.time-unit" => Some(("frequencyCap.timeUnit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "frequency-cap.time-unit-count" => Some(("frequencyCap.timeUnitCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "frequency-cap.unlimited" => Some(("frequencyCap.unlimited", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "frequency-cap.max-impressions" => Some(("frequencyCap.maxImpressions", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "insertion-order-id" => Some(("insertionOrderId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "integration-details.details" => Some(("integrationDetails.details", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "integration-details.integration-code" => Some(("integrationDetails.integrationCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inventory-source-ids" => Some(("inventorySourceIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "line-item-id" => Some(("lineItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "line-item-type" => Some(("lineItemType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "partner-revenue-model.markup-amount" => Some(("partnerRevenueModel.markupAmount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "partner-revenue-model.markup-type" => Some(("partnerRevenueModel.markupType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "entity-status" => Some(("entityStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "pacing.pacing-type" => Some(("pacing.pacingType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "pacing.daily-max-impressions" => Some(("pacing.dailyMaxImpressions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "pacing.daily-max-micros" => Some(("pacing.dailyMaxMicros", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "pacing.pacing-period" => Some(("pacing.pacingPeriod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "line-item-id" => Some(("lineItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "budget.budget-unit" => Some(("budget.budgetUnit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "budget.budget-allocation-type" => Some(("budget.budgetAllocationType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "budget.max-amount" => Some(("budget.maxAmount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "pacing.pacing-type" => Some(("pacing.pacingType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "partner-revenue-model.markup-amount" => Some(("partnerRevenueModel.markupAmount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "partner-revenue-model.markup-type" => Some(("partnerRevenueModel.markupType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["advertiser-id", "bid-amount-micros", "bid-strategy", "budget", "budget-allocation-type", "budget-unit", "campaign-id", "conversion-counting", "creative-ids", "daily-max-impressions", "daily-max-micros", "date-range", "day", "details", "display-name", "end-date", "entity-status", "fixed-bid", "flight", "flight-date-type", "frequency-cap", "insertion-order-id", "integration-code", "integration-details", "inventory-source-ids", "line-item-id", "line-item-type", "markup-amount", "markup-type", "max-amount", "max-average-cpm-bid-amount-micros", "max-impressions", "maximize-spend-auto-bid", "month", "name", "pacing", "pacing-period", "pacing-type", "partner-revenue-model", "performance-goal-amount-micros", "performance-goal-auto-bid", "performance-goal-type", "post-view-count-percentage-millis", "start-date", "time-unit", "time-unit-count", "unlimited", "update-time", "year"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2937,114 +2939,114 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "exchange-details.targeting-option-id" => Some(("exchangeDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "proximity-location-list-details.proximity-radius-range" => Some(("proximityLocationListDetails.proximityRadiusRange", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "proximity-location-list-details.proximity-location-list-id" => Some(("proximityLocationListDetails.proximityLocationListId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "language-details.targeting-option-id" => Some(("languageDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "language-details.display-name" => Some(("languageDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "language-details.negative" => Some(("languageDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "url-details.url" => Some(("urlDetails.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "url-details.negative" => Some(("urlDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "keyword-details.negative" => Some(("keywordDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "keyword-details.keyword" => Some(("keywordDetails.keyword", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "day-and-time-details.day-of-week" => Some(("dayAndTimeDetails.dayOfWeek", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "day-and-time-details.time-zone-resolution" => Some(("dayAndTimeDetails.timeZoneResolution", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "day-and-time-details.end-hour" => Some(("dayAndTimeDetails.endHour", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "day-and-time-details.start-hour" => Some(("dayAndTimeDetails.startHour", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "app-details.display-name" => Some(("appDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "app-details.negative" => Some(("appDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "app-details.app-id" => Some(("appDetails.appId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "browser-details.targeting-option-id" => Some(("browserDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "browser-details.display-name" => Some(("browserDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "browser-details.negative" => Some(("browserDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "regional-location-list-details.negative" => Some(("regionalLocationListDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "regional-location-list-details.regional-location-list-id" => Some(("regionalLocationListDetails.regionalLocationListId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "geo-region-details.targeting-option-id" => Some(("geoRegionDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "geo-region-details.geo-region-type" => Some(("geoRegionDetails.geoRegionType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "geo-region-details.display-name" => Some(("geoRegionDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "geo-region-details.negative" => Some(("geoRegionDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "authorized-seller-status-details.targeting-option-id" => Some(("authorizedSellerStatusDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "authorized-seller-status-details.authorized-seller-status" => Some(("authorizedSellerStatusDetails.authorizedSellerStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "parental-status-details.parental-status" => Some(("parentalStatusDetails.parentalStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "parental-status-details.targeting-option-id" => Some(("parentalStatusDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "carrier-and-isp-details.targeting-option-id" => Some(("carrierAndIspDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "carrier-and-isp-details.display-name" => Some(("carrierAndIspDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "carrier-and-isp-details.negative" => Some(("carrierAndIspDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "digital-content-label-exclusion-details.excluded-targeting-option-id" => Some(("digitalContentLabelExclusionDetails.excludedTargetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "digital-content-label-exclusion-details.content-rating-tier" => Some(("digitalContentLabelExclusionDetails.contentRatingTier", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "category-details.targeting-option-id" => Some(("categoryDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "category-details.display-name" => Some(("categoryDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "category-details.negative" => Some(("categoryDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "negative-keyword-list-details.negative-keyword-list-id" => Some(("negativeKeywordListDetails.negativeKeywordListId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inheritance" => Some(("inheritance", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device-type-details.targeting-option-id" => Some(("deviceTypeDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device-type-details.device-type" => Some(("deviceTypeDetails.deviceType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.double-verify.brand-safety-categories.avoided-medium-severity-categories" => Some(("thirdPartyVerifierDetails.doubleVerify.brandSafetyCategories.avoidedMediumSeverityCategories", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "third-party-verifier-details.double-verify.brand-safety-categories.avoided-high-severity-categories" => Some(("thirdPartyVerifierDetails.doubleVerify.brandSafetyCategories.avoidedHighSeverityCategories", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "third-party-verifier-details.double-verify.brand-safety-categories.avoid-unknown-brand-safety-category" => Some(("thirdPartyVerifierDetails.doubleVerify.brandSafetyCategories.avoidUnknownBrandSafetyCategory", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.double-verify.video-viewability.video-viewable-rate" => Some(("thirdPartyVerifierDetails.doubleVerify.videoViewability.videoViewableRate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.double-verify.video-viewability.player-impression-rate" => Some(("thirdPartyVerifierDetails.doubleVerify.videoViewability.playerImpressionRate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.double-verify.video-viewability.video-iab" => Some(("thirdPartyVerifierDetails.doubleVerify.videoViewability.videoIab", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.double-verify.app-star-rating.avoid-insufficient-star-rating" => Some(("thirdPartyVerifierDetails.doubleVerify.appStarRating.avoidInsufficientStarRating", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.double-verify.app-star-rating.avoided-star-rating" => Some(("thirdPartyVerifierDetails.doubleVerify.appStarRating.avoidedStarRating", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.double-verify.display-viewability.viewable-during" => Some(("thirdPartyVerifierDetails.doubleVerify.displayViewability.viewableDuring", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.double-verify.display-viewability.iab" => Some(("thirdPartyVerifierDetails.doubleVerify.displayViewability.iab", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.double-verify.avoided-age-ratings" => Some(("thirdPartyVerifierDetails.doubleVerify.avoidedAgeRatings", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "third-party-verifier-details.double-verify.fraud-invalid-traffic.avoid-insufficient-option" => Some(("thirdPartyVerifierDetails.doubleVerify.fraudInvalidTraffic.avoidInsufficientOption", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.double-verify.fraud-invalid-traffic.avoided-fraud-option" => Some(("thirdPartyVerifierDetails.doubleVerify.fraudInvalidTraffic.avoidedFraudOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.excluded-offensive-language-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedOffensiveLanguageRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.excluded-illegal-downloads-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedIllegalDownloadsRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.excluded-ad-fraud-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedAdFraudRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.excluded-violence-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedViolenceRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.video-viewability" => Some(("thirdPartyVerifierDetails.integralAdScience.videoViewability", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.excluded-alcohol-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedAlcoholRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.exclude-unrateable" => Some(("thirdPartyVerifierDetails.integralAdScience.excludeUnrateable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.traq-score-option" => Some(("thirdPartyVerifierDetails.integralAdScience.traqScoreOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.display-viewability" => Some(("thirdPartyVerifierDetails.integralAdScience.displayViewability", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.excluded-gambling-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedGamblingRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.excluded-drugs-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedDrugsRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.excluded-adult-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedAdultRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.excluded-hate-speech-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedHateSpeechRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.adloox.excluded-adloox-categories" => Some(("thirdPartyVerifierDetails.adloox.excludedAdlooxCategories", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "on-screen-position-details.targeting-option-id" => Some(("onScreenPositionDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "on-screen-position-details.on-screen-position" => Some(("onScreenPositionDetails.onScreenPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "video-player-size-details.targeting-option-id" => Some(("videoPlayerSizeDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "video-player-size-details.video-player-size" => Some(("videoPlayerSizeDetails.videoPlayerSize", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "content-instream-position-details.targeting-option-id" => Some(("contentInstreamPositionDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "content-instream-position-details.content-instream-position" => Some(("contentInstreamPositionDetails.contentInstreamPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "targeting-type" => Some(("targetingType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device-make-model-details.targeting-option-id" => Some(("deviceMakeModelDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device-make-model-details.display-name" => Some(("deviceMakeModelDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device-make-model-details.negative" => Some(("deviceMakeModelDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "app-category-details.targeting-option-id" => Some(("appCategoryDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "app-category-details.display-name" => Some(("appCategoryDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "app-category-details.negative" => Some(("appCategoryDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "assigned-targeting-option-id" => Some(("assignedTargetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inventory-source-details.inventory-source-id" => Some(("inventorySourceDetails.inventorySourceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "environment-details.environment" => Some(("environmentDetails.environment", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "environment-details.targeting-option-id" => Some(("environmentDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "content-outstream-position-details.targeting-option-id" => Some(("contentOutstreamPositionDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "content-outstream-position-details.content-outstream-position" => Some(("contentOutstreamPositionDetails.contentOutstreamPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gender-details.gender" => Some(("genderDetails.gender", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gender-details.targeting-option-id" => Some(("genderDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "channel-details.channel-id" => Some(("channelDetails.channelId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "channel-details.negative" => Some(("channelDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "age-range-details.age-range" => Some(("ageRangeDetails.ageRange", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "age-range-details.targeting-option-id" => Some(("ageRangeDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inventory-source-group-details.inventory-source-group-id" => Some(("inventorySourceGroupDetails.inventorySourceGroupId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operating-system-details.targeting-option-id" => Some(("operatingSystemDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operating-system-details.display-name" => Some(("operatingSystemDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operating-system-details.negative" => Some(("operatingSystemDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "sub-exchange-details.targeting-option-id" => Some(("subExchangeDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-category-details.display-name" => Some(("appCategoryDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-category-details.negative" => Some(("appCategoryDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "app-category-details.targeting-option-id" => Some(("appCategoryDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-details.app-id" => Some(("appDetails.appId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-details.display-name" => Some(("appDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-details.negative" => Some(("appDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "assigned-targeting-option-id" => Some(("assignedTargetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "authorized-seller-status-details.authorized-seller-status" => Some(("authorizedSellerStatusDetails.authorizedSellerStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "authorized-seller-status-details.targeting-option-id" => Some(("authorizedSellerStatusDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "browser-details.display-name" => Some(("browserDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "browser-details.negative" => Some(("browserDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "browser-details.targeting-option-id" => Some(("browserDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "carrier-and-isp-details.display-name" => Some(("carrierAndIspDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "carrier-and-isp-details.negative" => Some(("carrierAndIspDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "carrier-and-isp-details.targeting-option-id" => Some(("carrierAndIspDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "category-details.display-name" => Some(("categoryDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "category-details.negative" => Some(("categoryDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "category-details.targeting-option-id" => Some(("categoryDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "channel-details.channel-id" => Some(("channelDetails.channelId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "channel-details.negative" => Some(("channelDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "content-instream-position-details.content-instream-position" => Some(("contentInstreamPositionDetails.contentInstreamPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "content-instream-position-details.targeting-option-id" => Some(("contentInstreamPositionDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "content-outstream-position-details.content-outstream-position" => Some(("contentOutstreamPositionDetails.contentOutstreamPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "content-outstream-position-details.targeting-option-id" => Some(("contentOutstreamPositionDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "day-and-time-details.day-of-week" => Some(("dayAndTimeDetails.dayOfWeek", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "day-and-time-details.end-hour" => Some(("dayAndTimeDetails.endHour", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "day-and-time-details.start-hour" => Some(("dayAndTimeDetails.startHour", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "day-and-time-details.time-zone-resolution" => Some(("dayAndTimeDetails.timeZoneResolution", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device-make-model-details.display-name" => Some(("deviceMakeModelDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device-make-model-details.negative" => Some(("deviceMakeModelDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "device-make-model-details.targeting-option-id" => Some(("deviceMakeModelDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device-type-details.device-type" => Some(("deviceTypeDetails.deviceType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device-type-details.targeting-option-id" => Some(("deviceTypeDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "digital-content-label-exclusion-details.content-rating-tier" => Some(("digitalContentLabelExclusionDetails.contentRatingTier", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "digital-content-label-exclusion-details.excluded-targeting-option-id" => Some(("digitalContentLabelExclusionDetails.excludedTargetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "environment-details.environment" => Some(("environmentDetails.environment", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "environment-details.targeting-option-id" => Some(("environmentDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "exchange-details.targeting-option-id" => Some(("exchangeDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gender-details.gender" => Some(("genderDetails.gender", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gender-details.targeting-option-id" => Some(("genderDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "geo-region-details.display-name" => Some(("geoRegionDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "geo-region-details.geo-region-type" => Some(("geoRegionDetails.geoRegionType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "geo-region-details.negative" => Some(("geoRegionDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "geo-region-details.targeting-option-id" => Some(("geoRegionDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "household-income-details.household-income" => Some(("householdIncomeDetails.householdIncome", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "household-income-details.targeting-option-id" => Some(("householdIncomeDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inheritance" => Some(("inheritance", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inventory-source-details.inventory-source-id" => Some(("inventorySourceDetails.inventorySourceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inventory-source-group-details.inventory-source-group-id" => Some(("inventorySourceGroupDetails.inventorySourceGroupId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "keyword-details.keyword" => Some(("keywordDetails.keyword", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "keyword-details.negative" => Some(("keywordDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "language-details.display-name" => Some(("languageDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "language-details.negative" => Some(("languageDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "language-details.targeting-option-id" => Some(("languageDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "negative-keyword-list-details.negative-keyword-list-id" => Some(("negativeKeywordListDetails.negativeKeywordListId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "on-screen-position-details.on-screen-position" => Some(("onScreenPositionDetails.onScreenPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "on-screen-position-details.targeting-option-id" => Some(("onScreenPositionDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operating-system-details.display-name" => Some(("operatingSystemDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operating-system-details.negative" => Some(("operatingSystemDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "operating-system-details.targeting-option-id" => Some(("operatingSystemDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "parental-status-details.parental-status" => Some(("parentalStatusDetails.parentalStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "parental-status-details.targeting-option-id" => Some(("parentalStatusDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "proximity-location-list-details.proximity-location-list-id" => Some(("proximityLocationListDetails.proximityLocationListId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "proximity-location-list-details.proximity-radius-range" => Some(("proximityLocationListDetails.proximityRadiusRange", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "regional-location-list-details.negative" => Some(("regionalLocationListDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "regional-location-list-details.regional-location-list-id" => Some(("regionalLocationListDetails.regionalLocationListId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "sensitive-category-exclusion-details.excluded-targeting-option-id" => Some(("sensitiveCategoryExclusionDetails.excludedTargetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "sensitive-category-exclusion-details.sensitive-category" => Some(("sensitiveCategoryExclusionDetails.sensitiveCategory", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "sub-exchange-details.targeting-option-id" => Some(("subExchangeDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "targeting-type" => Some(("targetingType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.adloox.excluded-adloox-categories" => Some(("thirdPartyVerifierDetails.adloox.excludedAdlooxCategories", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "third-party-verifier-details.double-verify.app-star-rating.avoid-insufficient-star-rating" => Some(("thirdPartyVerifierDetails.doubleVerify.appStarRating.avoidInsufficientStarRating", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.double-verify.app-star-rating.avoided-star-rating" => Some(("thirdPartyVerifierDetails.doubleVerify.appStarRating.avoidedStarRating", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.double-verify.avoided-age-ratings" => Some(("thirdPartyVerifierDetails.doubleVerify.avoidedAgeRatings", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "third-party-verifier-details.double-verify.brand-safety-categories.avoid-unknown-brand-safety-category" => Some(("thirdPartyVerifierDetails.doubleVerify.brandSafetyCategories.avoidUnknownBrandSafetyCategory", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.double-verify.brand-safety-categories.avoided-high-severity-categories" => Some(("thirdPartyVerifierDetails.doubleVerify.brandSafetyCategories.avoidedHighSeverityCategories", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "third-party-verifier-details.double-verify.brand-safety-categories.avoided-medium-severity-categories" => Some(("thirdPartyVerifierDetails.doubleVerify.brandSafetyCategories.avoidedMediumSeverityCategories", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "third-party-verifier-details.double-verify.display-viewability.iab" => Some(("thirdPartyVerifierDetails.doubleVerify.displayViewability.iab", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.double-verify.display-viewability.viewable-during" => Some(("thirdPartyVerifierDetails.doubleVerify.displayViewability.viewableDuring", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.double-verify.fraud-invalid-traffic.avoid-insufficient-option" => Some(("thirdPartyVerifierDetails.doubleVerify.fraudInvalidTraffic.avoidInsufficientOption", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.double-verify.fraud-invalid-traffic.avoided-fraud-option" => Some(("thirdPartyVerifierDetails.doubleVerify.fraudInvalidTraffic.avoidedFraudOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.double-verify.video-viewability.player-impression-rate" => Some(("thirdPartyVerifierDetails.doubleVerify.videoViewability.playerImpressionRate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.double-verify.video-viewability.video-iab" => Some(("thirdPartyVerifierDetails.doubleVerify.videoViewability.videoIab", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.double-verify.video-viewability.video-viewable-rate" => Some(("thirdPartyVerifierDetails.doubleVerify.videoViewability.videoViewableRate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.display-viewability" => Some(("thirdPartyVerifierDetails.integralAdScience.displayViewability", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.exclude-unrateable" => Some(("thirdPartyVerifierDetails.integralAdScience.excludeUnrateable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.excluded-ad-fraud-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedAdFraudRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.excluded-adult-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedAdultRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.excluded-alcohol-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedAlcoholRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.excluded-drugs-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedDrugsRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.excluded-gambling-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedGamblingRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.excluded-hate-speech-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedHateSpeechRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.excluded-illegal-downloads-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedIllegalDownloadsRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.excluded-offensive-language-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedOffensiveLanguageRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.excluded-violence-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedViolenceRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.traq-score-option" => Some(("thirdPartyVerifierDetails.integralAdScience.traqScoreOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.video-viewability" => Some(("thirdPartyVerifierDetails.integralAdScience.videoViewability", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "url-details.negative" => Some(("urlDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "url-details.url" => Some(("urlDetails.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "user-rewarded-content-details.targeting-option-id" => Some(("userRewardedContentDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "user-rewarded-content-details.user-rewarded-content" => Some(("userRewardedContentDetails.userRewardedContent", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "sensitive-category-exclusion-details.sensitive-category" => Some(("sensitiveCategoryExclusionDetails.sensitiveCategory", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "sensitive-category-exclusion-details.excluded-targeting-option-id" => Some(("sensitiveCategoryExclusionDetails.excludedTargetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "viewability-details.viewability" => Some(("viewabilityDetails.viewability", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "video-player-size-details.targeting-option-id" => Some(("videoPlayerSizeDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "video-player-size-details.video-player-size" => Some(("videoPlayerSizeDetails.videoPlayerSize", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "viewability-details.targeting-option-id" => Some(("viewabilityDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "viewability-details.viewability" => Some(("viewabilityDetails.viewability", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["adloox", "age-range", "age-range-details", "app-category-details", "app-details", "app-id", "app-star-rating", "assigned-targeting-option-id", "authorized-seller-status", "authorized-seller-status-details", "avoid-insufficient-option", "avoid-insufficient-star-rating", "avoid-unknown-brand-safety-category", "avoided-age-ratings", "avoided-fraud-option", "avoided-high-severity-categories", "avoided-medium-severity-categories", "avoided-star-rating", "brand-safety-categories", "browser-details", "carrier-and-isp-details", "category-details", "channel-details", "channel-id", "content-instream-position", "content-instream-position-details", "content-outstream-position", "content-outstream-position-details", "content-rating-tier", "day-and-time-details", "day-of-week", "device-make-model-details", "device-type", "device-type-details", "digital-content-label-exclusion-details", "display-name", "display-viewability", "double-verify", "end-hour", "environment", "environment-details", "exchange-details", "exclude-unrateable", "excluded-ad-fraud-risk", "excluded-adloox-categories", "excluded-adult-risk", "excluded-alcohol-risk", "excluded-drugs-risk", "excluded-gambling-risk", "excluded-hate-speech-risk", "excluded-illegal-downloads-risk", "excluded-offensive-language-risk", "excluded-targeting-option-id", "excluded-violence-risk", "fraud-invalid-traffic", "gender", "gender-details", "geo-region-details", "geo-region-type", "household-income", "household-income-details", "iab", "inheritance", "integral-ad-science", "inventory-source-details", "inventory-source-group-details", "inventory-source-group-id", "inventory-source-id", "keyword", "keyword-details", "language-details", "name", "negative", "negative-keyword-list-details", "negative-keyword-list-id", "on-screen-position", "on-screen-position-details", "operating-system-details", "parental-status", "parental-status-details", "player-impression-rate", "proximity-location-list-details", "proximity-location-list-id", "proximity-radius-range", "regional-location-list-details", "regional-location-list-id", "sensitive-category", "sensitive-category-exclusion-details", "start-hour", "sub-exchange-details", "targeting-option-id", "targeting-type", "third-party-verifier-details", "time-zone-resolution", "traq-score-option", "url", "url-details", "user-rewarded-content", "user-rewarded-content-details", "video-iab", "video-player-size", "video-player-size-details", "video-viewability", "video-viewable-rate", "viewability", "viewability-details", "viewable-during"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3241,7 +3243,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "filter", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "order-by", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3309,7 +3311,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "partner-id", "filter", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["order-by", "page-size", "filter", "partner-id", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3451,9 +3453,9 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "targeting-option-id" => Some(("targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "assigned-location-id" => Some(("assignedLocationId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "targeting-option-id" => Some(("targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["assigned-location-id", "name", "targeting-option-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3598,7 +3600,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "filter", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "order-by", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3656,10 +3658,10 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location-list-id" => Some(("locationListId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location-list-id" => Some(("locationListId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "location-type" => Some(("locationType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["advertiser-id", "display-name", "location-list-id", "location-type", "name"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3804,7 +3806,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "filter", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "order-by", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3862,10 +3864,10 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location-list-id" => Some(("locationListId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location-list-id" => Some(("locationListId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "location-type" => Some(("locationType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["advertiser-id", "display-name", "location-list-id", "location-type", "name"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -3955,9 +3957,9 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "negative-keyword-list-id" => Some(("negativeKeywordListId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "negative-keyword-list-id" => Some(("negativeKeywordListId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["advertiser-id", "display-name", "name", "negative-keyword-list-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -4436,7 +4438,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "filter", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "order-by", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4494,9 +4496,9 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "negative-keyword-list-id" => Some(("negativeKeywordListId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "negative-keyword-list-id" => Some(("negativeKeywordListId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["advertiser-id", "display-name", "name", "negative-keyword-list-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -4585,32 +4587,32 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "integration-details.integration-code" => Some(("integrationDetails.integrationCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "integration-details.details" => Some(("integrationDetails.details", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "entity-status" => Some(("entityStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "serving-config.exempt-tv-from-viewability-targeting" => Some(("servingConfig.exemptTvFromViewabilityTargeting", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "creative-config.oba-compliance-disabled" => Some(("creativeConfig.obaComplianceDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "creative-config.dynamic-creative-enabled" => Some(("creativeConfig.dynamicCreativeEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "creative-config.video-creative-data-sharing-authorized" => Some(("creativeConfig.videoCreativeDataSharingAuthorized", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "creative-config.ias-client-id" => Some(("creativeConfig.iasClientId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "partner-id" => Some(("partnerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "ad-server-config.third-party-only-config.pixel-order-id-reporting-enabled" => Some(("adServerConfig.thirdPartyOnlyConfig.pixelOrderIdReportingEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "ad-server-config.cm-hybrid-config.cm-account-id" => Some(("adServerConfig.cmHybridConfig.cmAccountId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "ad-server-config.cm-hybrid-config.dv360-to-cm-data-sharing-enabled" => Some(("adServerConfig.cmHybridConfig.dv360ToCmDataSharingEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "ad-server-config.cm-hybrid-config.dv360-to-cm-cost-reporting-enabled" => Some(("adServerConfig.cmHybridConfig.dv360ToCmCostReportingEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "ad-server-config.cm-hybrid-config.cm-floodlight-linking-authorized" => Some(("adServerConfig.cmHybridConfig.cmFloodlightLinkingAuthorized", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "ad-server-config.cm-hybrid-config.cm-floodlight-config-id" => Some(("adServerConfig.cmHybridConfig.cmFloodlightConfigId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "ad-server-config.cm-hybrid-config.cm-floodlight-linking-authorized" => Some(("adServerConfig.cmHybridConfig.cmFloodlightLinkingAuthorized", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "ad-server-config.cm-hybrid-config.cm-syncable-site-ids" => Some(("adServerConfig.cmHybridConfig.cmSyncableSiteIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "ad-server-config.cm-hybrid-config.dv360-to-cm-cost-reporting-enabled" => Some(("adServerConfig.cmHybridConfig.dv360ToCmCostReportingEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "ad-server-config.cm-hybrid-config.dv360-to-cm-data-sharing-enabled" => Some(("adServerConfig.cmHybridConfig.dv360ToCmDataSharingEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "ad-server-config.third-party-only-config.pixel-order-id-reporting-enabled" => Some(("adServerConfig.thirdPartyOnlyConfig.pixelOrderIdReportingEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creative-config.dynamic-creative-enabled" => Some(("creativeConfig.dynamicCreativeEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "creative-config.ias-client-id" => Some(("creativeConfig.iasClientId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creative-config.oba-compliance-disabled" => Some(("creativeConfig.obaComplianceDisabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "creative-config.video-creative-data-sharing-authorized" => Some(("creativeConfig.videoCreativeDataSharingAuthorized", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "data-access-config.sdf-config.override-partner-sdf-config" => Some(("dataAccessConfig.sdfConfig.overridePartnerSdfConfig", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "data-access-config.sdf-config.sdf-config.version" => Some(("dataAccessConfig.sdfConfig.sdfConfig.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "data-access-config.sdf-config.sdf-config.admin-email" => Some(("dataAccessConfig.sdfConfig.sdfConfig.adminEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "general-config.time-zone" => Some(("generalConfig.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "data-access-config.sdf-config.sdf-config.version" => Some(("dataAccessConfig.sdfConfig.sdfConfig.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "entity-status" => Some(("entityStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "general-config.currency-code" => Some(("generalConfig.currencyCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "general-config.domain-url" => Some(("generalConfig.domainUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "general-config.time-zone" => Some(("generalConfig.timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "integration-details.details" => Some(("integrationDetails.details", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "integration-details.integration-code" => Some(("integrationDetails.integrationCode", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "partner-id" => Some(("partnerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "serving-config.exempt-tv-from-viewability-targeting" => Some(("servingConfig.exemptTvFromViewabilityTargeting", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["ad-server-config", "admin-email", "advertiser-id", "cm-account-id", "cm-floodlight-config-id", "cm-floodlight-linking-authorized", "cm-hybrid-config", "cm-syncable-site-ids", "creative-config", "currency-code", "data-access-config", "details", "display-name", "domain-url", "dv360-to-cm-cost-reporting-enabled", "dv360-to-cm-data-sharing-enabled", "dynamic-creative-enabled", "entity-status", "exempt-tv-from-viewability-targeting", "general-config", "ias-client-id", "integration-code", "integration-details", "name", "oba-compliance-disabled", "override-partner-sdf-config", "partner-id", "pixel-order-id-reporting-enabled", "sdf-config", "serving-config", "third-party-only-config", "time-zone", "update-time", "version", "video-creative-data-sharing-authorized"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -4699,114 +4701,114 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "exchange-details.targeting-option-id" => Some(("exchangeDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "proximity-location-list-details.proximity-radius-range" => Some(("proximityLocationListDetails.proximityRadiusRange", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "proximity-location-list-details.proximity-location-list-id" => Some(("proximityLocationListDetails.proximityLocationListId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "language-details.targeting-option-id" => Some(("languageDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "language-details.display-name" => Some(("languageDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "language-details.negative" => Some(("languageDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "url-details.url" => Some(("urlDetails.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "url-details.negative" => Some(("urlDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "keyword-details.negative" => Some(("keywordDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "keyword-details.keyword" => Some(("keywordDetails.keyword", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "day-and-time-details.day-of-week" => Some(("dayAndTimeDetails.dayOfWeek", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "day-and-time-details.time-zone-resolution" => Some(("dayAndTimeDetails.timeZoneResolution", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "day-and-time-details.end-hour" => Some(("dayAndTimeDetails.endHour", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "day-and-time-details.start-hour" => Some(("dayAndTimeDetails.startHour", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "app-details.display-name" => Some(("appDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "app-details.negative" => Some(("appDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "app-details.app-id" => Some(("appDetails.appId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "browser-details.targeting-option-id" => Some(("browserDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "browser-details.display-name" => Some(("browserDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "browser-details.negative" => Some(("browserDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "regional-location-list-details.negative" => Some(("regionalLocationListDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "regional-location-list-details.regional-location-list-id" => Some(("regionalLocationListDetails.regionalLocationListId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "geo-region-details.targeting-option-id" => Some(("geoRegionDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "geo-region-details.geo-region-type" => Some(("geoRegionDetails.geoRegionType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "geo-region-details.display-name" => Some(("geoRegionDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "geo-region-details.negative" => Some(("geoRegionDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "authorized-seller-status-details.targeting-option-id" => Some(("authorizedSellerStatusDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "authorized-seller-status-details.authorized-seller-status" => Some(("authorizedSellerStatusDetails.authorizedSellerStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "parental-status-details.parental-status" => Some(("parentalStatusDetails.parentalStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "parental-status-details.targeting-option-id" => Some(("parentalStatusDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "carrier-and-isp-details.targeting-option-id" => Some(("carrierAndIspDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "carrier-and-isp-details.display-name" => Some(("carrierAndIspDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "carrier-and-isp-details.negative" => Some(("carrierAndIspDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "digital-content-label-exclusion-details.excluded-targeting-option-id" => Some(("digitalContentLabelExclusionDetails.excludedTargetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "digital-content-label-exclusion-details.content-rating-tier" => Some(("digitalContentLabelExclusionDetails.contentRatingTier", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "category-details.targeting-option-id" => Some(("categoryDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "category-details.display-name" => Some(("categoryDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "category-details.negative" => Some(("categoryDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "negative-keyword-list-details.negative-keyword-list-id" => Some(("negativeKeywordListDetails.negativeKeywordListId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inheritance" => Some(("inheritance", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device-type-details.targeting-option-id" => Some(("deviceTypeDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device-type-details.device-type" => Some(("deviceTypeDetails.deviceType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.double-verify.brand-safety-categories.avoided-medium-severity-categories" => Some(("thirdPartyVerifierDetails.doubleVerify.brandSafetyCategories.avoidedMediumSeverityCategories", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "third-party-verifier-details.double-verify.brand-safety-categories.avoided-high-severity-categories" => Some(("thirdPartyVerifierDetails.doubleVerify.brandSafetyCategories.avoidedHighSeverityCategories", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "third-party-verifier-details.double-verify.brand-safety-categories.avoid-unknown-brand-safety-category" => Some(("thirdPartyVerifierDetails.doubleVerify.brandSafetyCategories.avoidUnknownBrandSafetyCategory", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.double-verify.video-viewability.video-viewable-rate" => Some(("thirdPartyVerifierDetails.doubleVerify.videoViewability.videoViewableRate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.double-verify.video-viewability.player-impression-rate" => Some(("thirdPartyVerifierDetails.doubleVerify.videoViewability.playerImpressionRate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.double-verify.video-viewability.video-iab" => Some(("thirdPartyVerifierDetails.doubleVerify.videoViewability.videoIab", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.double-verify.app-star-rating.avoid-insufficient-star-rating" => Some(("thirdPartyVerifierDetails.doubleVerify.appStarRating.avoidInsufficientStarRating", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.double-verify.app-star-rating.avoided-star-rating" => Some(("thirdPartyVerifierDetails.doubleVerify.appStarRating.avoidedStarRating", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.double-verify.display-viewability.viewable-during" => Some(("thirdPartyVerifierDetails.doubleVerify.displayViewability.viewableDuring", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.double-verify.display-viewability.iab" => Some(("thirdPartyVerifierDetails.doubleVerify.displayViewability.iab", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.double-verify.avoided-age-ratings" => Some(("thirdPartyVerifierDetails.doubleVerify.avoidedAgeRatings", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "third-party-verifier-details.double-verify.fraud-invalid-traffic.avoid-insufficient-option" => Some(("thirdPartyVerifierDetails.doubleVerify.fraudInvalidTraffic.avoidInsufficientOption", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.double-verify.fraud-invalid-traffic.avoided-fraud-option" => Some(("thirdPartyVerifierDetails.doubleVerify.fraudInvalidTraffic.avoidedFraudOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.excluded-offensive-language-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedOffensiveLanguageRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.excluded-illegal-downloads-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedIllegalDownloadsRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.excluded-ad-fraud-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedAdFraudRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.excluded-violence-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedViolenceRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.video-viewability" => Some(("thirdPartyVerifierDetails.integralAdScience.videoViewability", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.excluded-alcohol-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedAlcoholRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.exclude-unrateable" => Some(("thirdPartyVerifierDetails.integralAdScience.excludeUnrateable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.traq-score-option" => Some(("thirdPartyVerifierDetails.integralAdScience.traqScoreOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.display-viewability" => Some(("thirdPartyVerifierDetails.integralAdScience.displayViewability", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.excluded-gambling-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedGamblingRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.excluded-drugs-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedDrugsRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.excluded-adult-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedAdultRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.integral-ad-science.excluded-hate-speech-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedHateSpeechRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "third-party-verifier-details.adloox.excluded-adloox-categories" => Some(("thirdPartyVerifierDetails.adloox.excludedAdlooxCategories", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "on-screen-position-details.targeting-option-id" => Some(("onScreenPositionDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "on-screen-position-details.on-screen-position" => Some(("onScreenPositionDetails.onScreenPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "video-player-size-details.targeting-option-id" => Some(("videoPlayerSizeDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "video-player-size-details.video-player-size" => Some(("videoPlayerSizeDetails.videoPlayerSize", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "content-instream-position-details.targeting-option-id" => Some(("contentInstreamPositionDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "content-instream-position-details.content-instream-position" => Some(("contentInstreamPositionDetails.contentInstreamPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "targeting-type" => Some(("targetingType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device-make-model-details.targeting-option-id" => Some(("deviceMakeModelDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device-make-model-details.display-name" => Some(("deviceMakeModelDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "device-make-model-details.negative" => Some(("deviceMakeModelDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "app-category-details.targeting-option-id" => Some(("appCategoryDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "app-category-details.display-name" => Some(("appCategoryDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "app-category-details.negative" => Some(("appCategoryDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "assigned-targeting-option-id" => Some(("assignedTargetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inventory-source-details.inventory-source-id" => Some(("inventorySourceDetails.inventorySourceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "environment-details.environment" => Some(("environmentDetails.environment", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "environment-details.targeting-option-id" => Some(("environmentDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "content-outstream-position-details.targeting-option-id" => Some(("contentOutstreamPositionDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "content-outstream-position-details.content-outstream-position" => Some(("contentOutstreamPositionDetails.contentOutstreamPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gender-details.gender" => Some(("genderDetails.gender", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gender-details.targeting-option-id" => Some(("genderDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "channel-details.channel-id" => Some(("channelDetails.channelId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "channel-details.negative" => Some(("channelDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "age-range-details.age-range" => Some(("ageRangeDetails.ageRange", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "age-range-details.targeting-option-id" => Some(("ageRangeDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "inventory-source-group-details.inventory-source-group-id" => Some(("inventorySourceGroupDetails.inventorySourceGroupId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operating-system-details.targeting-option-id" => Some(("operatingSystemDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operating-system-details.display-name" => Some(("operatingSystemDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operating-system-details.negative" => Some(("operatingSystemDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "sub-exchange-details.targeting-option-id" => Some(("subExchangeDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-category-details.display-name" => Some(("appCategoryDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-category-details.negative" => Some(("appCategoryDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "app-category-details.targeting-option-id" => Some(("appCategoryDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-details.app-id" => Some(("appDetails.appId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-details.display-name" => Some(("appDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-details.negative" => Some(("appDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "assigned-targeting-option-id" => Some(("assignedTargetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "authorized-seller-status-details.authorized-seller-status" => Some(("authorizedSellerStatusDetails.authorizedSellerStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "authorized-seller-status-details.targeting-option-id" => Some(("authorizedSellerStatusDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "browser-details.display-name" => Some(("browserDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "browser-details.negative" => Some(("browserDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "browser-details.targeting-option-id" => Some(("browserDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "carrier-and-isp-details.display-name" => Some(("carrierAndIspDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "carrier-and-isp-details.negative" => Some(("carrierAndIspDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "carrier-and-isp-details.targeting-option-id" => Some(("carrierAndIspDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "category-details.display-name" => Some(("categoryDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "category-details.negative" => Some(("categoryDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "category-details.targeting-option-id" => Some(("categoryDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "channel-details.channel-id" => Some(("channelDetails.channelId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "channel-details.negative" => Some(("channelDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "content-instream-position-details.content-instream-position" => Some(("contentInstreamPositionDetails.contentInstreamPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "content-instream-position-details.targeting-option-id" => Some(("contentInstreamPositionDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "content-outstream-position-details.content-outstream-position" => Some(("contentOutstreamPositionDetails.contentOutstreamPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "content-outstream-position-details.targeting-option-id" => Some(("contentOutstreamPositionDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "day-and-time-details.day-of-week" => Some(("dayAndTimeDetails.dayOfWeek", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "day-and-time-details.end-hour" => Some(("dayAndTimeDetails.endHour", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "day-and-time-details.start-hour" => Some(("dayAndTimeDetails.startHour", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "day-and-time-details.time-zone-resolution" => Some(("dayAndTimeDetails.timeZoneResolution", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device-make-model-details.display-name" => Some(("deviceMakeModelDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device-make-model-details.negative" => Some(("deviceMakeModelDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "device-make-model-details.targeting-option-id" => Some(("deviceMakeModelDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device-type-details.device-type" => Some(("deviceTypeDetails.deviceType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "device-type-details.targeting-option-id" => Some(("deviceTypeDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "digital-content-label-exclusion-details.content-rating-tier" => Some(("digitalContentLabelExclusionDetails.contentRatingTier", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "digital-content-label-exclusion-details.excluded-targeting-option-id" => Some(("digitalContentLabelExclusionDetails.excludedTargetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "environment-details.environment" => Some(("environmentDetails.environment", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "environment-details.targeting-option-id" => Some(("environmentDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "exchange-details.targeting-option-id" => Some(("exchangeDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gender-details.gender" => Some(("genderDetails.gender", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gender-details.targeting-option-id" => Some(("genderDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "geo-region-details.display-name" => Some(("geoRegionDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "geo-region-details.geo-region-type" => Some(("geoRegionDetails.geoRegionType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "geo-region-details.negative" => Some(("geoRegionDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "geo-region-details.targeting-option-id" => Some(("geoRegionDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "household-income-details.household-income" => Some(("householdIncomeDetails.householdIncome", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "household-income-details.targeting-option-id" => Some(("householdIncomeDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inheritance" => Some(("inheritance", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inventory-source-details.inventory-source-id" => Some(("inventorySourceDetails.inventorySourceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inventory-source-group-details.inventory-source-group-id" => Some(("inventorySourceGroupDetails.inventorySourceGroupId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "keyword-details.keyword" => Some(("keywordDetails.keyword", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "keyword-details.negative" => Some(("keywordDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "language-details.display-name" => Some(("languageDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "language-details.negative" => Some(("languageDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "language-details.targeting-option-id" => Some(("languageDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "negative-keyword-list-details.negative-keyword-list-id" => Some(("negativeKeywordListDetails.negativeKeywordListId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "on-screen-position-details.on-screen-position" => Some(("onScreenPositionDetails.onScreenPosition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "on-screen-position-details.targeting-option-id" => Some(("onScreenPositionDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operating-system-details.display-name" => Some(("operatingSystemDetails.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operating-system-details.negative" => Some(("operatingSystemDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "operating-system-details.targeting-option-id" => Some(("operatingSystemDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "parental-status-details.parental-status" => Some(("parentalStatusDetails.parentalStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "parental-status-details.targeting-option-id" => Some(("parentalStatusDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "proximity-location-list-details.proximity-location-list-id" => Some(("proximityLocationListDetails.proximityLocationListId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "proximity-location-list-details.proximity-radius-range" => Some(("proximityLocationListDetails.proximityRadiusRange", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "regional-location-list-details.negative" => Some(("regionalLocationListDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "regional-location-list-details.regional-location-list-id" => Some(("regionalLocationListDetails.regionalLocationListId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "sensitive-category-exclusion-details.excluded-targeting-option-id" => Some(("sensitiveCategoryExclusionDetails.excludedTargetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "sensitive-category-exclusion-details.sensitive-category" => Some(("sensitiveCategoryExclusionDetails.sensitiveCategory", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "sub-exchange-details.targeting-option-id" => Some(("subExchangeDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "targeting-type" => Some(("targetingType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.adloox.excluded-adloox-categories" => Some(("thirdPartyVerifierDetails.adloox.excludedAdlooxCategories", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "third-party-verifier-details.double-verify.app-star-rating.avoid-insufficient-star-rating" => Some(("thirdPartyVerifierDetails.doubleVerify.appStarRating.avoidInsufficientStarRating", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.double-verify.app-star-rating.avoided-star-rating" => Some(("thirdPartyVerifierDetails.doubleVerify.appStarRating.avoidedStarRating", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.double-verify.avoided-age-ratings" => Some(("thirdPartyVerifierDetails.doubleVerify.avoidedAgeRatings", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "third-party-verifier-details.double-verify.brand-safety-categories.avoid-unknown-brand-safety-category" => Some(("thirdPartyVerifierDetails.doubleVerify.brandSafetyCategories.avoidUnknownBrandSafetyCategory", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.double-verify.brand-safety-categories.avoided-high-severity-categories" => Some(("thirdPartyVerifierDetails.doubleVerify.brandSafetyCategories.avoidedHighSeverityCategories", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "third-party-verifier-details.double-verify.brand-safety-categories.avoided-medium-severity-categories" => Some(("thirdPartyVerifierDetails.doubleVerify.brandSafetyCategories.avoidedMediumSeverityCategories", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "third-party-verifier-details.double-verify.display-viewability.iab" => Some(("thirdPartyVerifierDetails.doubleVerify.displayViewability.iab", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.double-verify.display-viewability.viewable-during" => Some(("thirdPartyVerifierDetails.doubleVerify.displayViewability.viewableDuring", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.double-verify.fraud-invalid-traffic.avoid-insufficient-option" => Some(("thirdPartyVerifierDetails.doubleVerify.fraudInvalidTraffic.avoidInsufficientOption", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.double-verify.fraud-invalid-traffic.avoided-fraud-option" => Some(("thirdPartyVerifierDetails.doubleVerify.fraudInvalidTraffic.avoidedFraudOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.double-verify.video-viewability.player-impression-rate" => Some(("thirdPartyVerifierDetails.doubleVerify.videoViewability.playerImpressionRate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.double-verify.video-viewability.video-iab" => Some(("thirdPartyVerifierDetails.doubleVerify.videoViewability.videoIab", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.double-verify.video-viewability.video-viewable-rate" => Some(("thirdPartyVerifierDetails.doubleVerify.videoViewability.videoViewableRate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.display-viewability" => Some(("thirdPartyVerifierDetails.integralAdScience.displayViewability", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.exclude-unrateable" => Some(("thirdPartyVerifierDetails.integralAdScience.excludeUnrateable", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.excluded-ad-fraud-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedAdFraudRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.excluded-adult-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedAdultRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.excluded-alcohol-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedAlcoholRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.excluded-drugs-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedDrugsRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.excluded-gambling-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedGamblingRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.excluded-hate-speech-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedHateSpeechRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.excluded-illegal-downloads-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedIllegalDownloadsRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.excluded-offensive-language-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedOffensiveLanguageRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.excluded-violence-risk" => Some(("thirdPartyVerifierDetails.integralAdScience.excludedViolenceRisk", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.traq-score-option" => Some(("thirdPartyVerifierDetails.integralAdScience.traqScoreOption", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "third-party-verifier-details.integral-ad-science.video-viewability" => Some(("thirdPartyVerifierDetails.integralAdScience.videoViewability", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "url-details.negative" => Some(("urlDetails.negative", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "url-details.url" => Some(("urlDetails.url", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "user-rewarded-content-details.targeting-option-id" => Some(("userRewardedContentDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "user-rewarded-content-details.user-rewarded-content" => Some(("userRewardedContentDetails.userRewardedContent", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "sensitive-category-exclusion-details.sensitive-category" => Some(("sensitiveCategoryExclusionDetails.sensitiveCategory", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "sensitive-category-exclusion-details.excluded-targeting-option-id" => Some(("sensitiveCategoryExclusionDetails.excludedTargetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "viewability-details.viewability" => Some(("viewabilityDetails.viewability", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "video-player-size-details.targeting-option-id" => Some(("videoPlayerSizeDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "video-player-size-details.video-player-size" => Some(("videoPlayerSizeDetails.videoPlayerSize", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "viewability-details.targeting-option-id" => Some(("viewabilityDetails.targetingOptionId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "viewability-details.viewability" => Some(("viewabilityDetails.viewability", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["adloox", "age-range", "age-range-details", "app-category-details", "app-details", "app-id", "app-star-rating", "assigned-targeting-option-id", "authorized-seller-status", "authorized-seller-status-details", "avoid-insufficient-option", "avoid-insufficient-star-rating", "avoid-unknown-brand-safety-category", "avoided-age-ratings", "avoided-fraud-option", "avoided-high-severity-categories", "avoided-medium-severity-categories", "avoided-star-rating", "brand-safety-categories", "browser-details", "carrier-and-isp-details", "category-details", "channel-details", "channel-id", "content-instream-position", "content-instream-position-details", "content-outstream-position", "content-outstream-position-details", "content-rating-tier", "day-and-time-details", "day-of-week", "device-make-model-details", "device-type", "device-type-details", "digital-content-label-exclusion-details", "display-name", "display-viewability", "double-verify", "end-hour", "environment", "environment-details", "exchange-details", "exclude-unrateable", "excluded-ad-fraud-risk", "excluded-adloox-categories", "excluded-adult-risk", "excluded-alcohol-risk", "excluded-drugs-risk", "excluded-gambling-risk", "excluded-hate-speech-risk", "excluded-illegal-downloads-risk", "excluded-offensive-language-risk", "excluded-targeting-option-id", "excluded-violence-risk", "fraud-invalid-traffic", "gender", "gender-details", "geo-region-details", "geo-region-type", "household-income", "household-income-details", "iab", "inheritance", "integral-ad-science", "inventory-source-details", "inventory-source-group-details", "inventory-source-group-id", "inventory-source-id", "keyword", "keyword-details", "language-details", "name", "negative", "negative-keyword-list-details", "negative-keyword-list-id", "on-screen-position", "on-screen-position-details", "operating-system-details", "parental-status", "parental-status-details", "player-impression-rate", "proximity-location-list-details", "proximity-location-list-id", "proximity-radius-range", "regional-location-list-details", "regional-location-list-id", "sensitive-category", "sensitive-category-exclusion-details", "start-hour", "sub-exchange-details", "targeting-option-id", "targeting-type", "third-party-verifier-details", "time-zone-resolution", "traq-score-option", "url", "url-details", "user-rewarded-content", "user-rewarded-content-details", "video-iab", "video-player-size", "video-player-size-details", "video-viewability", "video-viewable-rate", "viewability", "viewability-details", "viewable-during"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -5003,7 +5005,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "filter", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "order-by", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -5062,7 +5064,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["advertiser-id", "partner-id"].iter().map(|v|*v));
+                                                                           v.extend(["partner-id", "advertiser-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -5133,7 +5135,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "filter", "page-size", "advertiser-id", "page-token", "partner-id"].iter().map(|v|*v));
+                                                                           v.extend(["advertiser-id", "order-by", "page-size", "filter", "partner-id", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -5257,7 +5259,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "advertiser-id", "filter", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["advertiser-id", "order-by", "page-size", "filter", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -5316,7 +5318,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["advertiser-id", "partner-id"].iter().map(|v|*v));
+                                                                           v.extend(["partner-id", "advertiser-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -5387,7 +5389,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "filter", "page-size", "advertiser-id", "page-token", "partner-id"].iter().map(|v|*v));
+                                                                           v.extend(["advertiser-id", "order-by", "page-size", "filter", "partner-id", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -5500,17 +5502,17 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-view-config.minimum-quartile" => Some(("activeViewConfig.minimumQuartile", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-view-config.minimum-duration" => Some(("activeViewConfig.minimumDuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-view-config.display-name" => Some(("activeViewConfig.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "active-view-config.minimum-volume" => Some(("activeViewConfig.minimumVolume", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-view-config.minimum-duration" => Some(("activeViewConfig.minimumDuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-view-config.minimum-quartile" => Some(("activeViewConfig.minimumQuartile", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "active-view-config.minimum-viewability" => Some(("activeViewConfig.minimumViewability", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "web-tag-type" => Some(("webTagType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "active-view-config.minimum-volume" => Some(("activeViewConfig.minimumVolume", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "floodlight-group-id" => Some(("floodlightGroupId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "lookback-window.click-days" => Some(("lookbackWindow.clickDays", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "lookback-window.impression-days" => Some(("lookbackWindow.impressionDays", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "web-tag-type" => Some(("webTagType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["active-view-config", "click-days", "display-name", "floodlight-group-id", "impression-days", "lookback-window", "minimum-duration", "minimum-quartile", "minimum-viewability", "minimum-volume", "name", "web-tag-type"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -5604,7 +5606,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["advertiser-id", "partner-id"].iter().map(|v|*v));
+                                                                           v.extend(["partner-id", "advertiser-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -5675,7 +5677,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "filter", "page-size", "advertiser-id", "page-token", "partner-id"].iter().map(|v|*v));
+                                                                           v.extend(["advertiser-id", "order-by", "page-size", "filter", "partner-id", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -5733,8 +5735,8 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "partner-id" => Some(("partnerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "deleted-assigned-inventory-sources" => Some(("deletedAssignedInventorySources", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "partner-id" => Some(("partnerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["advertiser-id", "deleted-assigned-inventory-sources", "partner-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -5820,8 +5822,8 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "assigned-inventory-source-id" => Some(("assignedInventorySourceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "inventory-source-id" => Some(("inventorySourceId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["assigned-inventory-source-id", "inventory-source-id", "name"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -5856,7 +5858,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["advertiser-id", "partner-id"].iter().map(|v|*v));
+                                                                           v.extend(["partner-id", "advertiser-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -5915,7 +5917,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["advertiser-id", "partner-id"].iter().map(|v|*v));
+                                                                           v.extend(["partner-id", "advertiser-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -5986,7 +5988,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "filter", "page-size", "advertiser-id", "page-token", "partner-id"].iter().map(|v|*v));
+                                                                           v.extend(["advertiser-id", "order-by", "page-size", "filter", "partner-id", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -6043,8 +6045,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "inventory-source-group-id" => Some(("inventorySourceGroupId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inventory-source-group-id" => Some(("inventorySourceGroupId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["display-name", "inventory-source-group-id", "name"]);
@@ -6080,7 +6082,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["advertiser-id", "partner-id"].iter().map(|v|*v));
+                                                                           v.extend(["partner-id", "advertiser-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -6139,7 +6141,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["advertiser-id", "partner-id"].iter().map(|v|*v));
+                                                                           v.extend(["partner-id", "advertiser-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -6198,7 +6200,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["advertiser-id", "partner-id"].iter().map(|v|*v));
+                                                                           v.extend(["partner-id", "advertiser-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -6269,7 +6271,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "filter", "page-size", "advertiser-id", "page-token", "partner-id"].iter().map(|v|*v));
+                                                                           v.extend(["advertiser-id", "order-by", "page-size", "filter", "partner-id", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -6326,8 +6328,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "inventory-source-group-id" => Some(("inventorySourceGroupId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "inventory-source-group-id" => Some(("inventorySourceGroupId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["display-name", "inventory-source-group-id", "name"]);
@@ -6366,7 +6368,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["advertiser-id", "partner-id", "update-mask"].iter().map(|v|*v));
+                                                                           v.extend(["partner-id", "advertiser-id", "update-mask"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -6493,7 +6495,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "filter", "page-size", "advertiser-id", "page-token", "partner-id"].iter().map(|v|*v));
+                                                                           v.extend(["advertiser-id", "order-by", "page-size", "filter", "partner-id", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -6612,10 +6614,10 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "partner-id" => Some(("partnerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "channel-id" => Some(("channelId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "partner-id" => Some(("partnerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["advertiser-id", "channel-id", "display-name", "name", "partner-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -6771,7 +6773,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "advertiser-id", "filter", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["advertiser-id", "order-by", "page-size", "filter", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -6829,10 +6831,10 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "partner-id" => Some(("partnerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "channel-id" => Some(("channelId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "partner-id" => Some(("partnerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["advertiser-id", "channel-id", "display-name", "name", "partner-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -7011,8 +7013,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "url-or-app-id" => Some(("urlOrAppId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "url-or-app-id" => Some(("urlOrAppId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["name", "url-or-app-id"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -7168,7 +7170,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "advertiser-id", "filter", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["advertiser-id", "order-by", "page-size", "filter", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -7225,19 +7227,19 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "inventory-source-filter.inventory-source-ids" => Some(("inventorySourceFilter.inventorySourceIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "advertiser-id" => Some(("advertiserId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version" => Some(("version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "partner-id" => Some(("partnerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "parent-entity-filter.file-type" => Some(("parentEntityFilter.fileType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "parent-entity-filter.filter-type" => Some(("parentEntityFilter.filterType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "parent-entity-filter.filter-ids" => Some(("parentEntityFilter.filterIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "id-filter.insertion-order-ids" => Some(("idFilter.insertionOrderIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "id-filter.media-product-ids" => Some(("idFilter.mediaProductIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "id-filter.line-item-ids" => Some(("idFilter.lineItemIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "id-filter.ad-group-ad-ids" => Some(("idFilter.adGroupAdIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "id-filter.ad-group-ids" => Some(("idFilter.adGroupIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "id-filter.campaign-ids" => Some(("idFilter.campaignIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "id-filter.insertion-order-ids" => Some(("idFilter.insertionOrderIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "id-filter.line-item-ids" => Some(("idFilter.lineItemIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "id-filter.media-product-ids" => Some(("idFilter.mediaProductIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "inventory-source-filter.inventory-source-ids" => Some(("inventorySourceFilter.inventorySourceIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "parent-entity-filter.file-type" => Some(("parentEntityFilter.fileType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "parent-entity-filter.filter-ids" => Some(("parentEntityFilter.filterIds", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "parent-entity-filter.filter-type" => Some(("parentEntityFilter.filterType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "partner-id" => Some(("partnerId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version" => Some(("version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["ad-group-ad-ids", "ad-group-ids", "advertiser-id", "campaign-ids", "file-type", "filter-ids", "filter-type", "id-filter", "insertion-order-ids", "inventory-source-filter", "inventory-source-ids", "line-item-ids", "media-product-ids", "parent-entity-filter", "partner-id", "version"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -7441,7 +7443,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "advertiser-id", "filter", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["advertiser-id", "order-by", "page-size", "filter", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -7886,12 +7888,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "displayvideo1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "displayvideo1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

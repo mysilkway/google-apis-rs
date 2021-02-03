@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_mirror1 as api;
+extern crate google_mirror1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_mirror1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Mirror<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::Mirror<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -69,8 +71,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "password" => Some(("password", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "features" => Some(("features", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "password" => Some(("password", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["features", "password"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -248,17 +250,17 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "accept-types" => Some(("acceptTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "image-urls" => Some(("imageUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "priority" => Some(("priority", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "source" => Some(("source", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "phone-number" => Some(("phoneNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "sharing-features" => Some(("sharingFeatures", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "image-urls" => Some(("imageUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "phone-number" => Some(("phoneNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "priority" => Some(("priority", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "sharing-features" => Some(("sharingFeatures", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "source" => Some(("source", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "speakable-name" => Some(("speakableName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["accept-types", "display-name", "id", "image-urls", "kind", "phone-number", "priority", "sharing-features", "source", "speakable-name", "type"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -395,17 +397,17 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "accept-types" => Some(("acceptTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "image-urls" => Some(("imageUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "priority" => Some(("priority", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "source" => Some(("source", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "phone-number" => Some(("phoneNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "sharing-features" => Some(("sharingFeatures", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "image-urls" => Some(("imageUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "phone-number" => Some(("phoneNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "priority" => Some(("priority", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "sharing-features" => Some(("sharingFeatures", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "source" => Some(("source", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "speakable-name" => Some(("speakableName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["accept-types", "display-name", "id", "image-urls", "kind", "phone-number", "priority", "sharing-features", "source", "speakable-name", "type"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -490,17 +492,17 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "accept-types" => Some(("acceptTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "image-urls" => Some(("imageUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "priority" => Some(("priority", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "source" => Some(("source", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "phone-number" => Some(("phoneNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "sharing-features" => Some(("sharingFeatures", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-name" => Some(("displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "image-urls" => Some(("imageUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "phone-number" => Some(("phoneNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "priority" => Some(("priority", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "sharing-features" => Some(("sharingFeatures", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "source" => Some(("source", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "speakable-name" => Some(("speakableName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["accept-types", "display-name", "id", "image-urls", "kind", "phone-number", "priority", "sharing-features", "source", "speakable-name", "type"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -785,19 +787,19 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "notification.item-id" => Some(("notification.itemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "notification.user-token" => Some(("notification.userToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "notification.operation" => Some(("notification.operation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "notification.verify-token" => Some(("notification.verifyToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "notification.collection" => Some(("notification.collection", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "updated" => Some(("updated", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "collection" => Some(("collection", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "verify-token" => Some(("verifyToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "user-token" => Some(("userToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation" => Some(("operation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "callback-url" => Some(("callbackUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "collection" => Some(("collection", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notification.collection" => Some(("notification.collection", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notification.item-id" => Some(("notification.itemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notification.operation" => Some(("notification.operation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notification.user-token" => Some(("notification.userToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notification.verify-token" => Some(("notification.verifyToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation" => Some(("operation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "updated" => Some(("updated", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "user-token" => Some(("userToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "verify-token" => Some(("verifyToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["callback-url", "collection", "id", "item-id", "kind", "notification", "operation", "updated", "user-token", "verify-token"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -934,19 +936,19 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "notification.item-id" => Some(("notification.itemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "notification.user-token" => Some(("notification.userToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "notification.operation" => Some(("notification.operation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "notification.verify-token" => Some(("notification.verifyToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "notification.collection" => Some(("notification.collection", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "updated" => Some(("updated", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "collection" => Some(("collection", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "verify-token" => Some(("verifyToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "user-token" => Some(("userToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "operation" => Some(("operation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "callback-url" => Some(("callbackUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "collection" => Some(("collection", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notification.collection" => Some(("notification.collection", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notification.item-id" => Some(("notification.itemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notification.operation" => Some(("notification.operation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notification.user-token" => Some(("notification.userToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notification.verify-token" => Some(("notification.verifyToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "operation" => Some(("operation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "updated" => Some(("updated", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "user-token" => Some(("userToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "verify-token" => Some(("verifyToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["callback-url", "collection", "id", "item-id", "kind", "notification", "operation", "updated", "user-token", "verify-token"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1138,7 +1140,7 @@ impl<'n> Engine<'n> {
             }
         }
         let vals = opt.values_of("mode").unwrap().collect::<Vec<&str>>();
-        let protocol = calltype_from_str(vals[0], ["simple", "resumable"].iter().map(|&v| v.to_string()).collect(), err);
+        let protocol = calltype_from_str(vals[0], ["resumable", "simple"].iter().map(|&v| v.to_string()).collect(), err);
         let mut input_file = input_file_from_opts(vals[1], err);
         let mime_type = input_mime_from_opts(opt.value_of("mime").unwrap_or("application/octet-stream"), err);
         if dry_run {
@@ -1153,8 +1155,8 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Upload(UploadProtocol::Simple) => call.upload(input_file.unwrap(), mime_type.unwrap()),
                 CallType::Upload(UploadProtocol::Resumable) => call.upload_resumable(input_file.unwrap(), mime_type.unwrap()),
+                CallType::Upload(UploadProtocol::Simple) => call.upload(input_file.unwrap(), mime_type.unwrap()),
                 CallType::Standard => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1340,47 +1342,47 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "display-time" => Some(("displayTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creator.kind" => Some(("creator.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creator.display-name" => Some(("creator.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creator.accept-types" => Some(("creator.acceptTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "creator.image-urls" => Some(("creator.imageUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "creator.priority" => Some(("creator.priority", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "creator.source" => Some(("creator.source", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creator.phone-number" => Some(("creator.phoneNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creator.sharing-features" => Some(("creator.sharingFeatures", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "creator.type" => Some(("creator.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creator.id" => Some(("creator.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creator.speakable-name" => Some(("creator.speakableName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "text" => Some(("text", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-bundle-cover" => Some(("isBundleCover", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-deleted" => Some(("isDeleted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "bundle-id" => Some(("bundleId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-pinned" => Some(("isPinned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "title" => Some(("title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "pin-score" => Some(("pinScore", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "speakable-text" => Some(("speakableText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "html" => Some(("html", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location.kind" => Some(("location.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location.display-name" => Some(("location.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location.timestamp" => Some(("location.timestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location.longitude" => Some(("location.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "location.address" => Some(("location.address", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location.latitude" => Some(("location.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "location.id" => Some(("location.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location.accuracy" => Some(("location.accuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "source-item-id" => Some(("sourceItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "in-reply-to" => Some(("inReplyTo", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "updated" => Some(("updated", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "canonical-url" => Some(("canonicalUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "created" => Some(("created", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "notification.level" => Some(("notification.level", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creator.accept-types" => Some(("creator.acceptTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "creator.display-name" => Some(("creator.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creator.id" => Some(("creator.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creator.image-urls" => Some(("creator.imageUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "creator.kind" => Some(("creator.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creator.phone-number" => Some(("creator.phoneNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creator.priority" => Some(("creator.priority", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "creator.sharing-features" => Some(("creator.sharingFeatures", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "creator.source" => Some(("creator.source", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creator.speakable-name" => Some(("creator.speakableName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creator.type" => Some(("creator.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-time" => Some(("displayTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "html" => Some(("html", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "in-reply-to" => Some(("inReplyTo", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "is-bundle-cover" => Some(("isBundleCover", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "is-deleted" => Some(("isDeleted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "is-pinned" => Some(("isPinned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location.accuracy" => Some(("location.accuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "location.address" => Some(("location.address", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location.display-name" => Some(("location.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location.id" => Some(("location.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location.kind" => Some(("location.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location.latitude" => Some(("location.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "location.longitude" => Some(("location.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "location.timestamp" => Some(("location.timestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "notification.delivery-time" => Some(("notification.deliveryTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "speakable-type" => Some(("speakableType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notification.level" => Some(("notification.level", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "pin-score" => Some(("pinScore", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "self-link" => Some(("selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "source-item-id" => Some(("sourceItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "speakable-text" => Some(("speakableText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "speakable-type" => Some(("speakableType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "text" => Some(("text", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "title" => Some(("title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "updated" => Some(("updated", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["accept-types", "accuracy", "address", "bundle-id", "canonical-url", "created", "creator", "delivery-time", "display-name", "display-time", "etag", "html", "id", "image-urls", "in-reply-to", "is-bundle-cover", "is-deleted", "is-pinned", "kind", "latitude", "level", "location", "longitude", "notification", "phone-number", "pin-score", "priority", "self-link", "sharing-features", "source", "source-item-id", "speakable-name", "speakable-text", "speakable-type", "text", "timestamp", "title", "type", "updated"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1415,7 +1417,7 @@ impl<'n> Engine<'n> {
             }
         }
         let vals = opt.values_of("mode").unwrap().collect::<Vec<&str>>();
-        let protocol = calltype_from_str(vals[0], ["simple", "resumable"].iter().map(|&v| v.to_string()).collect(), err);
+        let protocol = calltype_from_str(vals[0], ["resumable", "simple"].iter().map(|&v| v.to_string()).collect(), err);
         let mut input_file = input_file_from_opts(vals[1], err);
         let mime_type = input_mime_from_opts(opt.value_of("mime").unwrap_or("application/octet-stream"), err);
         if dry_run {
@@ -1430,8 +1432,8 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Upload(UploadProtocol::Simple) => call.upload(input_file.unwrap(), mime_type.unwrap()),
                 CallType::Upload(UploadProtocol::Resumable) => call.upload_resumable(input_file.unwrap(), mime_type.unwrap()),
+                CallType::Upload(UploadProtocol::Simple) => call.upload(input_file.unwrap(), mime_type.unwrap()),
                 CallType::Standard => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1486,7 +1488,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "include-deleted", "max-results", "page-token", "source-item-id", "pinned-only", "bundle-id"].iter().map(|v|*v));
+                                                                           v.extend(["source-item-id", "bundle-id", "order-by", "page-token", "include-deleted", "max-results", "pinned-only"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1543,47 +1545,47 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "display-time" => Some(("displayTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creator.kind" => Some(("creator.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creator.display-name" => Some(("creator.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creator.accept-types" => Some(("creator.acceptTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "creator.image-urls" => Some(("creator.imageUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "creator.priority" => Some(("creator.priority", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "creator.source" => Some(("creator.source", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creator.phone-number" => Some(("creator.phoneNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creator.sharing-features" => Some(("creator.sharingFeatures", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "creator.type" => Some(("creator.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creator.id" => Some(("creator.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creator.speakable-name" => Some(("creator.speakableName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "text" => Some(("text", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-bundle-cover" => Some(("isBundleCover", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-deleted" => Some(("isDeleted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "bundle-id" => Some(("bundleId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-pinned" => Some(("isPinned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "title" => Some(("title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "pin-score" => Some(("pinScore", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "speakable-text" => Some(("speakableText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "html" => Some(("html", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location.kind" => Some(("location.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location.display-name" => Some(("location.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location.timestamp" => Some(("location.timestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location.longitude" => Some(("location.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "location.address" => Some(("location.address", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location.latitude" => Some(("location.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "location.id" => Some(("location.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location.accuracy" => Some(("location.accuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "source-item-id" => Some(("sourceItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "in-reply-to" => Some(("inReplyTo", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "updated" => Some(("updated", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "canonical-url" => Some(("canonicalUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "created" => Some(("created", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "notification.level" => Some(("notification.level", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creator.accept-types" => Some(("creator.acceptTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "creator.display-name" => Some(("creator.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creator.id" => Some(("creator.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creator.image-urls" => Some(("creator.imageUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "creator.kind" => Some(("creator.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creator.phone-number" => Some(("creator.phoneNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creator.priority" => Some(("creator.priority", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "creator.sharing-features" => Some(("creator.sharingFeatures", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "creator.source" => Some(("creator.source", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creator.speakable-name" => Some(("creator.speakableName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creator.type" => Some(("creator.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-time" => Some(("displayTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "html" => Some(("html", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "in-reply-to" => Some(("inReplyTo", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "is-bundle-cover" => Some(("isBundleCover", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "is-deleted" => Some(("isDeleted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "is-pinned" => Some(("isPinned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location.accuracy" => Some(("location.accuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "location.address" => Some(("location.address", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location.display-name" => Some(("location.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location.id" => Some(("location.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location.kind" => Some(("location.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location.latitude" => Some(("location.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "location.longitude" => Some(("location.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "location.timestamp" => Some(("location.timestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "notification.delivery-time" => Some(("notification.deliveryTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "speakable-type" => Some(("speakableType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notification.level" => Some(("notification.level", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "pin-score" => Some(("pinScore", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "self-link" => Some(("selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "source-item-id" => Some(("sourceItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "speakable-text" => Some(("speakableText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "speakable-type" => Some(("speakableType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "text" => Some(("text", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "title" => Some(("title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "updated" => Some(("updated", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["accept-types", "accuracy", "address", "bundle-id", "canonical-url", "created", "creator", "delivery-time", "display-name", "display-time", "etag", "html", "id", "image-urls", "in-reply-to", "is-bundle-cover", "is-deleted", "is-pinned", "kind", "latitude", "level", "location", "longitude", "notification", "phone-number", "pin-score", "priority", "self-link", "sharing-features", "source", "source-item-id", "speakable-name", "speakable-text", "speakable-type", "text", "timestamp", "title", "type", "updated"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1668,47 +1670,47 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "display-time" => Some(("displayTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creator.kind" => Some(("creator.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creator.display-name" => Some(("creator.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creator.accept-types" => Some(("creator.acceptTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "creator.image-urls" => Some(("creator.imageUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "creator.priority" => Some(("creator.priority", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "creator.source" => Some(("creator.source", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creator.phone-number" => Some(("creator.phoneNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creator.sharing-features" => Some(("creator.sharingFeatures", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "creator.type" => Some(("creator.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creator.id" => Some(("creator.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creator.speakable-name" => Some(("creator.speakableName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "text" => Some(("text", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-bundle-cover" => Some(("isBundleCover", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-deleted" => Some(("isDeleted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "bundle-id" => Some(("bundleId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "is-pinned" => Some(("isPinned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "title" => Some(("title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "pin-score" => Some(("pinScore", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "speakable-text" => Some(("speakableText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "html" => Some(("html", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location.kind" => Some(("location.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location.display-name" => Some(("location.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location.timestamp" => Some(("location.timestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location.longitude" => Some(("location.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "location.address" => Some(("location.address", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location.latitude" => Some(("location.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "location.id" => Some(("location.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "location.accuracy" => Some(("location.accuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "source-item-id" => Some(("sourceItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "in-reply-to" => Some(("inReplyTo", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "updated" => Some(("updated", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "canonical-url" => Some(("canonicalUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "created" => Some(("created", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "notification.level" => Some(("notification.level", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creator.accept-types" => Some(("creator.acceptTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "creator.display-name" => Some(("creator.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creator.id" => Some(("creator.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creator.image-urls" => Some(("creator.imageUrls", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "creator.kind" => Some(("creator.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creator.phone-number" => Some(("creator.phoneNumber", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creator.priority" => Some(("creator.priority", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "creator.sharing-features" => Some(("creator.sharingFeatures", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "creator.source" => Some(("creator.source", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creator.speakable-name" => Some(("creator.speakableName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creator.type" => Some(("creator.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "display-time" => Some(("displayTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "etag" => Some(("etag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "html" => Some(("html", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "id" => Some(("id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "in-reply-to" => Some(("inReplyTo", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "is-bundle-cover" => Some(("isBundleCover", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "is-deleted" => Some(("isDeleted", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "is-pinned" => Some(("isPinned", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "kind" => Some(("kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location.accuracy" => Some(("location.accuracy", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "location.address" => Some(("location.address", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location.display-name" => Some(("location.displayName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location.id" => Some(("location.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location.kind" => Some(("location.kind", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "location.latitude" => Some(("location.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "location.longitude" => Some(("location.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "location.timestamp" => Some(("location.timestamp", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "notification.delivery-time" => Some(("notification.deliveryTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "speakable-type" => Some(("speakableType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "notification.level" => Some(("notification.level", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "pin-score" => Some(("pinScore", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "self-link" => Some(("selfLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "source-item-id" => Some(("sourceItemId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "speakable-text" => Some(("speakableText", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "speakable-type" => Some(("speakableType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "text" => Some(("text", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "title" => Some(("title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "updated" => Some(("updated", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["accept-types", "accuracy", "address", "bundle-id", "canonical-url", "created", "creator", "delivery-time", "display-name", "display-time", "etag", "html", "id", "image-urls", "in-reply-to", "is-bundle-cover", "is-deleted", "is-pinned", "kind", "latitude", "level", "location", "longitude", "notification", "phone-number", "pin-score", "priority", "self-link", "sharing-features", "source", "source-item-id", "speakable-name", "speakable-text", "speakable-type", "text", "timestamp", "title", "type", "updated"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1743,7 +1745,7 @@ impl<'n> Engine<'n> {
             }
         }
         let vals = opt.values_of("mode").unwrap().collect::<Vec<&str>>();
-        let protocol = calltype_from_str(vals[0], ["simple", "resumable"].iter().map(|&v| v.to_string()).collect(), err);
+        let protocol = calltype_from_str(vals[0], ["resumable", "simple"].iter().map(|&v| v.to_string()).collect(), err);
         let mut input_file = input_file_from_opts(vals[1], err);
         let mime_type = input_mime_from_opts(opt.value_of("mime").unwrap_or("application/octet-stream"), err);
         if dry_run {
@@ -1758,8 +1760,8 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Upload(UploadProtocol::Simple) => call.upload(input_file.unwrap(), mime_type.unwrap()),
                 CallType::Upload(UploadProtocol::Resumable) => call.upload_resumable(input_file.unwrap(), mime_type.unwrap()),
+                CallType::Upload(UploadProtocol::Simple) => call.upload(input_file.unwrap(), mime_type.unwrap()),
                 CallType::Standard => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1918,12 +1920,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "mirror1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "mirror1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))
@@ -2376,7 +2378,7 @@ fn main() {
         
                     (Some(r##"mode"##),
                      Some(r##"u"##),
-                     Some(r##"Specify the upload protocol (simple|resumable) and the file to upload"##),
+                     Some(r##"Specify the upload protocol (resumable|simple) and the file to upload"##),
                      Some(true),
                      Some(true)),
         
@@ -2464,7 +2466,7 @@ fn main() {
         
                     (Some(r##"mode"##),
                      Some(r##"u"##),
-                     Some(r##"Specify the upload protocol (simple|resumable) and the file to upload"##),
+                     Some(r##"Specify the upload protocol (resumable|simple) and the file to upload"##),
                      Some(true),
                      Some(true)),
         
@@ -2542,7 +2544,7 @@ fn main() {
         
                     (Some(r##"mode"##),
                      Some(r##"u"##),
-                     Some(r##"Specify the upload protocol (simple|resumable) and the file to upload"##),
+                     Some(r##"Specify the upload protocol (resumable|simple) and the file to upload"##),
                      Some(true),
                      Some(true)),
         

@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_manufacturers1 as api;
+extern crate google_manufacturers1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_manufacturers1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::ManufacturerCenter<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::ManufacturerCenter<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -182,7 +184,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "include", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "page-size", "include"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -239,44 +241,44 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "product-line" => Some(("productLine", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "age-group" => Some(("ageGroup", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "brand" => Some(("brand", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "capacity.unit" => Some(("capacity.unit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "capacity.value" => Some(("capacity.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "color" => Some(("color", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "release-date" => Some(("releaseDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "item-group-id" => Some(("itemGroupId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gtin" => Some(("gtin", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "count.unit" => Some(("count.unit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "count.value" => Some(("count.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "disclosure-date" => Some(("disclosureDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "excluded-destination" => Some(("excludedDestination", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "flavor" => Some(("flavor", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "target-client-id" => Some(("targetClientId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "format" => Some(("format", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gender" => Some(("gender", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "gtin" => Some(("gtin", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "image-link.image-url" => Some(("imageLink.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "image-link.status" => Some(("imageLink.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "image-link.type" => Some(("imageLink.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "included-destination" => Some(("includedDestination", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "item-group-id" => Some(("itemGroupId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "material" => Some(("material", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "mpn" => Some(("mpn", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "pattern" => Some(("pattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "product-line" => Some(("productLine", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "product-name" => Some(("productName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "product-page-url" => Some(("productPageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "product-type" => Some(("productType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "release-date" => Some(("releaseDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "rich-product-content" => Some(("richProductContent", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "scent" => Some(("scent", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "size" => Some(("size", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "capacity.value" => Some(("capacity.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "capacity.unit" => Some(("capacity.unit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "title" => Some(("title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "pattern" => Some(("pattern", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "rich-product-content" => Some(("richProductContent", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "disclosure-date" => Some(("disclosureDate", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "theme" => Some(("theme", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "suggested-retail-price.currency" => Some(("suggestedRetailPrice.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "suggested-retail-price.amount" => Some(("suggestedRetailPrice.amount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "included-destination" => Some(("includedDestination", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "format" => Some(("format", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "mpn" => Some(("mpn", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "brand" => Some(("brand", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "material" => Some(("material", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "product-name" => Some(("productName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "size-system" => Some(("sizeSystem", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "size-type" => Some(("sizeType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "count.value" => Some(("count.value", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "count.unit" => Some(("count.unit", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "gender" => Some(("gender", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "product-page-url" => Some(("productPageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "image-link.status" => Some(("imageLink.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "image-link.image-url" => Some(("imageLink.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "image-link.type" => Some(("imageLink.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "product-type" => Some(("productType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "suggested-retail-price.amount" => Some(("suggestedRetailPrice.amount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "suggested-retail-price.currency" => Some(("suggestedRetailPrice.currency", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "target-client-id" => Some(("targetClientId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "theme" => Some(("theme", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "title" => Some(("title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "video-link" => Some(("videoLink", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "age-group" => Some(("ageGroup", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["age-group", "amount", "brand", "capacity", "color", "count", "currency", "description", "disclosure-date", "excluded-destination", "flavor", "format", "gender", "gtin", "image-link", "image-url", "included-destination", "item-group-id", "material", "mpn", "pattern", "product-line", "product-name", "product-page-url", "product-type", "release-date", "rich-product-content", "scent", "size", "size-system", "size-type", "status", "suggested-retail-price", "target-client-id", "theme", "title", "type", "unit", "value", "video-link"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -382,12 +384,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "manufacturers1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "manufacturers1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

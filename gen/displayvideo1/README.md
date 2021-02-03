@@ -11,41 +11,41 @@ Everything else about the *Display Video* *v1* API can be found at the
 [official documentation site](https://developers.google.com/display-video/).
 # Features
 
-Handle the following *Resources* with ease from the central [hub](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.DisplayVideo.html) ... 
+Handle the following *Resources* with ease from the central [hub](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/DisplayVideo) ... 
 
-* [advertisers](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.Advertiser.html)
- * [*assets upload*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserAssetUploadCall.html), [*bulk edit advertiser assigned targeting options*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserBulkEditAdvertiserAssignedTargetingOptionCall.html), [*bulk list advertiser assigned targeting options*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserBulkListAdvertiserAssignedTargetingOptionCall.html), [*campaigns create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserCampaignCreateCall.html), [*campaigns delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserCampaignDeleteCall.html), [*campaigns get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserCampaignGetCall.html), [*campaigns list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserCampaignListCall.html), [*campaigns patch*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserCampaignPatchCall.html), [*channels create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserChannelCreateCall.html), [*channels get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserChannelGetCall.html), [*channels list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserChannelListCall.html), [*channels patch*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserChannelPatchCall.html), [*channels sites bulk edit*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserChannelSiteBulkEditCall.html), [*channels sites create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserChannelSiteCreateCall.html), [*channels sites delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserChannelSiteDeleteCall.html), [*channels sites list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserChannelSiteListCall.html), [*create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserCreateCall.html), [*creatives create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserCreativeCreateCall.html), [*creatives delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserCreativeDeleteCall.html), [*creatives get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserCreativeGetCall.html), [*creatives list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserCreativeListCall.html), [*creatives patch*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserCreativePatchCall.html), [*delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserDeleteCall.html), [*get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserGetCall.html), [*insertion orders create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserInsertionOrderCreateCall.html), [*insertion orders delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserInsertionOrderDeleteCall.html), [*insertion orders get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserInsertionOrderGetCall.html), [*insertion orders list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserInsertionOrderListCall.html), [*insertion orders patch*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserInsertionOrderPatchCall.html), [*line items bulk edit line item assigned targeting options*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserLineItemBulkEditLineItemAssignedTargetingOptionCall.html), [*line items bulk list line item assigned targeting options*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserLineItemBulkListLineItemAssignedTargetingOptionCall.html), [*line items create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserLineItemCreateCall.html), [*line items delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserLineItemDeleteCall.html), [*line items get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserLineItemGetCall.html), [*line items list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserLineItemListCall.html), [*line items patch*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserLineItemPatchCall.html), [*line items targeting types assigned targeting options create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserLineItemTargetingTypeAssignedTargetingOptionCreateCall.html), [*line items targeting types assigned targeting options delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserLineItemTargetingTypeAssignedTargetingOptionDeleteCall.html), [*line items targeting types assigned targeting options get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserLineItemTargetingTypeAssignedTargetingOptionGetCall.html), [*line items targeting types assigned targeting options list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserLineItemTargetingTypeAssignedTargetingOptionListCall.html), [*list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserListCall.html), [*location lists assigned locations bulk edit*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserLocationListAssignedLocationBulkEditCall.html), [*location lists assigned locations create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserLocationListAssignedLocationCreateCall.html), [*location lists assigned locations delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserLocationListAssignedLocationDeleteCall.html), [*location lists assigned locations list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserLocationListAssignedLocationListCall.html), [*location lists create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserLocationListCreateCall.html), [*location lists get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserLocationListGetCall.html), [*location lists list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserLocationListListCall.html), [*location lists patch*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserLocationListPatchCall.html), [*negative keyword lists create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserNegativeKeywordListCreateCall.html), [*negative keyword lists delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserNegativeKeywordListDeleteCall.html), [*negative keyword lists get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserNegativeKeywordListGetCall.html), [*negative keyword lists list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserNegativeKeywordListListCall.html), [*negative keyword lists negative keywords bulk edit*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserNegativeKeywordListNegativeKeywordBulkEditCall.html), [*negative keyword lists negative keywords create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserNegativeKeywordListNegativeKeywordCreateCall.html), [*negative keyword lists negative keywords delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserNegativeKeywordListNegativeKeywordDeleteCall.html), [*negative keyword lists negative keywords list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserNegativeKeywordListNegativeKeywordListCall.html), [*negative keyword lists patch*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserNegativeKeywordListPatchCall.html), [*patch*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserPatchCall.html), [*targeting types assigned targeting options create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserTargetingTypeAssignedTargetingOptionCreateCall.html), [*targeting types assigned targeting options delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserTargetingTypeAssignedTargetingOptionDeleteCall.html), [*targeting types assigned targeting options get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserTargetingTypeAssignedTargetingOptionGetCall.html) and [*targeting types assigned targeting options list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserTargetingTypeAssignedTargetingOptionListCall.html)
-* [combined audiences](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.CombinedAudience.html)
- * [*get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.CombinedAudienceGetCall.html) and [*list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.CombinedAudienceListCall.html)
-* [custom lists](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.CustomList.html)
- * [*get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.CustomListGetCall.html) and [*list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.CustomListListCall.html)
-* [first and third party audiences](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.FirstAndThirdPartyAudience.html)
- * [*get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.FirstAndThirdPartyAudienceGetCall.html) and [*list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.FirstAndThirdPartyAudienceListCall.html)
-* [floodlight groups](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.FloodlightGroup.html)
- * [*get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.FloodlightGroupGetCall.html) and [*patch*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.FloodlightGroupPatchCall.html)
-* [google audiences](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.GoogleAudience.html)
- * [*get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.GoogleAudienceGetCall.html) and [*list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.GoogleAudienceListCall.html)
-* [inventory source groups](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.InventorySourceGroup.html)
- * [*assigned inventory sources bulk edit*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.InventorySourceGroupAssignedInventorySourceBulkEditCall.html), [*assigned inventory sources create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.InventorySourceGroupAssignedInventorySourceCreateCall.html), [*assigned inventory sources delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.InventorySourceGroupAssignedInventorySourceDeleteCall.html), [*assigned inventory sources list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.InventorySourceGroupAssignedInventorySourceListCall.html), [*create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.InventorySourceGroupCreateCall.html), [*delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.InventorySourceGroupDeleteCall.html), [*get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.InventorySourceGroupGetCall.html), [*list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.InventorySourceGroupListCall.html) and [*patch*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.InventorySourceGroupPatchCall.html)
-* [inventory sources](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.InventorySource.html)
- * [*get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.InventorySourceGetCall.html) and [*list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.InventorySourceListCall.html)
+* [advertisers](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::Advertiser)
+ * [*assets upload*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserAssetUploadCall), [*bulk edit advertiser assigned targeting options*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserBulkEditAdvertiserAssignedTargetingOptionCall), [*bulk list advertiser assigned targeting options*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserBulkListAdvertiserAssignedTargetingOptionCall), [*campaigns create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserCampaignCreateCall), [*campaigns delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserCampaignDeleteCall), [*campaigns get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserCampaignGetCall), [*campaigns list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserCampaignListCall), [*campaigns patch*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserCampaignPatchCall), [*channels create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserChannelCreateCall), [*channels get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserChannelGetCall), [*channels list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserChannelListCall), [*channels patch*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserChannelPatchCall), [*channels sites bulk edit*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserChannelSiteBulkEditCall), [*channels sites create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserChannelSiteCreateCall), [*channels sites delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserChannelSiteDeleteCall), [*channels sites list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserChannelSiteListCall), [*create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserCreateCall), [*creatives create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserCreativeCreateCall), [*creatives delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserCreativeDeleteCall), [*creatives get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserCreativeGetCall), [*creatives list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserCreativeListCall), [*creatives patch*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserCreativePatchCall), [*delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserDeleteCall), [*get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserGetCall), [*insertion orders create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserInsertionOrderCreateCall), [*insertion orders delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserInsertionOrderDeleteCall), [*insertion orders get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserInsertionOrderGetCall), [*insertion orders list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserInsertionOrderListCall), [*insertion orders patch*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserInsertionOrderPatchCall), [*line items bulk edit line item assigned targeting options*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserLineItemBulkEditLineItemAssignedTargetingOptionCall), [*line items bulk list line item assigned targeting options*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserLineItemBulkListLineItemAssignedTargetingOptionCall), [*line items create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserLineItemCreateCall), [*line items delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserLineItemDeleteCall), [*line items get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserLineItemGetCall), [*line items list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserLineItemListCall), [*line items patch*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserLineItemPatchCall), [*line items targeting types assigned targeting options create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserLineItemTargetingTypeAssignedTargetingOptionCreateCall), [*line items targeting types assigned targeting options delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserLineItemTargetingTypeAssignedTargetingOptionDeleteCall), [*line items targeting types assigned targeting options get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserLineItemTargetingTypeAssignedTargetingOptionGetCall), [*line items targeting types assigned targeting options list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserLineItemTargetingTypeAssignedTargetingOptionListCall), [*list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserListCall), [*location lists assigned locations bulk edit*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserLocationListAssignedLocationBulkEditCall), [*location lists assigned locations create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserLocationListAssignedLocationCreateCall), [*location lists assigned locations delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserLocationListAssignedLocationDeleteCall), [*location lists assigned locations list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserLocationListAssignedLocationListCall), [*location lists create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserLocationListCreateCall), [*location lists get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserLocationListGetCall), [*location lists list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserLocationListListCall), [*location lists patch*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserLocationListPatchCall), [*negative keyword lists create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserNegativeKeywordListCreateCall), [*negative keyword lists delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserNegativeKeywordListDeleteCall), [*negative keyword lists get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserNegativeKeywordListGetCall), [*negative keyword lists list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserNegativeKeywordListListCall), [*negative keyword lists negative keywords bulk edit*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserNegativeKeywordListNegativeKeywordBulkEditCall), [*negative keyword lists negative keywords create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserNegativeKeywordListNegativeKeywordCreateCall), [*negative keyword lists negative keywords delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserNegativeKeywordListNegativeKeywordDeleteCall), [*negative keyword lists negative keywords list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserNegativeKeywordListNegativeKeywordListCall), [*negative keyword lists patch*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserNegativeKeywordListPatchCall), [*patch*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserPatchCall), [*targeting types assigned targeting options create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserTargetingTypeAssignedTargetingOptionCreateCall), [*targeting types assigned targeting options delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserTargetingTypeAssignedTargetingOptionDeleteCall), [*targeting types assigned targeting options get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserTargetingTypeAssignedTargetingOptionGetCall) and [*targeting types assigned targeting options list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserTargetingTypeAssignedTargetingOptionListCall)
+* [combined audiences](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::CombinedAudience)
+ * [*get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::CombinedAudienceGetCall) and [*list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::CombinedAudienceListCall)
+* [custom lists](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::CustomList)
+ * [*get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::CustomListGetCall) and [*list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::CustomListListCall)
+* [first and third party audiences](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::FirstAndThirdPartyAudience)
+ * [*get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::FirstAndThirdPartyAudienceGetCall) and [*list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::FirstAndThirdPartyAudienceListCall)
+* [floodlight groups](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::FloodlightGroup)
+ * [*get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::FloodlightGroupGetCall) and [*patch*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::FloodlightGroupPatchCall)
+* [google audiences](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::GoogleAudience)
+ * [*get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::GoogleAudienceGetCall) and [*list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::GoogleAudienceListCall)
+* [inventory source groups](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::InventorySourceGroup)
+ * [*assigned inventory sources bulk edit*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::InventorySourceGroupAssignedInventorySourceBulkEditCall), [*assigned inventory sources create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::InventorySourceGroupAssignedInventorySourceCreateCall), [*assigned inventory sources delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::InventorySourceGroupAssignedInventorySourceDeleteCall), [*assigned inventory sources list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::InventorySourceGroupAssignedInventorySourceListCall), [*create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::InventorySourceGroupCreateCall), [*delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::InventorySourceGroupDeleteCall), [*get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::InventorySourceGroupGetCall), [*list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::InventorySourceGroupListCall) and [*patch*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::InventorySourceGroupPatchCall)
+* [inventory sources](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::InventorySource)
+ * [*get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::InventorySourceGetCall) and [*list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::InventorySourceListCall)
 * media
- * [*download*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.MediaDownloadCall.html)
+ * [*download*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::MediaDownloadCall)
 * partners
- * [*channels create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.PartnerChannelCreateCall.html), [*channels get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.PartnerChannelGetCall.html), [*channels list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.PartnerChannelListCall.html), [*channels patch*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.PartnerChannelPatchCall.html), [*channels sites bulk edit*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.PartnerChannelSiteBulkEditCall.html), [*channels sites create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.PartnerChannelSiteCreateCall.html), [*channels sites delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.PartnerChannelSiteDeleteCall.html) and [*channels sites list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.PartnerChannelSiteListCall.html)
+ * [*channels create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::PartnerChannelCreateCall), [*channels get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::PartnerChannelGetCall), [*channels list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::PartnerChannelListCall), [*channels patch*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::PartnerChannelPatchCall), [*channels sites bulk edit*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::PartnerChannelSiteBulkEditCall), [*channels sites create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::PartnerChannelSiteCreateCall), [*channels sites delete*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::PartnerChannelSiteDeleteCall) and [*channels sites list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::PartnerChannelSiteListCall)
 * sdfdownloadtasks
- * [*create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.SdfdownloadtaskCreateCall.html) and [*operations get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.SdfdownloadtaskOperationGetCall.html)
+ * [*create*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::SdfdownloadtaskCreateCall) and [*operations get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::SdfdownloadtaskOperationGetCall)
 * targeting types
- * [*targeting options get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.TargetingTypeTargetingOptionGetCall.html) and [*targeting options list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.TargetingTypeTargetingOptionListCall.html)
+ * [*targeting options get*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::TargetingTypeTargetingOptionGetCall) and [*targeting options list*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::TargetingTypeTargetingOptionListCall)
 
 
 Upload supported by ...
 
-* [*assets upload advertisers*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.AdvertiserAssetUploadCall.html)
+* [*assets upload advertisers*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::AdvertiserAssetUploadCall)
 
 Download supported by ...
 
-* [*download media*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.MediaDownloadCall.html)
+* [*download media*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/api::MediaDownloadCall)
 
 
 
@@ -53,17 +53,17 @@ Download supported by ...
 
 The API is structured into the following primary items:
 
-* **[Hub](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/struct.DisplayVideo.html)**
+* **[Hub](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/DisplayVideo)**
     * a central object to maintain state and allow accessing all *Activities*
-    * creates [*Method Builders*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/trait.MethodsBuilder.html) which in turn
-      allow access to individual [*Call Builders*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/trait.CallBuilder.html)
-* **[Resources](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/trait.Resource.html)**
+    * creates [*Method Builders*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/client::MethodsBuilder) which in turn
+      allow access to individual [*Call Builders*](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/client::CallBuilder)
+* **[Resources](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/client::Resource)**
     * primary types that you can apply *Activities* to
     * a collection of properties and *Parts*
-    * **[Parts](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/trait.Part.html)**
+    * **[Parts](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/client::Part)**
         * a collection of properties
         * never directly used in *Activities*
-* **[Activities](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/trait.CallBuilder.html)**
+* **[Activities](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/client::CallBuilder)**
     * operations to apply to *Resources*
 
 All *structures* are marked with applicable traits to further categorize them and ease browsing.
@@ -77,69 +77,69 @@ let r = hub.resource().activity(...).doit()
 Or specifically ...
 
 ```ignore
-let r = hub.advertisers().channels_patch(...).doit()
-let r = hub.advertisers().campaigns_patch(...).doit()
-let r = hub.advertisers().negative_keyword_lists_negative_keywords_list(...).doit()
 let r = hub.advertisers().assets_upload(...).doit()
-let r = hub.advertisers().line_items_targeting_types_assigned_targeting_options_create(...).doit()
-let r = hub.advertisers().insertion_orders_create(...).doit()
-let r = hub.advertisers().delete(...).doit()
 let r = hub.advertisers().campaigns_create(...).doit()
+let r = hub.advertisers().campaigns_delete(...).doit()
+let r = hub.advertisers().campaigns_get(...).doit()
+let r = hub.advertisers().campaigns_list(...).doit()
+let r = hub.advertisers().campaigns_patch(...).doit()
+let r = hub.advertisers().channels_sites_bulk_edit(...).doit()
+let r = hub.advertisers().channels_sites_create(...).doit()
+let r = hub.advertisers().channels_sites_delete(...).doit()
+let r = hub.advertisers().channels_sites_list(...).doit()
+let r = hub.advertisers().channels_create(...).doit()
 let r = hub.advertisers().channels_get(...).doit()
-let r = hub.advertisers().location_lists_assigned_locations_list(...).doit()
-let r = hub.advertisers().negative_keyword_lists_delete(...).doit()
+let r = hub.advertisers().channels_list(...).doit()
+let r = hub.advertisers().channels_patch(...).doit()
+let r = hub.advertisers().creatives_create(...).doit()
+let r = hub.advertisers().creatives_delete(...).doit()
+let r = hub.advertisers().creatives_get(...).doit()
+let r = hub.advertisers().creatives_list(...).doit()
+let r = hub.advertisers().creatives_patch(...).doit()
+let r = hub.advertisers().insertion_orders_create(...).doit()
+let r = hub.advertisers().insertion_orders_delete(...).doit()
+let r = hub.advertisers().insertion_orders_get(...).doit()
+let r = hub.advertisers().insertion_orders_list(...).doit()
+let r = hub.advertisers().insertion_orders_patch(...).doit()
+let r = hub.advertisers().line_items_targeting_types_assigned_targeting_options_create(...).doit()
 let r = hub.advertisers().line_items_targeting_types_assigned_targeting_options_delete(...).doit()
-let r = hub.advertisers().negative_keyword_lists_get(...).doit()
-let r = hub.advertisers().bulk_edit_advertiser_assigned_targeting_options(...).doit()
+let r = hub.advertisers().line_items_targeting_types_assigned_targeting_options_get(...).doit()
+let r = hub.advertisers().line_items_targeting_types_assigned_targeting_options_list(...).doit()
+let r = hub.advertisers().line_items_bulk_edit_line_item_assigned_targeting_options(...).doit()
+let r = hub.advertisers().line_items_bulk_list_line_item_assigned_targeting_options(...).doit()
+let r = hub.advertisers().line_items_create(...).doit()
+let r = hub.advertisers().line_items_delete(...).doit()
 let r = hub.advertisers().line_items_get(...).doit()
 let r = hub.advertisers().line_items_list(...).doit()
 let r = hub.advertisers().line_items_patch(...).doit()
-let r = hub.advertisers().creatives_delete(...).doit()
-let r = hub.advertisers().create(...).doit()
-let r = hub.advertisers().channels_sites_create(...).doit()
-let r = hub.advertisers().location_lists_list(...).doit()
-let r = hub.advertisers().campaigns_list(...).doit()
-let r = hub.advertisers().get(...).doit()
-let r = hub.advertisers().channels_sites_delete(...).doit()
-let r = hub.advertisers().targeting_types_assigned_targeting_options_create(...).doit()
-let r = hub.advertisers().negative_keyword_lists_create(...).doit()
-let r = hub.advertisers().negative_keyword_lists_patch(...).doit()
-let r = hub.advertisers().line_items_bulk_list_line_item_assigned_targeting_options(...).doit()
-let r = hub.advertisers().line_items_targeting_types_assigned_targeting_options_list(...).doit()
-let r = hub.advertisers().channels_sites_list(...).doit()
-let r = hub.advertisers().creatives_patch(...).doit()
-let r = hub.advertisers().negative_keyword_lists_negative_keywords_create(...).doit()
-let r = hub.advertisers().bulk_list_advertiser_assigned_targeting_options(...).doit()
-let r = hub.advertisers().location_lists_create(...).doit()
-let r = hub.advertisers().channels_list(...).doit()
 let r = hub.advertisers().location_lists_assigned_locations_bulk_edit(...).doit()
-let r = hub.advertisers().targeting_types_assigned_targeting_options_get(...).doit()
-let r = hub.advertisers().list(...).doit()
-let r = hub.advertisers().location_lists_get(...).doit()
 let r = hub.advertisers().location_lists_assigned_locations_create(...).doit()
 let r = hub.advertisers().location_lists_assigned_locations_delete(...).doit()
-let r = hub.advertisers().insertion_orders_patch(...).doit()
-let r = hub.advertisers().campaigns_delete(...).doit()
-let r = hub.advertisers().negative_keyword_lists_negative_keywords_bulk_edit(...).doit()
-let r = hub.advertisers().creatives_get(...).doit()
-let r = hub.advertisers().insertion_orders_list(...).doit()
-let r = hub.advertisers().creatives_create(...).doit()
-let r = hub.advertisers().line_items_create(...).doit()
-let r = hub.advertisers().creatives_list(...).doit()
-let r = hub.advertisers().insertion_orders_get(...).doit()
-let r = hub.advertisers().patch(...).doit()
-let r = hub.advertisers().line_items_bulk_edit_line_item_assigned_targeting_options(...).doit()
-let r = hub.advertisers().channels_sites_bulk_edit(...).doit()
-let r = hub.advertisers().campaigns_get(...).doit()
-let r = hub.advertisers().targeting_types_assigned_targeting_options_list(...).doit()
-let r = hub.advertisers().negative_keyword_lists_list(...).doit()
-let r = hub.advertisers().insertion_orders_delete(...).doit()
-let r = hub.advertisers().channels_create(...).doit()
-let r = hub.advertisers().negative_keyword_lists_negative_keywords_delete(...).doit()
-let r = hub.advertisers().line_items_delete(...).doit()
-let r = hub.advertisers().line_items_targeting_types_assigned_targeting_options_get(...).doit()
-let r = hub.advertisers().targeting_types_assigned_targeting_options_delete(...).doit()
+let r = hub.advertisers().location_lists_assigned_locations_list(...).doit()
+let r = hub.advertisers().location_lists_create(...).doit()
+let r = hub.advertisers().location_lists_get(...).doit()
+let r = hub.advertisers().location_lists_list(...).doit()
 let r = hub.advertisers().location_lists_patch(...).doit()
+let r = hub.advertisers().negative_keyword_lists_negative_keywords_bulk_edit(...).doit()
+let r = hub.advertisers().negative_keyword_lists_negative_keywords_create(...).doit()
+let r = hub.advertisers().negative_keyword_lists_negative_keywords_delete(...).doit()
+let r = hub.advertisers().negative_keyword_lists_negative_keywords_list(...).doit()
+let r = hub.advertisers().negative_keyword_lists_create(...).doit()
+let r = hub.advertisers().negative_keyword_lists_delete(...).doit()
+let r = hub.advertisers().negative_keyword_lists_get(...).doit()
+let r = hub.advertisers().negative_keyword_lists_list(...).doit()
+let r = hub.advertisers().negative_keyword_lists_patch(...).doit()
+let r = hub.advertisers().targeting_types_assigned_targeting_options_create(...).doit()
+let r = hub.advertisers().targeting_types_assigned_targeting_options_delete(...).doit()
+let r = hub.advertisers().targeting_types_assigned_targeting_options_get(...).doit()
+let r = hub.advertisers().targeting_types_assigned_targeting_options_list(...).doit()
+let r = hub.advertisers().bulk_edit_advertiser_assigned_targeting_options(...).doit()
+let r = hub.advertisers().bulk_list_advertiser_assigned_targeting_options(...).doit()
+let r = hub.advertisers().create(...).doit()
+let r = hub.advertisers().delete(...).doit()
+let r = hub.advertisers().get(...).doit()
+let r = hub.advertisers().list(...).doit()
+let r = hub.advertisers().patch(...).doit()
 ```
 
 The `resource()` and `activity(...)` calls create [builders][builder-pattern]. The second one dealing with `Activities` 
@@ -193,11 +193,12 @@ let mut hub = DisplayVideo::new(hyper::Client::with_connector(hyper::net::HttpsC
 // You can configure optional parameters by calling the respective setters at will, and
 // execute the final call using `doit()`.
 // Values shown here are possibly random and not representative !
-let result = hub.advertisers().line_items_targeting_types_assigned_targeting_options_list("advertiserId", "lineItemId", "targetingType")
-             .page_token("sed")
-             .page_size(-85)
-             .order_by("dolores")
-             .filter("kasd")
+let result = hub.advertisers().channels_sites_list("advertiserId", "channelId")
+             .partner_id("no")
+             .page_token("ipsum")
+             .page_size(-28)
+             .order_by("At")
+             .filter("sanctus")
              .doit();
 
 match result {
@@ -220,17 +221,17 @@ match result {
 ```
 ## Handling Errors
 
-All errors produced by the system are provided either as [Result](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/enum.Result.html) enumeration as return value of 
+All errors produced by the system are provided either as [Result](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/client::Result) enumeration as return value of
 the doit() methods, or handed as possibly intermediate results to either the 
-[Hub Delegate](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/trait.Delegate.html), or the [Authenticator Delegate](https://docs.rs/yup-oauth2/*/yup_oauth2/trait.AuthenticatorDelegate.html).
+[Hub Delegate](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/client::Delegate), or the [Authenticator Delegate](https://docs.rs/yup-oauth2/*/yup_oauth2/trait.AuthenticatorDelegate.html).
 
 When delegates handle errors or intermediate values, they may have a chance to instruct the system to retry. This 
 makes the system potentially resilient to all kinds of errors.
 
 ## Uploads and Downloads
-If a method supports downloads, the response body, which is part of the [Result](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/enum.Result.html), should be
+If a method supports downloads, the response body, which is part of the [Result](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/client::Result), should be
 read by you to obtain the media.
-If such a method also supports a [Response Result](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/trait.ResponseResult.html), it will return that by default.
+If such a method also supports a [Response Result](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/client::ResponseResult), it will return that by default.
 You can see it as meta-data for the actual media. To trigger a media download, you will have to set up the builder by making
 this call: `.param("alt", "media")`.
 
@@ -240,29 +241,29 @@ Methods supporting uploads can do so using up to 2 different protocols:
 
 ## Customization and Callbacks
 
-You may alter the way an `doit()` method is called by providing a [delegate](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/trait.Delegate.html) to the 
-[Method Builder](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/trait.CallBuilder.html) before making the final `doit()` call. 
+You may alter the way an `doit()` method is called by providing a [delegate](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/client::Delegate) to the 
+[Method Builder](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/client::CallBuilder) before making the final `doit()` call. 
 Respective methods will be called to provide progress information, as well as determine whether the system should 
 retry on failure.
 
-The [delegate trait](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/trait.Delegate.html) is default-implemented, allowing you to customize it with minimal effort.
+The [delegate trait](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/client::Delegate) is default-implemented, allowing you to customize it with minimal effort.
 
 ## Optional Parts in Server-Requests
 
-All structures provided by this library are made to be [encodable](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/trait.RequestValue.html) and 
-[decodable](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/trait.ResponseResult.html) via *json*. Optionals are used to indicate that partial requests are responses 
+All structures provided by this library are made to be [encodable](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/client::RequestValue) and 
+[decodable](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/client::ResponseResult) via *json*. Optionals are used to indicate that partial requests are responses 
 are valid.
-Most optionals are are considered [Parts](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/trait.Part.html) which are identifiable by name, which will be sent to 
+Most optionals are are considered [Parts](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/client::Part) which are identifiable by name, which will be sent to 
 the server to indicate either the set parts of the request or the desired parts in the response.
 
 ## Builder Arguments
 
-Using [method builders](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/trait.CallBuilder.html), you are able to prepare an action call by repeatedly calling it's methods.
+Using [method builders](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/client::CallBuilder), you are able to prepare an action call by repeatedly calling it's methods.
 These will always take a single argument, for which the following statements are true.
 
 * [PODs][wiki-pod] are handed by copy
 * strings are passed as `&str`
-* [request values](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/trait.RequestValue.html) are moved
+* [request values](https://docs.rs/google-displayvideo1/1.0.14+20200707/google_displayvideo1/client::RequestValue) are moved
 
 Arguments will always be copied or cloned into the builder, to make them independent of their original life times.
 

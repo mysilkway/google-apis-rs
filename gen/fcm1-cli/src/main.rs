@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_fcm1 as api;
+extern crate google_fcm1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_fcm1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::FirebaseCloudMessaging<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::FirebaseCloudMessaging<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -69,59 +71,59 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "message.name" => Some(("message.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.android.collapse-key" => Some(("message.android.collapseKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.android.data" => Some(("message.android.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "message.android.direct-boot-ok" => Some(("message.android.directBootOk", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "message.android.fcm-options.analytics-label" => Some(("message.android.fcmOptions.analyticsLabel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.android.notification.body" => Some(("message.android.notification.body", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.android.notification.body-loc-args" => Some(("message.android.notification.bodyLocArgs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "message.android.notification.body-loc-key" => Some(("message.android.notification.bodyLocKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.android.notification.channel-id" => Some(("message.android.notification.channelId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.android.notification.click-action" => Some(("message.android.notification.clickAction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.android.notification.color" => Some(("message.android.notification.color", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.android.notification.default-light-settings" => Some(("message.android.notification.defaultLightSettings", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "message.android.notification.default-sound" => Some(("message.android.notification.defaultSound", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "message.android.notification.default-vibrate-timings" => Some(("message.android.notification.defaultVibrateTimings", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "message.android.notification.event-time" => Some(("message.android.notification.eventTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.android.notification.icon" => Some(("message.android.notification.icon", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.android.notification.image" => Some(("message.android.notification.image", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.android.notification.light-settings.color.alpha" => Some(("message.android.notification.lightSettings.color.alpha", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "message.android.notification.light-settings.color.blue" => Some(("message.android.notification.lightSettings.color.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "message.android.notification.light-settings.color.green" => Some(("message.android.notification.lightSettings.color.green", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "message.android.notification.light-settings.color.red" => Some(("message.android.notification.lightSettings.color.red", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
+                    "message.android.notification.light-settings.light-off-duration" => Some(("message.android.notification.lightSettings.lightOffDuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.android.notification.light-settings.light-on-duration" => Some(("message.android.notification.lightSettings.lightOnDuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.android.notification.local-only" => Some(("message.android.notification.localOnly", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "message.android.notification.notification-count" => Some(("message.android.notification.notificationCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "message.android.notification.notification-priority" => Some(("message.android.notification.notificationPriority", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.android.notification.sound" => Some(("message.android.notification.sound", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.android.notification.sticky" => Some(("message.android.notification.sticky", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "message.android.notification.tag" => Some(("message.android.notification.tag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.android.notification.ticker" => Some(("message.android.notification.ticker", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.android.notification.title" => Some(("message.android.notification.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.android.notification.title-loc-args" => Some(("message.android.notification.titleLocArgs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "message.android.notification.title-loc-key" => Some(("message.android.notification.titleLocKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.android.notification.vibrate-timings" => Some(("message.android.notification.vibrateTimings", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "message.android.notification.visibility" => Some(("message.android.notification.visibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.android.priority" => Some(("message.android.priority", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.android.restricted-package-name" => Some(("message.android.restrictedPackageName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.android.ttl" => Some(("message.android.ttl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.apns.fcm-options.analytics-label" => Some(("message.apns.fcmOptions.analyticsLabel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.apns.fcm-options.image" => Some(("message.apns.fcmOptions.image", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.apns.headers" => Some(("message.apns.headers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "message.condition" => Some(("message.condition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.data" => Some(("message.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "message.fcm-options.analytics-label" => Some(("message.fcmOptions.analyticsLabel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.name" => Some(("message.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.notification.body" => Some(("message.notification.body", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.notification.image" => Some(("message.notification.image", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.notification.title" => Some(("message.notification.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.webpush.headers" => Some(("message.webpush.headers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "message.webpush.data" => Some(("message.webpush.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "message.webpush.fcm-options.link" => Some(("message.webpush.fcmOptions.link", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.webpush.fcm-options.analytics-label" => Some(("message.webpush.fcmOptions.analyticsLabel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.topic" => Some(("message.topic", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "message.token" => Some(("message.token", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.android.fcm-options.analytics-label" => Some(("message.android.fcmOptions.analyticsLabel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.android.notification.body-loc-key" => Some(("message.android.notification.bodyLocKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.android.notification.color" => Some(("message.android.notification.color", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.android.notification.image" => Some(("message.android.notification.image", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.android.notification.channel-id" => Some(("message.android.notification.channelId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.android.notification.light-settings.color.blue" => Some(("message.android.notification.lightSettings.color.blue", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "message.android.notification.light-settings.color.alpha" => Some(("message.android.notification.lightSettings.color.alpha", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "message.android.notification.light-settings.color.green" => Some(("message.android.notification.lightSettings.color.green", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "message.android.notification.light-settings.color.red" => Some(("message.android.notification.lightSettings.color.red", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "message.android.notification.light-settings.light-on-duration" => Some(("message.android.notification.lightSettings.lightOnDuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.android.notification.light-settings.light-off-duration" => Some(("message.android.notification.lightSettings.lightOffDuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.android.notification.sticky" => Some(("message.android.notification.sticky", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "message.android.notification.tag" => Some(("message.android.notification.tag", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.android.notification.default-sound" => Some(("message.android.notification.defaultSound", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "message.android.notification.default-light-settings" => Some(("message.android.notification.defaultLightSettings", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "message.android.notification.body-loc-args" => Some(("message.android.notification.bodyLocArgs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "message.android.notification.title" => Some(("message.android.notification.title", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.android.notification.notification-count" => Some(("message.android.notification.notificationCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "message.android.notification.body" => Some(("message.android.notification.body", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.android.notification.event-time" => Some(("message.android.notification.eventTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.android.notification.local-only" => Some(("message.android.notification.localOnly", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "message.android.notification.visibility" => Some(("message.android.notification.visibility", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.android.notification.title-loc-key" => Some(("message.android.notification.titleLocKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.android.notification.ticker" => Some(("message.android.notification.ticker", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.android.notification.icon" => Some(("message.android.notification.icon", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.android.notification.sound" => Some(("message.android.notification.sound", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.android.notification.click-action" => Some(("message.android.notification.clickAction", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.android.notification.title-loc-args" => Some(("message.android.notification.titleLocArgs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "message.android.notification.vibrate-timings" => Some(("message.android.notification.vibrateTimings", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "message.android.notification.notification-priority" => Some(("message.android.notification.notificationPriority", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.android.notification.default-vibrate-timings" => Some(("message.android.notification.defaultVibrateTimings", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "message.android.priority" => Some(("message.android.priority", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.android.collapse-key" => Some(("message.android.collapseKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.android.direct-boot-ok" => Some(("message.android.directBootOk", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "message.android.ttl" => Some(("message.android.ttl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.android.restricted-package-name" => Some(("message.android.restrictedPackageName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.android.data" => Some(("message.android.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "message.data" => Some(("message.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "message.apns.headers" => Some(("message.apns.headers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "message.apns.fcm-options.image" => Some(("message.apns.fcmOptions.image", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.apns.fcm-options.analytics-label" => Some(("message.apns.fcmOptions.analyticsLabel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message.condition" => Some(("message.condition", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.topic" => Some(("message.topic", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.webpush.data" => Some(("message.webpush.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "message.webpush.fcm-options.analytics-label" => Some(("message.webpush.fcmOptions.analyticsLabel", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.webpush.fcm-options.link" => Some(("message.webpush.fcmOptions.link", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "message.webpush.headers" => Some(("message.webpush.headers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "validate-only" => Some(("validateOnly", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["alpha", "analytics-label", "android", "apns", "blue", "body", "body-loc-args", "body-loc-key", "channel-id", "click-action", "collapse-key", "color", "condition", "data", "default-light-settings", "default-sound", "default-vibrate-timings", "direct-boot-ok", "event-time", "fcm-options", "green", "headers", "icon", "image", "light-off-duration", "light-on-duration", "light-settings", "link", "local-only", "message", "name", "notification", "notification-count", "notification-priority", "priority", "red", "restricted-package-name", "sound", "sticky", "tag", "ticker", "title", "title-loc-args", "title-loc-key", "token", "topic", "ttl", "validate-only", "vibrate-timings", "visibility", "webpush"]);
@@ -219,12 +221,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "fcm1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "fcm1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

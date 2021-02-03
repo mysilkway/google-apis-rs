@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_cloudscheduler1 as api;
+extern crate google_cloudscheduler1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_cloudscheduler1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::CloudScheduler<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::CloudScheduler<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -121,41 +123,41 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status.message" => Some(("status.message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "status.code" => Some(("status.code", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "user-update-time" => Some(("userUpdateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-engine-http-target.app-engine-routing.host" => Some(("appEngineHttpTarget.appEngineRouting.host", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-engine-http-target.app-engine-routing.instance" => Some(("appEngineHttpTarget.appEngineRouting.instance", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-engine-http-target.app-engine-routing.service" => Some(("appEngineHttpTarget.appEngineRouting.service", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-engine-http-target.app-engine-routing.version" => Some(("appEngineHttpTarget.appEngineRouting.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-engine-http-target.body" => Some(("appEngineHttpTarget.body", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-engine-http-target.headers" => Some(("appEngineHttpTarget.headers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "app-engine-http-target.http-method" => Some(("appEngineHttpTarget.httpMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-engine-http-target.relative-uri" => Some(("appEngineHttpTarget.relativeUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "attempt-deadline" => Some(("attemptDeadline", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "schedule" => Some(("schedule", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "schedule-time" => Some(("scheduleTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "http-target.body" => Some(("httpTarget.body", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "http-target.headers" => Some(("httpTarget.headers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "http-target.http-method" => Some(("httpTarget.httpMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "http-target.oauth-token.scope" => Some(("httpTarget.oauthToken.scope", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "http-target.oauth-token.service-account-email" => Some(("httpTarget.oauthToken.serviceAccountEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "http-target.oidc-token.audience" => Some(("httpTarget.oidcToken.audience", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "http-target.oidc-token.service-account-email" => Some(("httpTarget.oidcToken.serviceAccountEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "http-target.uri" => Some(("httpTarget.uri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "http-target.oauth-token.scope" => Some(("httpTarget.oauthToken.scope", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "http-target.oauth-token.service-account-email" => Some(("httpTarget.oauthToken.serviceAccountEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "http-target.headers" => Some(("httpTarget.headers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "app-engine-http-target.body" => Some(("appEngineHttpTarget.body", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "app-engine-http-target.headers" => Some(("appEngineHttpTarget.headers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "app-engine-http-target.app-engine-routing.instance" => Some(("appEngineHttpTarget.appEngineRouting.instance", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "app-engine-http-target.app-engine-routing.host" => Some(("appEngineHttpTarget.appEngineRouting.host", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "app-engine-http-target.app-engine-routing.version" => Some(("appEngineHttpTarget.appEngineRouting.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "app-engine-http-target.app-engine-routing.service" => Some(("appEngineHttpTarget.appEngineRouting.service", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "app-engine-http-target.relative-uri" => Some(("appEngineHttpTarget.relativeUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "app-engine-http-target.http-method" => Some(("appEngineHttpTarget.httpMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "last-attempt-time" => Some(("lastAttemptTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "pubsub-target.attributes" => Some(("pubsubTarget.attributes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "pubsub-target.data" => Some(("pubsubTarget.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "pubsub-target.topic-name" => Some(("pubsubTarget.topicName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "time-zone" => Some(("timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "retry-config.max-backoff-duration" => Some(("retryConfig.maxBackoffDuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "retry-config.retry-count" => Some(("retryConfig.retryCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "retry-config.max-doublings" => Some(("retryConfig.maxDoublings", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "retry-config.max-retry-duration" => Some(("retryConfig.maxRetryDuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "retry-config.min-backoff-duration" => Some(("retryConfig.minBackoffDuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "attempt-deadline" => Some(("attemptDeadline", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "retry-config.retry-count" => Some(("retryConfig.retryCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "schedule" => Some(("schedule", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "schedule-time" => Some(("scheduleTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status.code" => Some(("status.code", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "status.message" => Some(("status.message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "time-zone" => Some(("timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "user-update-time" => Some(("userUpdateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["app-engine-http-target", "app-engine-routing", "attempt-deadline", "attributes", "audience", "body", "code", "data", "description", "headers", "host", "http-method", "http-target", "instance", "last-attempt-time", "max-backoff-duration", "max-doublings", "max-retry-duration", "message", "min-backoff-duration", "name", "oauth-token", "oidc-token", "pubsub-target", "relative-uri", "retry-config", "retry-count", "schedule", "schedule-time", "scope", "service", "service-account-email", "state", "status", "time-zone", "topic-name", "uri", "user-update-time", "version"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -403,41 +405,41 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status.message" => Some(("status.message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "status.code" => Some(("status.code", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "user-update-time" => Some(("userUpdateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-engine-http-target.app-engine-routing.host" => Some(("appEngineHttpTarget.appEngineRouting.host", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-engine-http-target.app-engine-routing.instance" => Some(("appEngineHttpTarget.appEngineRouting.instance", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-engine-http-target.app-engine-routing.service" => Some(("appEngineHttpTarget.appEngineRouting.service", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-engine-http-target.app-engine-routing.version" => Some(("appEngineHttpTarget.appEngineRouting.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-engine-http-target.body" => Some(("appEngineHttpTarget.body", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-engine-http-target.headers" => Some(("appEngineHttpTarget.headers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "app-engine-http-target.http-method" => Some(("appEngineHttpTarget.httpMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "app-engine-http-target.relative-uri" => Some(("appEngineHttpTarget.relativeUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "attempt-deadline" => Some(("attemptDeadline", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "schedule" => Some(("schedule", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "schedule-time" => Some(("scheduleTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "http-target.body" => Some(("httpTarget.body", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "http-target.headers" => Some(("httpTarget.headers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "http-target.http-method" => Some(("httpTarget.httpMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "http-target.oauth-token.scope" => Some(("httpTarget.oauthToken.scope", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "http-target.oauth-token.service-account-email" => Some(("httpTarget.oauthToken.serviceAccountEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "http-target.oidc-token.audience" => Some(("httpTarget.oidcToken.audience", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "http-target.oidc-token.service-account-email" => Some(("httpTarget.oidcToken.serviceAccountEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "http-target.uri" => Some(("httpTarget.uri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "http-target.oauth-token.scope" => Some(("httpTarget.oauthToken.scope", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "http-target.oauth-token.service-account-email" => Some(("httpTarget.oauthToken.serviceAccountEmail", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "http-target.headers" => Some(("httpTarget.headers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "app-engine-http-target.body" => Some(("appEngineHttpTarget.body", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "app-engine-http-target.headers" => Some(("appEngineHttpTarget.headers", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "app-engine-http-target.app-engine-routing.instance" => Some(("appEngineHttpTarget.appEngineRouting.instance", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "app-engine-http-target.app-engine-routing.host" => Some(("appEngineHttpTarget.appEngineRouting.host", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "app-engine-http-target.app-engine-routing.version" => Some(("appEngineHttpTarget.appEngineRouting.version", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "app-engine-http-target.app-engine-routing.service" => Some(("appEngineHttpTarget.appEngineRouting.service", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "app-engine-http-target.relative-uri" => Some(("appEngineHttpTarget.relativeUri", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "app-engine-http-target.http-method" => Some(("appEngineHttpTarget.httpMethod", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "last-attempt-time" => Some(("lastAttemptTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "pubsub-target.attributes" => Some(("pubsubTarget.attributes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "pubsub-target.data" => Some(("pubsubTarget.data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "pubsub-target.topic-name" => Some(("pubsubTarget.topicName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "time-zone" => Some(("timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "retry-config.max-backoff-duration" => Some(("retryConfig.maxBackoffDuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "retry-config.retry-count" => Some(("retryConfig.retryCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "retry-config.max-doublings" => Some(("retryConfig.maxDoublings", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
                     "retry-config.max-retry-duration" => Some(("retryConfig.maxRetryDuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "retry-config.min-backoff-duration" => Some(("retryConfig.minBackoffDuration", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "attempt-deadline" => Some(("attemptDeadline", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "retry-config.retry-count" => Some(("retryConfig.retryCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "schedule" => Some(("schedule", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "schedule-time" => Some(("scheduleTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "state" => Some(("state", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status.code" => Some(("status.code", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "status.message" => Some(("status.message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "time-zone" => Some(("timeZone", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "user-update-time" => Some(("userUpdateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["app-engine-http-target", "app-engine-routing", "attempt-deadline", "attributes", "audience", "body", "code", "data", "description", "headers", "host", "http-method", "http-target", "instance", "last-attempt-time", "max-backoff-duration", "max-doublings", "max-retry-duration", "message", "min-backoff-duration", "name", "oauth-token", "oidc-token", "pubsub-target", "relative-uri", "retry-config", "retry-count", "schedule", "schedule-time", "scope", "service", "service-account-email", "state", "status", "time-zone", "topic-name", "uri", "user-update-time", "version"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -783,7 +785,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -879,12 +881,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "cloudscheduler1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "cloudscheduler1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

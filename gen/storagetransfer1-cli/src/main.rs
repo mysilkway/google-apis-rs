@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_storagetransfer1 as api;
+extern crate google_storagetransfer1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_storagetransfer1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Storagetransfer<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::Storagetransfer<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -121,44 +123,44 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-spec.object-conditions.max-time-elapsed-since-last-modification" => Some(("transferSpec.objectConditions.maxTimeElapsedSinceLastModification", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-spec.object-conditions.include-prefixes" => Some(("transferSpec.objectConditions.includePrefixes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "transfer-spec.object-conditions.min-time-elapsed-since-last-modification" => Some(("transferSpec.objectConditions.minTimeElapsedSinceLastModification", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-spec.object-conditions.last-modified-before" => Some(("transferSpec.objectConditions.lastModifiedBefore", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-spec.object-conditions.last-modified-since" => Some(("transferSpec.objectConditions.lastModifiedSince", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-spec.object-conditions.exclude-prefixes" => Some(("transferSpec.objectConditions.excludePrefixes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "transfer-spec.gcs-data-source.bucket-name" => Some(("transferSpec.gcsDataSource.bucketName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-spec.http-data-source.list-url" => Some(("transferSpec.httpDataSource.listUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-spec.transfer-options.overwrite-objects-already-existing-in-sink" => Some(("transferSpec.transferOptions.overwriteObjectsAlreadyExistingInSink", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "transfer-spec.transfer-options.delete-objects-from-source-after-transfer" => Some(("transferSpec.transferOptions.deleteObjectsFromSourceAfterTransfer", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "transfer-spec.transfer-options.delete-objects-unique-in-sink" => Some(("transferSpec.transferOptions.deleteObjectsUniqueInSink", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "transfer-spec.gcs-data-sink.bucket-name" => Some(("transferSpec.gcsDataSink.bucketName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-spec.aws-s3-data-source.aws-access-key.secret-access-key" => Some(("transferSpec.awsS3DataSource.awsAccessKey.secretAccessKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-spec.aws-s3-data-source.aws-access-key.access-key-id" => Some(("transferSpec.awsS3DataSource.awsAccessKey.accessKeyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-spec.aws-s3-data-source.bucket-name" => Some(("transferSpec.awsS3DataSource.bucketName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-spec.azure-blob-storage-data-source.container" => Some(("transferSpec.azureBlobStorageDataSource.container", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-spec.azure-blob-storage-data-source.azure-credentials.sas-token" => Some(("transferSpec.azureBlobStorageDataSource.azureCredentials.sasToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-spec.azure-blob-storage-data-source.storage-account" => Some(("transferSpec.azureBlobStorageDataSource.storageAccount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creation-time" => Some(("creationTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "deletion-time" => Some(("deletionTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "schedule.schedule-start-date.year" => Some(("schedule.scheduleStartDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "schedule.schedule-start-date.day" => Some(("schedule.scheduleStartDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "schedule.schedule-start-date.month" => Some(("schedule.scheduleStartDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "schedule.start-time-of-day.hours" => Some(("schedule.startTimeOfDay.hours", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "schedule.start-time-of-day.nanos" => Some(("schedule.startTimeOfDay.nanos", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "schedule.start-time-of-day.minutes" => Some(("schedule.startTimeOfDay.minutes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "schedule.start-time-of-day.seconds" => Some(("schedule.startTimeOfDay.seconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "schedule.schedule-end-date.year" => Some(("schedule.scheduleEndDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "schedule.schedule-end-date.day" => Some(("schedule.scheduleEndDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "schedule.schedule-end-date.month" => Some(("schedule.scheduleEndDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "project-id" => Some(("projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "last-modification-time" => Some(("lastModificationTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creation-time" => Some(("creationTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "notification-config.event-types" => Some(("notificationConfig.eventTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "notification-config.payload-format" => Some(("notificationConfig.payloadFormat", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "notification-config.pubsub-topic" => Some(("notificationConfig.pubsubTopic", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "project-id" => Some(("projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "schedule.schedule-end-date.day" => Some(("schedule.scheduleEndDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "schedule.schedule-end-date.month" => Some(("schedule.scheduleEndDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "schedule.schedule-end-date.year" => Some(("schedule.scheduleEndDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "schedule.schedule-start-date.day" => Some(("schedule.scheduleStartDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "schedule.schedule-start-date.month" => Some(("schedule.scheduleStartDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "schedule.schedule-start-date.year" => Some(("schedule.scheduleStartDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "schedule.start-time-of-day.hours" => Some(("schedule.startTimeOfDay.hours", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "schedule.start-time-of-day.minutes" => Some(("schedule.startTimeOfDay.minutes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "schedule.start-time-of-day.nanos" => Some(("schedule.startTimeOfDay.nanos", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "schedule.start-time-of-day.seconds" => Some(("schedule.startTimeOfDay.seconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-spec.aws-s3-data-source.aws-access-key.access-key-id" => Some(("transferSpec.awsS3DataSource.awsAccessKey.accessKeyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-spec.aws-s3-data-source.aws-access-key.secret-access-key" => Some(("transferSpec.awsS3DataSource.awsAccessKey.secretAccessKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-spec.aws-s3-data-source.bucket-name" => Some(("transferSpec.awsS3DataSource.bucketName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-spec.azure-blob-storage-data-source.azure-credentials.sas-token" => Some(("transferSpec.azureBlobStorageDataSource.azureCredentials.sasToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-spec.azure-blob-storage-data-source.container" => Some(("transferSpec.azureBlobStorageDataSource.container", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-spec.azure-blob-storage-data-source.storage-account" => Some(("transferSpec.azureBlobStorageDataSource.storageAccount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-spec.gcs-data-sink.bucket-name" => Some(("transferSpec.gcsDataSink.bucketName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-spec.gcs-data-source.bucket-name" => Some(("transferSpec.gcsDataSource.bucketName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-spec.http-data-source.list-url" => Some(("transferSpec.httpDataSource.listUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-spec.object-conditions.exclude-prefixes" => Some(("transferSpec.objectConditions.excludePrefixes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "transfer-spec.object-conditions.include-prefixes" => Some(("transferSpec.objectConditions.includePrefixes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "transfer-spec.object-conditions.last-modified-before" => Some(("transferSpec.objectConditions.lastModifiedBefore", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-spec.object-conditions.last-modified-since" => Some(("transferSpec.objectConditions.lastModifiedSince", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-spec.object-conditions.max-time-elapsed-since-last-modification" => Some(("transferSpec.objectConditions.maxTimeElapsedSinceLastModification", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-spec.object-conditions.min-time-elapsed-since-last-modification" => Some(("transferSpec.objectConditions.minTimeElapsedSinceLastModification", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-spec.transfer-options.delete-objects-from-source-after-transfer" => Some(("transferSpec.transferOptions.deleteObjectsFromSourceAfterTransfer", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "transfer-spec.transfer-options.delete-objects-unique-in-sink" => Some(("transferSpec.transferOptions.deleteObjectsUniqueInSink", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "transfer-spec.transfer-options.overwrite-objects-already-existing-in-sink" => Some(("transferSpec.transferOptions.overwriteObjectsAlreadyExistingInSink", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["access-key-id", "aws-access-key", "aws-s3-data-source", "azure-blob-storage-data-source", "azure-credentials", "bucket-name", "container", "creation-time", "day", "delete-objects-from-source-after-transfer", "delete-objects-unique-in-sink", "deletion-time", "description", "event-types", "exclude-prefixes", "gcs-data-sink", "gcs-data-source", "hours", "http-data-source", "include-prefixes", "last-modification-time", "last-modified-before", "last-modified-since", "list-url", "max-time-elapsed-since-last-modification", "min-time-elapsed-since-last-modification", "minutes", "month", "name", "nanos", "notification-config", "object-conditions", "overwrite-objects-already-existing-in-sink", "payload-format", "project-id", "pubsub-topic", "sas-token", "schedule", "schedule-end-date", "schedule-start-date", "seconds", "secret-access-key", "start-time-of-day", "status", "storage-account", "transfer-options", "transfer-spec", "year"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -362,45 +364,45 @@ impl<'n> Engine<'n> {
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
                     "project-id" => Some(("projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "update-transfer-job-field-mask" => Some(("updateTransferJobFieldMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-job.status" => Some(("transferJob.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-job.transfer-spec.object-conditions.max-time-elapsed-since-last-modification" => Some(("transferJob.transferSpec.objectConditions.maxTimeElapsedSinceLastModification", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-job.transfer-spec.object-conditions.include-prefixes" => Some(("transferJob.transferSpec.objectConditions.includePrefixes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "transfer-job.transfer-spec.object-conditions.min-time-elapsed-since-last-modification" => Some(("transferJob.transferSpec.objectConditions.minTimeElapsedSinceLastModification", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-job.transfer-spec.object-conditions.last-modified-before" => Some(("transferJob.transferSpec.objectConditions.lastModifiedBefore", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-job.transfer-spec.object-conditions.last-modified-since" => Some(("transferJob.transferSpec.objectConditions.lastModifiedSince", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-job.transfer-spec.object-conditions.exclude-prefixes" => Some(("transferJob.transferSpec.objectConditions.excludePrefixes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "transfer-job.transfer-spec.gcs-data-source.bucket-name" => Some(("transferJob.transferSpec.gcsDataSource.bucketName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-job.transfer-spec.http-data-source.list-url" => Some(("transferJob.transferSpec.httpDataSource.listUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-job.transfer-spec.transfer-options.overwrite-objects-already-existing-in-sink" => Some(("transferJob.transferSpec.transferOptions.overwriteObjectsAlreadyExistingInSink", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "transfer-job.transfer-spec.transfer-options.delete-objects-from-source-after-transfer" => Some(("transferJob.transferSpec.transferOptions.deleteObjectsFromSourceAfterTransfer", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "transfer-job.transfer-spec.transfer-options.delete-objects-unique-in-sink" => Some(("transferJob.transferSpec.transferOptions.deleteObjectsUniqueInSink", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
-                    "transfer-job.transfer-spec.gcs-data-sink.bucket-name" => Some(("transferJob.transferSpec.gcsDataSink.bucketName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-job.transfer-spec.aws-s3-data-source.aws-access-key.secret-access-key" => Some(("transferJob.transferSpec.awsS3DataSource.awsAccessKey.secretAccessKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-job.transfer-spec.aws-s3-data-source.aws-access-key.access-key-id" => Some(("transferJob.transferSpec.awsS3DataSource.awsAccessKey.accessKeyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-job.transfer-spec.aws-s3-data-source.bucket-name" => Some(("transferJob.transferSpec.awsS3DataSource.bucketName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-job.transfer-spec.azure-blob-storage-data-source.container" => Some(("transferJob.transferSpec.azureBlobStorageDataSource.container", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-job.transfer-spec.azure-blob-storage-data-source.azure-credentials.sas-token" => Some(("transferJob.transferSpec.azureBlobStorageDataSource.azureCredentials.sasToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-job.transfer-spec.azure-blob-storage-data-source.storage-account" => Some(("transferJob.transferSpec.azureBlobStorageDataSource.storageAccount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-job.creation-time" => Some(("transferJob.creationTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "transfer-job.deletion-time" => Some(("transferJob.deletionTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-job.schedule.schedule-start-date.year" => Some(("transferJob.schedule.scheduleStartDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "transfer-job.schedule.schedule-start-date.day" => Some(("transferJob.schedule.scheduleStartDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "transfer-job.schedule.schedule-start-date.month" => Some(("transferJob.schedule.scheduleStartDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "transfer-job.schedule.start-time-of-day.hours" => Some(("transferJob.schedule.startTimeOfDay.hours", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "transfer-job.schedule.start-time-of-day.nanos" => Some(("transferJob.schedule.startTimeOfDay.nanos", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "transfer-job.schedule.start-time-of-day.minutes" => Some(("transferJob.schedule.startTimeOfDay.minutes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "transfer-job.schedule.start-time-of-day.seconds" => Some(("transferJob.schedule.startTimeOfDay.seconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "transfer-job.schedule.schedule-end-date.year" => Some(("transferJob.schedule.scheduleEndDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "transfer-job.schedule.schedule-end-date.day" => Some(("transferJob.schedule.scheduleEndDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "transfer-job.schedule.schedule-end-date.month" => Some(("transferJob.schedule.scheduleEndDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "transfer-job.project-id" => Some(("transferJob.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "transfer-job.description" => Some(("transferJob.description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "transfer-job.last-modification-time" => Some(("transferJob.lastModificationTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-job.creation-time" => Some(("transferJob.creationTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-job.name" => Some(("transferJob.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "transfer-job.notification-config.event-types" => Some(("transferJob.notificationConfig.eventTypes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
                     "transfer-job.notification-config.payload-format" => Some(("transferJob.notificationConfig.payloadFormat", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "transfer-job.notification-config.pubsub-topic" => Some(("transferJob.notificationConfig.pubsubTopic", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "transfer-job.name" => Some(("transferJob.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-job.project-id" => Some(("transferJob.projectId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-job.schedule.schedule-end-date.day" => Some(("transferJob.schedule.scheduleEndDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "transfer-job.schedule.schedule-end-date.month" => Some(("transferJob.schedule.scheduleEndDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "transfer-job.schedule.schedule-end-date.year" => Some(("transferJob.schedule.scheduleEndDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "transfer-job.schedule.schedule-start-date.day" => Some(("transferJob.schedule.scheduleStartDate.day", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "transfer-job.schedule.schedule-start-date.month" => Some(("transferJob.schedule.scheduleStartDate.month", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "transfer-job.schedule.schedule-start-date.year" => Some(("transferJob.schedule.scheduleStartDate.year", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "transfer-job.schedule.start-time-of-day.hours" => Some(("transferJob.schedule.startTimeOfDay.hours", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "transfer-job.schedule.start-time-of-day.minutes" => Some(("transferJob.schedule.startTimeOfDay.minutes", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "transfer-job.schedule.start-time-of-day.nanos" => Some(("transferJob.schedule.startTimeOfDay.nanos", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "transfer-job.schedule.start-time-of-day.seconds" => Some(("transferJob.schedule.startTimeOfDay.seconds", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "transfer-job.status" => Some(("transferJob.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-job.transfer-spec.aws-s3-data-source.aws-access-key.access-key-id" => Some(("transferJob.transferSpec.awsS3DataSource.awsAccessKey.accessKeyId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-job.transfer-spec.aws-s3-data-source.aws-access-key.secret-access-key" => Some(("transferJob.transferSpec.awsS3DataSource.awsAccessKey.secretAccessKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-job.transfer-spec.aws-s3-data-source.bucket-name" => Some(("transferJob.transferSpec.awsS3DataSource.bucketName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-job.transfer-spec.azure-blob-storage-data-source.azure-credentials.sas-token" => Some(("transferJob.transferSpec.azureBlobStorageDataSource.azureCredentials.sasToken", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-job.transfer-spec.azure-blob-storage-data-source.container" => Some(("transferJob.transferSpec.azureBlobStorageDataSource.container", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-job.transfer-spec.azure-blob-storage-data-source.storage-account" => Some(("transferJob.transferSpec.azureBlobStorageDataSource.storageAccount", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-job.transfer-spec.gcs-data-sink.bucket-name" => Some(("transferJob.transferSpec.gcsDataSink.bucketName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-job.transfer-spec.gcs-data-source.bucket-name" => Some(("transferJob.transferSpec.gcsDataSource.bucketName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-job.transfer-spec.http-data-source.list-url" => Some(("transferJob.transferSpec.httpDataSource.listUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-job.transfer-spec.object-conditions.exclude-prefixes" => Some(("transferJob.transferSpec.objectConditions.excludePrefixes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "transfer-job.transfer-spec.object-conditions.include-prefixes" => Some(("transferJob.transferSpec.objectConditions.includePrefixes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "transfer-job.transfer-spec.object-conditions.last-modified-before" => Some(("transferJob.transferSpec.objectConditions.lastModifiedBefore", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-job.transfer-spec.object-conditions.last-modified-since" => Some(("transferJob.transferSpec.objectConditions.lastModifiedSince", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-job.transfer-spec.object-conditions.max-time-elapsed-since-last-modification" => Some(("transferJob.transferSpec.objectConditions.maxTimeElapsedSinceLastModification", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-job.transfer-spec.object-conditions.min-time-elapsed-since-last-modification" => Some(("transferJob.transferSpec.objectConditions.minTimeElapsedSinceLastModification", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "transfer-job.transfer-spec.transfer-options.delete-objects-from-source-after-transfer" => Some(("transferJob.transferSpec.transferOptions.deleteObjectsFromSourceAfterTransfer", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "transfer-job.transfer-spec.transfer-options.delete-objects-unique-in-sink" => Some(("transferJob.transferSpec.transferOptions.deleteObjectsUniqueInSink", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "transfer-job.transfer-spec.transfer-options.overwrite-objects-already-existing-in-sink" => Some(("transferJob.transferSpec.transferOptions.overwriteObjectsAlreadyExistingInSink", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "update-transfer-job-field-mask" => Some(("updateTransferJobFieldMask", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["access-key-id", "aws-access-key", "aws-s3-data-source", "azure-blob-storage-data-source", "azure-credentials", "bucket-name", "container", "creation-time", "day", "delete-objects-from-source-after-transfer", "delete-objects-unique-in-sink", "deletion-time", "description", "event-types", "exclude-prefixes", "gcs-data-sink", "gcs-data-source", "hours", "http-data-source", "include-prefixes", "last-modification-time", "last-modified-before", "last-modified-since", "list-url", "max-time-elapsed-since-last-modification", "min-time-elapsed-since-last-modification", "minutes", "month", "name", "nanos", "notification-config", "object-conditions", "overwrite-objects-already-existing-in-sink", "payload-format", "project-id", "pubsub-topic", "sas-token", "schedule", "schedule-end-date", "schedule-start-date", "seconds", "secret-access-key", "start-time-of-day", "status", "storage-account", "transfer-job", "transfer-options", "transfer-spec", "update-transfer-job-field-mask", "year"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -874,12 +876,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "storagetransfer1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "storagetransfer1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

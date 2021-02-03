@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_firebasehosting1_beta1 as api;
+extern crate google_firebasehosting1_beta1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_firebasehosting1_beta1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::FirebaseHosting<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::FirebaseHosting<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -121,31 +123,31 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "message" => Some(("message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.status" => Some(("version.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.delete-user.image-url" => Some(("version.deleteUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.delete-user.email" => Some(("version.deleteUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.name" => Some(("version.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.version-bytes" => Some(("version.versionBytes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.labels" => Some(("version.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "version.finalize-user.image-url" => Some(("version.finalizeUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.finalize-user.email" => Some(("version.finalizeUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.finalize-time" => Some(("version.finalizeTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.create-user.image-url" => Some(("version.createUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.create-user.email" => Some(("version.createUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "release-time" => Some(("releaseTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "release-user.email" => Some(("releaseUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "release-user.image-url" => Some(("releaseUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.config.app-association" => Some(("version.config.appAssociation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "version.config.clean-urls" => Some(("version.config.cleanUrls", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "version.config.trailing-slash-behavior" => Some(("version.config.trailingSlashBehavior", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.config.app-association" => Some(("version.config.appAssociation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.create-time" => Some(("version.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.create-user.email" => Some(("version.createUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.create-user.image-url" => Some(("version.createUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.delete-time" => Some(("version.deleteTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.delete-user.email" => Some(("version.deleteUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.delete-user.image-url" => Some(("version.deleteUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.file-count" => Some(("version.fileCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "version.finalize-time" => Some(("version.finalizeTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.finalize-user.email" => Some(("version.finalizeUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.finalize-user.image-url" => Some(("version.finalizeUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.labels" => Some(("version.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "version.name" => Some(("version.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "version.preview.active" => Some(("version.preview.active", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "version.preview.expire-time" => Some(("version.preview.expireTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.delete-time" => Some(("version.deleteTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.create-time" => Some(("version.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.file-count" => Some(("version.fileCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "release-user.image-url" => Some(("releaseUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "release-user.email" => Some(("releaseUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message" => Some(("message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "release-time" => Some(("releaseTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.status" => Some(("version.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.version-bytes" => Some(("version.versionBytes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["active", "app-association", "clean-urls", "config", "create-time", "create-user", "delete-time", "delete-user", "email", "expire-time", "file-count", "finalize-time", "finalize-user", "image-url", "labels", "message", "name", "preview", "release-time", "release-user", "status", "trailing-slash-behavior", "type", "version", "version-bytes"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -293,22 +295,22 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "domain-redirect.type" => Some(("domainRedirect.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "domain-redirect.domain-name" => Some(("domainRedirect.domainName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "domain-name" => Some(("domainName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "site" => Some(("site", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "domain-redirect.domain-name" => Some(("domainRedirect.domainName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "domain-redirect.type" => Some(("domainRedirect.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "provisioning.cert-challenge-discovered-txt" => Some(("provisioning.certChallengeDiscoveredTxt", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "provisioning.cert-challenge-dns.domain-name" => Some(("provisioning.certChallengeDns.domainName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "provisioning.cert-challenge-dns.token" => Some(("provisioning.certChallengeDns.token", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "provisioning.cert-challenge-http.path" => Some(("provisioning.certChallengeHttp.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "provisioning.cert-challenge-http.token" => Some(("provisioning.certChallengeHttp.token", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "provisioning.expected-ips" => Some(("provisioning.expectedIps", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "provisioning.cert-challenge-discovered-txt" => Some(("provisioning.certChallengeDiscoveredTxt", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "provisioning.dns-fetch-time" => Some(("provisioning.dnsFetchTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "provisioning.discovered-ips" => Some(("provisioning.discoveredIps", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "provisioning.cert-challenge-dns.token" => Some(("provisioning.certChallengeDns.token", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "provisioning.cert-challenge-dns.domain-name" => Some(("provisioning.certChallengeDns.domainName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "provisioning.dns-status" => Some(("provisioning.dnsStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "provisioning.cert-status" => Some(("provisioning.certStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "provisioning.discovered-ips" => Some(("provisioning.discoveredIps", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "provisioning.dns-fetch-time" => Some(("provisioning.dnsFetchTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "provisioning.dns-status" => Some(("provisioning.dnsStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "provisioning.expected-ips" => Some(("provisioning.expectedIps", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "site" => Some(("site", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["cert-challenge-discovered-txt", "cert-challenge-dns", "cert-challenge-http", "cert-status", "discovered-ips", "dns-fetch-time", "dns-status", "domain-name", "domain-redirect", "expected-ips", "path", "provisioning", "site", "status", "token", "type", "update-time"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -556,22 +558,22 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "domain-redirect.type" => Some(("domainRedirect.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "domain-redirect.domain-name" => Some(("domainRedirect.domainName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "domain-name" => Some(("domainName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "site" => Some(("site", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "domain-redirect.domain-name" => Some(("domainRedirect.domainName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "domain-redirect.type" => Some(("domainRedirect.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "provisioning.cert-challenge-discovered-txt" => Some(("provisioning.certChallengeDiscoveredTxt", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "provisioning.cert-challenge-dns.domain-name" => Some(("provisioning.certChallengeDns.domainName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "provisioning.cert-challenge-dns.token" => Some(("provisioning.certChallengeDns.token", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "provisioning.cert-challenge-http.path" => Some(("provisioning.certChallengeHttp.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "provisioning.cert-challenge-http.token" => Some(("provisioning.certChallengeHttp.token", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "provisioning.expected-ips" => Some(("provisioning.expectedIps", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "provisioning.cert-challenge-discovered-txt" => Some(("provisioning.certChallengeDiscoveredTxt", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "provisioning.dns-fetch-time" => Some(("provisioning.dnsFetchTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "provisioning.discovered-ips" => Some(("provisioning.discoveredIps", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "provisioning.cert-challenge-dns.token" => Some(("provisioning.certChallengeDns.token", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "provisioning.cert-challenge-dns.domain-name" => Some(("provisioning.certChallengeDns.domainName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "provisioning.dns-status" => Some(("provisioning.dnsStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "provisioning.cert-status" => Some(("provisioning.certStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "provisioning.discovered-ips" => Some(("provisioning.discoveredIps", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "provisioning.dns-fetch-time" => Some(("provisioning.dnsFetchTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "provisioning.dns-status" => Some(("provisioning.dnsStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "provisioning.expected-ips" => Some(("provisioning.expectedIps", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "site" => Some(("site", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["cert-challenge-discovered-txt", "cert-challenge-dns", "cert-challenge-http", "cert-status", "discovered-ips", "dns-fetch-time", "dns-status", "domain-name", "domain-redirect", "expected-ips", "path", "provisioning", "site", "status", "token", "type", "update-time"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -708,31 +710,31 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "message" => Some(("message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.status" => Some(("version.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.delete-user.image-url" => Some(("version.deleteUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.delete-user.email" => Some(("version.deleteUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.name" => Some(("version.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.version-bytes" => Some(("version.versionBytes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.labels" => Some(("version.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "version.finalize-user.image-url" => Some(("version.finalizeUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.finalize-user.email" => Some(("version.finalizeUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.finalize-time" => Some(("version.finalizeTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.create-user.image-url" => Some(("version.createUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.create-user.email" => Some(("version.createUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "release-time" => Some(("releaseTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "release-user.email" => Some(("releaseUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "release-user.image-url" => Some(("releaseUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.config.app-association" => Some(("version.config.appAssociation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "version.config.clean-urls" => Some(("version.config.cleanUrls", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "version.config.trailing-slash-behavior" => Some(("version.config.trailingSlashBehavior", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.config.app-association" => Some(("version.config.appAssociation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.create-time" => Some(("version.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.create-user.email" => Some(("version.createUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.create-user.image-url" => Some(("version.createUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.delete-time" => Some(("version.deleteTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.delete-user.email" => Some(("version.deleteUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.delete-user.image-url" => Some(("version.deleteUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.file-count" => Some(("version.fileCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "version.finalize-time" => Some(("version.finalizeTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.finalize-user.email" => Some(("version.finalizeUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.finalize-user.image-url" => Some(("version.finalizeUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.labels" => Some(("version.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "version.name" => Some(("version.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "version.preview.active" => Some(("version.preview.active", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "version.preview.expire-time" => Some(("version.preview.expireTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.delete-time" => Some(("version.deleteTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.create-time" => Some(("version.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.file-count" => Some(("version.fileCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "release-user.image-url" => Some(("releaseUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "release-user.email" => Some(("releaseUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message" => Some(("message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "release-time" => Some(("releaseTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.status" => Some(("version.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.version-bytes" => Some(("version.versionBytes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["active", "app-association", "clean-urls", "config", "create-time", "create-user", "delete-time", "delete-user", "email", "expire-time", "file-count", "finalize-time", "finalize-user", "image-url", "labels", "message", "name", "preview", "release-time", "release-user", "status", "trailing-slash-behavior", "type", "version", "version-bytes"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -880,8 +882,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "max-versions" => Some(("maxVersions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "cloud-logging-enabled" => Some(("cloudLoggingEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "max-versions" => Some(("maxVersions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["cloud-logging-enabled", "max-versions"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -970,25 +972,25 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "delete-user.image-url" => Some(("deleteUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "delete-user.email" => Some(("deleteUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version-bytes" => Some(("versionBytes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "finalize-user.image-url" => Some(("finalizeUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "finalize-user.email" => Some(("finalizeUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "finalize-time" => Some(("finalizeTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "create-user.image-url" => Some(("createUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "create-user.email" => Some(("createUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.app-association" => Some(("config.appAssociation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.clean-urls" => Some(("config.cleanUrls", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "config.trailing-slash-behavior" => Some(("config.trailingSlashBehavior", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.app-association" => Some(("config.appAssociation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "create-user.email" => Some(("createUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "create-user.image-url" => Some(("createUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "delete-time" => Some(("deleteTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "delete-user.email" => Some(("deleteUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "delete-user.image-url" => Some(("deleteUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "file-count" => Some(("fileCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "finalize-time" => Some(("finalizeTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "finalize-user.email" => Some(("finalizeUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "finalize-user.image-url" => Some(("finalizeUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "preview.active" => Some(("preview.active", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "preview.expire-time" => Some(("preview.expireTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "delete-time" => Some(("deleteTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "file-count" => Some(("fileCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version-bytes" => Some(("versionBytes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["active", "app-association", "clean-urls", "config", "create-time", "create-user", "delete-time", "delete-user", "email", "expire-time", "file-count", "finalize-time", "finalize-user", "image-url", "labels", "name", "preview", "status", "trailing-slash-behavior", "version-bytes"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1023,7 +1025,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["size-bytes", "version-id"].iter().map(|v|*v));
+                                                                           v.extend(["version-id", "size-bytes"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1256,25 +1258,25 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "delete-user.image-url" => Some(("deleteUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "delete-user.email" => Some(("deleteUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version-bytes" => Some(("versionBytes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "finalize-user.image-url" => Some(("finalizeUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "finalize-user.email" => Some(("finalizeUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "finalize-time" => Some(("finalizeTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "create-user.image-url" => Some(("createUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "create-user.email" => Some(("createUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.app-association" => Some(("config.appAssociation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.clean-urls" => Some(("config.cleanUrls", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "config.trailing-slash-behavior" => Some(("config.trailingSlashBehavior", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.app-association" => Some(("config.appAssociation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "create-user.email" => Some(("createUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "create-user.image-url" => Some(("createUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "delete-time" => Some(("deleteTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "delete-user.email" => Some(("deleteUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "delete-user.image-url" => Some(("deleteUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "file-count" => Some(("fileCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "finalize-time" => Some(("finalizeTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "finalize-user.email" => Some(("finalizeUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "finalize-user.image-url" => Some(("finalizeUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "preview.active" => Some(("preview.active", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "preview.expire-time" => Some(("preview.expireTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "delete-time" => Some(("deleteTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "file-count" => Some(("fileCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version-bytes" => Some(("versionBytes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["active", "app-association", "clean-urls", "config", "create-time", "create-user", "delete-time", "delete-user", "email", "expire-time", "file-count", "finalize-time", "finalize-user", "image-url", "labels", "name", "preview", "status", "trailing-slash-behavior", "version-bytes"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1448,31 +1450,31 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "message" => Some(("message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.status" => Some(("version.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.delete-user.image-url" => Some(("version.deleteUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.delete-user.email" => Some(("version.deleteUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.name" => Some(("version.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.version-bytes" => Some(("version.versionBytes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.labels" => Some(("version.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "version.finalize-user.image-url" => Some(("version.finalizeUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.finalize-user.email" => Some(("version.finalizeUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.finalize-time" => Some(("version.finalizeTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.create-user.image-url" => Some(("version.createUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.create-user.email" => Some(("version.createUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "release-time" => Some(("releaseTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "release-user.email" => Some(("releaseUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "release-user.image-url" => Some(("releaseUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.config.app-association" => Some(("version.config.appAssociation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "version.config.clean-urls" => Some(("version.config.cleanUrls", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "version.config.trailing-slash-behavior" => Some(("version.config.trailingSlashBehavior", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.config.app-association" => Some(("version.config.appAssociation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.create-time" => Some(("version.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.create-user.email" => Some(("version.createUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.create-user.image-url" => Some(("version.createUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.delete-time" => Some(("version.deleteTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.delete-user.email" => Some(("version.deleteUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.delete-user.image-url" => Some(("version.deleteUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.file-count" => Some(("version.fileCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "version.finalize-time" => Some(("version.finalizeTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.finalize-user.email" => Some(("version.finalizeUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.finalize-user.image-url" => Some(("version.finalizeUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.labels" => Some(("version.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "version.name" => Some(("version.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "version.preview.active" => Some(("version.preview.active", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "version.preview.expire-time" => Some(("version.preview.expireTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.delete-time" => Some(("version.deleteTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.create-time" => Some(("version.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.file-count" => Some(("version.fileCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "release-user.image-url" => Some(("releaseUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "release-user.email" => Some(("releaseUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message" => Some(("message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "release-time" => Some(("releaseTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.status" => Some(("version.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.version-bytes" => Some(("version.versionBytes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["active", "app-association", "clean-urls", "config", "create-time", "create-user", "delete-time", "delete-user", "email", "expire-time", "file-count", "finalize-time", "finalize-user", "image-url", "labels", "message", "name", "preview", "release-time", "release-user", "status", "trailing-slash-behavior", "type", "version", "version-bytes"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1620,22 +1622,22 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "domain-redirect.type" => Some(("domainRedirect.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "domain-redirect.domain-name" => Some(("domainRedirect.domainName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "domain-name" => Some(("domainName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "site" => Some(("site", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "domain-redirect.domain-name" => Some(("domainRedirect.domainName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "domain-redirect.type" => Some(("domainRedirect.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "provisioning.cert-challenge-discovered-txt" => Some(("provisioning.certChallengeDiscoveredTxt", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "provisioning.cert-challenge-dns.domain-name" => Some(("provisioning.certChallengeDns.domainName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "provisioning.cert-challenge-dns.token" => Some(("provisioning.certChallengeDns.token", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "provisioning.cert-challenge-http.path" => Some(("provisioning.certChallengeHttp.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "provisioning.cert-challenge-http.token" => Some(("provisioning.certChallengeHttp.token", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "provisioning.expected-ips" => Some(("provisioning.expectedIps", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "provisioning.cert-challenge-discovered-txt" => Some(("provisioning.certChallengeDiscoveredTxt", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "provisioning.dns-fetch-time" => Some(("provisioning.dnsFetchTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "provisioning.discovered-ips" => Some(("provisioning.discoveredIps", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "provisioning.cert-challenge-dns.token" => Some(("provisioning.certChallengeDns.token", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "provisioning.cert-challenge-dns.domain-name" => Some(("provisioning.certChallengeDns.domainName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "provisioning.dns-status" => Some(("provisioning.dnsStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "provisioning.cert-status" => Some(("provisioning.certStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "provisioning.discovered-ips" => Some(("provisioning.discoveredIps", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "provisioning.dns-fetch-time" => Some(("provisioning.dnsFetchTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "provisioning.dns-status" => Some(("provisioning.dnsStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "provisioning.expected-ips" => Some(("provisioning.expectedIps", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "site" => Some(("site", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["cert-challenge-discovered-txt", "cert-challenge-dns", "cert-challenge-http", "cert-status", "discovered-ips", "dns-fetch-time", "dns-status", "domain-name", "domain-redirect", "expected-ips", "path", "provisioning", "site", "status", "token", "type", "update-time"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1883,22 +1885,22 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "domain-redirect.type" => Some(("domainRedirect.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "domain-redirect.domain-name" => Some(("domainRedirect.domainName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "domain-name" => Some(("domainName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "site" => Some(("site", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "domain-redirect.domain-name" => Some(("domainRedirect.domainName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "domain-redirect.type" => Some(("domainRedirect.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "provisioning.cert-challenge-discovered-txt" => Some(("provisioning.certChallengeDiscoveredTxt", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "provisioning.cert-challenge-dns.domain-name" => Some(("provisioning.certChallengeDns.domainName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "provisioning.cert-challenge-dns.token" => Some(("provisioning.certChallengeDns.token", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "provisioning.cert-challenge-http.path" => Some(("provisioning.certChallengeHttp.path", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "provisioning.cert-challenge-http.token" => Some(("provisioning.certChallengeHttp.token", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "provisioning.expected-ips" => Some(("provisioning.expectedIps", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "provisioning.cert-challenge-discovered-txt" => Some(("provisioning.certChallengeDiscoveredTxt", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "provisioning.dns-fetch-time" => Some(("provisioning.dnsFetchTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "provisioning.discovered-ips" => Some(("provisioning.discoveredIps", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
-                    "provisioning.cert-challenge-dns.token" => Some(("provisioning.certChallengeDns.token", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "provisioning.cert-challenge-dns.domain-name" => Some(("provisioning.certChallengeDns.domainName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "provisioning.dns-status" => Some(("provisioning.dnsStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "provisioning.cert-status" => Some(("provisioning.certStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "provisioning.discovered-ips" => Some(("provisioning.discoveredIps", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "provisioning.dns-fetch-time" => Some(("provisioning.dnsFetchTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "provisioning.dns-status" => Some(("provisioning.dnsStatus", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "provisioning.expected-ips" => Some(("provisioning.expectedIps", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Vec })),
+                    "site" => Some(("site", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "update-time" => Some(("updateTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["cert-challenge-discovered-txt", "cert-challenge-dns", "cert-challenge-http", "cert-status", "discovered-ips", "dns-fetch-time", "dns-status", "domain-name", "domain-redirect", "expected-ips", "path", "provisioning", "site", "status", "token", "type", "update-time"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2035,31 +2037,31 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
+                    "message" => Some(("message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.status" => Some(("version.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.delete-user.image-url" => Some(("version.deleteUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.delete-user.email" => Some(("version.deleteUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.name" => Some(("version.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.version-bytes" => Some(("version.versionBytes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.labels" => Some(("version.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "version.finalize-user.image-url" => Some(("version.finalizeUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.finalize-user.email" => Some(("version.finalizeUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.finalize-time" => Some(("version.finalizeTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.create-user.image-url" => Some(("version.createUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.create-user.email" => Some(("version.createUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "release-time" => Some(("releaseTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "release-user.email" => Some(("releaseUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "release-user.image-url" => Some(("releaseUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.config.app-association" => Some(("version.config.appAssociation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "version.config.clean-urls" => Some(("version.config.cleanUrls", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "version.config.trailing-slash-behavior" => Some(("version.config.trailingSlashBehavior", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.config.app-association" => Some(("version.config.appAssociation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.create-time" => Some(("version.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.create-user.email" => Some(("version.createUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.create-user.image-url" => Some(("version.createUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.delete-time" => Some(("version.deleteTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.delete-user.email" => Some(("version.deleteUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.delete-user.image-url" => Some(("version.deleteUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.file-count" => Some(("version.fileCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "version.finalize-time" => Some(("version.finalizeTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.finalize-user.email" => Some(("version.finalizeUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.finalize-user.image-url" => Some(("version.finalizeUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.labels" => Some(("version.labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "version.name" => Some(("version.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "version.preview.active" => Some(("version.preview.active", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "version.preview.expire-time" => Some(("version.preview.expireTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.delete-time" => Some(("version.deleteTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.create-time" => Some(("version.createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version.file-count" => Some(("version.fileCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "release-user.image-url" => Some(("releaseUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "release-user.email" => Some(("releaseUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "message" => Some(("message", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "type" => Some(("type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "release-time" => Some(("releaseTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.status" => Some(("version.status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version.version-bytes" => Some(("version.versionBytes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["active", "app-association", "clean-urls", "config", "create-time", "create-user", "delete-time", "delete-user", "email", "expire-time", "file-count", "finalize-time", "finalize-user", "image-url", "labels", "message", "name", "preview", "release-time", "release-user", "status", "trailing-slash-behavior", "type", "version", "version-bytes"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2207,8 +2209,8 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "max-versions" => Some(("maxVersions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "cloud-logging-enabled" => Some(("cloudLoggingEnabled", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
+                    "max-versions" => Some(("maxVersions", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["cloud-logging-enabled", "max-versions"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2297,25 +2299,25 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "delete-user.image-url" => Some(("deleteUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "delete-user.email" => Some(("deleteUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version-bytes" => Some(("versionBytes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "finalize-user.image-url" => Some(("finalizeUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "finalize-user.email" => Some(("finalizeUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "finalize-time" => Some(("finalizeTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "create-user.image-url" => Some(("createUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "create-user.email" => Some(("createUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.app-association" => Some(("config.appAssociation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.clean-urls" => Some(("config.cleanUrls", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "config.trailing-slash-behavior" => Some(("config.trailingSlashBehavior", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.app-association" => Some(("config.appAssociation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "create-user.email" => Some(("createUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "create-user.image-url" => Some(("createUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "delete-time" => Some(("deleteTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "delete-user.email" => Some(("deleteUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "delete-user.image-url" => Some(("deleteUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "file-count" => Some(("fileCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "finalize-time" => Some(("finalizeTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "finalize-user.email" => Some(("finalizeUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "finalize-user.image-url" => Some(("finalizeUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "preview.active" => Some(("preview.active", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "preview.expire-time" => Some(("preview.expireTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "delete-time" => Some(("deleteTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "file-count" => Some(("fileCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version-bytes" => Some(("versionBytes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["active", "app-association", "clean-urls", "config", "create-time", "create-user", "delete-time", "delete-user", "email", "expire-time", "file-count", "finalize-time", "finalize-user", "image-url", "labels", "name", "preview", "status", "trailing-slash-behavior", "version-bytes"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2350,7 +2352,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["size-bytes", "version-id"].iter().map(|v|*v));
+                                                                           v.extend(["version-id", "size-bytes"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2583,25 +2585,25 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "delete-user.image-url" => Some(("deleteUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "delete-user.email" => Some(("deleteUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "version-bytes" => Some(("versionBytes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
-                    "finalize-user.image-url" => Some(("finalizeUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "finalize-user.email" => Some(("finalizeUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "finalize-time" => Some(("finalizeTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "create-user.image-url" => Some(("createUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "create-user.email" => Some(("createUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "config.app-association" => Some(("config.appAssociation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "config.clean-urls" => Some(("config.cleanUrls", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "config.trailing-slash-behavior" => Some(("config.trailingSlashBehavior", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "config.app-association" => Some(("config.appAssociation", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "create-user.email" => Some(("createUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "create-user.image-url" => Some(("createUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "delete-time" => Some(("deleteTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "delete-user.email" => Some(("deleteUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "delete-user.image-url" => Some(("deleteUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "file-count" => Some(("fileCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "finalize-time" => Some(("finalizeTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "finalize-user.email" => Some(("finalizeUser.email", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "finalize-user.image-url" => Some(("finalizeUser.imageUrl", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "labels" => Some(("labels", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
+                    "name" => Some(("name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "preview.active" => Some(("preview.active", JsonTypeInfo { jtype: JsonType::Boolean, ctype: ComplexType::Pod })),
                     "preview.expire-time" => Some(("preview.expireTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "delete-time" => Some(("deleteTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "create-time" => Some(("createTime", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "file-count" => Some(("fileCount", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "version-bytes" => Some(("versionBytes", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["active", "app-association", "clean-urls", "config", "create-time", "create-user", "delete-time", "delete-user", "email", "expire-time", "file-count", "finalize-time", "finalize-user", "image-url", "labels", "name", "preview", "status", "trailing-slash-behavior", "version-bytes"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -2897,12 +2899,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "firebasehosting1-beta1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "firebasehosting1-beta1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))

@@ -106,7 +106,7 @@ dfareporting3d4 [options]
                 get <profile-id> <dart-id> [-p <v>]... [-o <out>]
                 list <profile-id> [-p <v>]... [-o <out>]
         creative-assets
-                insert <profile-id> <advertiser-id> (-r <kv>)... (-u (simple|resumable) -f <file> [-m <mime>]) [-p <v>]... [-o <out>]
+                insert <profile-id> <advertiser-id> (-r <kv>)... (-u (resumable|simple) -f <file> [-m <mime>]) [-p <v>]... [-o <out>]
         creative-field-values
                 delete <profile-id> <creative-field-id> <id> [-p <v>]...
                 get <profile-id> <creative-field-id> <id> [-p <v>]... [-o <out>]

@@ -13,15 +13,17 @@ extern crate serde_json;
 extern crate hyper;
 extern crate mime;
 extern crate strsim;
-extern crate google_proximitybeacon1_beta1 as api;
+extern crate google_proximitybeacon1_beta1;
 
 use std::env;
 use std::io::{self, Write};
 use clap::{App, SubCommand, Arg};
 
-mod cmn;
+use google_proximitybeacon1_beta1::{api, Error};
 
-use cmn::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+mod client;
+
+use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
@@ -34,12 +36,12 @@ use clap::ArgMatches;
 
 enum DoitError {
     IoError(String, io::Error),
-    ApiError(api::Error),
+    ApiError(Error),
 }
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Proximitybeacon<hyper::Client, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client>>,
+    hub: api::Proximitybeacon<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
@@ -209,7 +211,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["project-id", "namespaced-type"].iter().map(|v|*v));
+                                                                           v.extend(["namespaced-type", "project-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -266,10 +268,10 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "max-distance-meters" => Some(("maxDistanceMeters", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
-                    "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "creation-time-ms" => Some(("creationTimeMs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "attachment-name" => Some(("attachmentName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "creation-time-ms" => Some(("creationTimeMs", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "data" => Some(("data", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "max-distance-meters" => Some(("maxDistanceMeters", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "namespaced-type" => Some(("namespacedType", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["attachment-name", "creation-time-ms", "data", "max-distance-meters", "namespaced-type"]);
@@ -417,7 +419,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["project-id", "namespaced-type"].iter().map(|v|*v));
+                                                                           v.extend(["namespaced-type", "project-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -650,7 +652,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["project-id", "alert-filter", "page-size", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "alert-filter", "page-token", "project-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -771,7 +773,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["q", "project-id", "page-size", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "project-id", "page-token", "q"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -828,24 +830,24 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "advertised-id.id" => Some(("advertisedId.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "advertised-id.type" => Some(("advertisedId.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "beacon-name" => Some(("beaconName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "ephemeral-id-registration.beacon-ecdh-public-key" => Some(("ephemeralIdRegistration.beaconEcdhPublicKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "ephemeral-id-registration.beacon-identity-key" => Some(("ephemeralIdRegistration.beaconIdentityKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "ephemeral-id-registration.initial-clock-value" => Some(("ephemeralIdRegistration.initialClockValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "ephemeral-id-registration.initial-eid" => Some(("ephemeralIdRegistration.initialEid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "ephemeral-id-registration.rotation-period-exponent" => Some(("ephemeralIdRegistration.rotationPeriodExponent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "ephemeral-id-registration.service-ecdh-public-key" => Some(("ephemeralIdRegistration.serviceEcdhPublicKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "expected-stability" => Some(("expectedStability", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "indoor-level.name" => Some(("indoorLevel.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "lat-lng.latitude" => Some(("latLng.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "lat-lng.longitude" => Some(("latLng.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "place-id" => Some(("placeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "ephemeral-id-registration.rotation-period-exponent" => Some(("ephemeralIdRegistration.rotationPeriodExponent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "ephemeral-id-registration.initial-clock-value" => Some(("ephemeralIdRegistration.initialClockValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "ephemeral-id-registration.beacon-ecdh-public-key" => Some(("ephemeralIdRegistration.beaconEcdhPublicKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "ephemeral-id-registration.initial-eid" => Some(("ephemeralIdRegistration.initialEid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "ephemeral-id-registration.service-ecdh-public-key" => Some(("ephemeralIdRegistration.serviceEcdhPublicKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "ephemeral-id-registration.beacon-identity-key" => Some(("ephemeralIdRegistration.beaconIdentityKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "advertised-id.type" => Some(("advertisedId.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "advertised-id.id" => Some(("advertisedId.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "beacon-name" => Some(("beaconName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "expected-stability" => Some(("expectedStability", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "properties" => Some(("properties", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "provisioning-key" => Some(("provisioningKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["advertised-id", "beacon-ecdh-public-key", "beacon-identity-key", "beacon-name", "description", "ephemeral-id-registration", "expected-stability", "id", "indoor-level", "initial-clock-value", "initial-eid", "lat-lng", "latitude", "longitude", "name", "place-id", "properties", "provisioning-key", "rotation-period-exponent", "service-ecdh-public-key", "status", "type"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -934,24 +936,24 @@ impl<'n> Engine<'n> {
         
             let type_info: Option<(&'static str, JsonTypeInfo)> =
                 match &temp_cursor.to_string()[..] {
-                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "advertised-id.id" => Some(("advertisedId.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "advertised-id.type" => Some(("advertisedId.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "beacon-name" => Some(("beaconName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "description" => Some(("description", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "ephemeral-id-registration.beacon-ecdh-public-key" => Some(("ephemeralIdRegistration.beaconEcdhPublicKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "ephemeral-id-registration.beacon-identity-key" => Some(("ephemeralIdRegistration.beaconIdentityKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "ephemeral-id-registration.initial-clock-value" => Some(("ephemeralIdRegistration.initialClockValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "ephemeral-id-registration.initial-eid" => Some(("ephemeralIdRegistration.initialEid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "ephemeral-id-registration.rotation-period-exponent" => Some(("ephemeralIdRegistration.rotationPeriodExponent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
+                    "ephemeral-id-registration.service-ecdh-public-key" => Some(("ephemeralIdRegistration.serviceEcdhPublicKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "expected-stability" => Some(("expectedStability", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "indoor-level.name" => Some(("indoorLevel.name", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "lat-lng.latitude" => Some(("latLng.latitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "lat-lng.longitude" => Some(("latLng.longitude", JsonTypeInfo { jtype: JsonType::Float, ctype: ComplexType::Pod })),
                     "place-id" => Some(("placeId", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "ephemeral-id-registration.rotation-period-exponent" => Some(("ephemeralIdRegistration.rotationPeriodExponent", JsonTypeInfo { jtype: JsonType::Int, ctype: ComplexType::Pod })),
-                    "ephemeral-id-registration.initial-clock-value" => Some(("ephemeralIdRegistration.initialClockValue", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "ephemeral-id-registration.beacon-ecdh-public-key" => Some(("ephemeralIdRegistration.beaconEcdhPublicKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "ephemeral-id-registration.initial-eid" => Some(("ephemeralIdRegistration.initialEid", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "ephemeral-id-registration.service-ecdh-public-key" => Some(("ephemeralIdRegistration.serviceEcdhPublicKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "ephemeral-id-registration.beacon-identity-key" => Some(("ephemeralIdRegistration.beaconIdentityKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "advertised-id.type" => Some(("advertisedId.type", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "advertised-id.id" => Some(("advertisedId.id", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "beacon-name" => Some(("beaconName", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
-                    "expected-stability" => Some(("expectedStability", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     "properties" => Some(("properties", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Map })),
                     "provisioning-key" => Some(("provisioningKey", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
+                    "status" => Some(("status", JsonTypeInfo { jtype: JsonType::String, ctype: ComplexType::Pod })),
                     _ => {
                         let suggestion = FieldCursor::did_you_mean(key, &vec!["advertised-id", "beacon-ecdh-public-key", "beacon-identity-key", "beacon-name", "description", "ephemeral-id-registration", "expected-stability", "id", "indoor-level", "initial-clock-value", "initial-eid", "lat-lng", "latitude", "longitude", "name", "place-id", "properties", "provisioning-key", "rotation-period-exponent", "service-ecdh-public-key", "status", "type"]);
                         err.issues.push(CLIError::Field(FieldError::Unknown(temp_cursor.to_string(), suggestion, value.map(|v| v.to_string()))));
@@ -1322,12 +1324,12 @@ impl<'n> Engine<'n> {
     // Please note that this call will fail if any part of the opt can't be handled
     fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
-            let config_dir = match cmn::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
+            let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
                 Ok(p) => p,
             };
 
-            match cmn::application_secret_from_directory(&config_dir, "proximitybeacon1-beta1-secret.json",
+            match client::application_secret_from_directory(&config_dir, "proximitybeacon1-beta1-secret.json",
                                                          "{\"installed\":{\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"client_secret\":\"hCsslbCUyfehWMmbkG8vTYxG\",\"token_uri\":\"https://accounts.google.com/o/oauth2/token\",\"client_email\":\"\",\"redirect_uris\":[\"urn:ietf:wg:oauth:2.0:oob\",\"oob\"],\"client_x509_cert_url\":\"\",\"client_id\":\"620010449518-9ngf7o4dhs0dka470npqvor6dc5lqb9b.apps.googleusercontent.com\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\"}}") {
                 Ok(secret) => (config_dir, secret),
                 Err(e) => return Err(InvalidOptionsError::single(e, 4))
