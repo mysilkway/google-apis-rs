@@ -187,7 +187,7 @@ pub trait Delegate {
     /// [exponential backoff algorithm](http://en.wikipedia.org/wiki/Exponential_backoff).
     fn http_failure(
         &mut self,
-        _: &hyper::Response<Vec<u8>>,
+        _: &hyper::Response<hyper::body::Body>,
         err: Option<JsonServerError>,
         _: Option<ServerError>,
     ) -> Retry {
@@ -266,7 +266,7 @@ pub enum Error {
     JsonDecodeError(String, json::Error),
 
     /// Indicates an HTTP repsonse with a non-success status code
-    Failure(hyper::Response<Vec<u8>>),
+    Failure(hyper::Response<hyper::body::Body>),
 }
 
 impl Display for Error {

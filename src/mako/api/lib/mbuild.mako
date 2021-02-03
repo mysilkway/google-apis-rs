@@ -412,7 +412,7 @@ match result {
     where = ''
     qualifier = 'pub '
     add_args = ''
-    rtype = 'client::Result<hyper::Response<Vec<u8>>>'
+    rtype = 'client::Result<hyper::Response<hyper::body::Body>>'
     response_schema = method_response(c, m)
 
     supports_download = m.get('supportsMediaDownload', False);
@@ -420,7 +420,7 @@ match result {
     if response_schema:
         if not supports_download:
             reserved_params = ['alt']
-        rtype = 'client::Result<(hyper::Response<Vec<u8>>, %s)>' % (response_schema.id)
+        rtype = 'client::Result<(hyper::Response<hyper::body::Body>, %s)>' % (response_schema.id)
 
     mtype_param = 'RS'
 
