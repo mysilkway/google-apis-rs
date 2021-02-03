@@ -61,7 +61,7 @@ impl<'a, ${', '.join(HUB_TYPE_PARAMETERS)}> client::Hub for ${hub_type}${ht_para
 impl<'a, ${', '.join(HUB_TYPE_PARAMETERS)}> ${hub_type}${ht_params}
     where  ${', '.join(hub_type_bounds())} {
 
-    pub fn new(client: C, authenticator: A) -> ${hub_type}${ht_params} {
+    pub fn new(client: C, authenticator: oauth2::authenticator::Authenticator<A>) -> ${hub_type}${ht_params} {
         ${hub_type} {
             client: RefCell::new(client),
             auth: RefCell::new(authenticator),

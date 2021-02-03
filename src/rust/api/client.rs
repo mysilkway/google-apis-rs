@@ -110,7 +110,7 @@ pub trait Delegate {
     /// The matching `finished()` call will always be made, no matter whether or not the API
     /// request was successful. That way, the delegate may easily maintain a clean state
     /// between various API calls.
-    fn begin(&mut self, MethodInfo) {}
+    fn begin(&mut self, info: MethodInfo) {}
 
     /// Called whenever there is an [HttpError](hyper::Error), usually if there are network problems.
     ///
@@ -118,7 +118,7 @@ pub trait Delegate {
     /// [exponential backoff algorithm](http://en.wikipedia.org/wiki/Exponential_backoff).
     ///
     /// Return retry information.
-    fn http_error(&mut self, &hyper::Error) -> Retry {
+    fn http_error(&mut self, err: &hyper::Error) -> Retry {
         Retry::Abort
     }
 
@@ -188,7 +188,7 @@ pub trait Delegate {
     fn http_failure(
         &mut self,
         _: &hyper::Response<Vec<u8>>,
-        Option<JsonServerError>,
+        err: Option<JsonServerError>,
         _: Option<ServerError>,
     ) -> Retry {
         Retry::Abort
@@ -667,20 +667,20 @@ impl<'a, A> ResumableUploadHelper<'a, A> {
             }
             let res = self
                 .client
-                .post(self.url)
-                .header(range_header)
-                .header(CONTENT_TYPE, self.media_type.clone())
-                .header(USER_AGENT, self.user_agent.to_string())
-                .body(&mut section_reader)
-                .send();
+                .request(
+                    hyper::Request::builder().method(hyper::Method::POST)
+                    .header(range_header)
+                    .header(CONTENT_TYPE, self.media_type.clone())
+                    .header(USER_AGENT, self.user_agent.to_string())
+                    .body(&mut section_reader)
+                );
             match res {
                 Ok(mut res) => {
                     if res.status == StatusCode::PermanentRedirect {
                         continue;
                     }
                     if !res.status.is_success() {
-                        let mut json_err = String::new();
-                        res.read_to_string(&mut json_err).unwrap();
+                        let mut json_err: String = res.body().into().unwrap();
                         if let Retry::After(d) = self.delegate.http_failure(
                             &res,
                             json::from_str(&json_err).ok(),

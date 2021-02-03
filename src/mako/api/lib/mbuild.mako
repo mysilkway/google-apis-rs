@@ -440,9 +440,9 @@ match result {
     # end handle media params
 
     if doit_without_upload:
-        action_fn = qualifier + 'fn ' + "doit_without_upload" + type_params + '(mut self)' + ' -> ' + rtype + where
+        action_fn = qualifier + 'async fn ' + "doit_without_upload" + type_params + '(mut self)' + ' -> ' + rtype + where
     else:
-        action_fn = qualifier + 'fn ' + api.terms.action + type_params + ('(mut self%s)' % add_args) + ' -> ' + rtype + where
+        action_fn = qualifier + 'async fn ' + api.terms.action + type_params + ('(mut self%s)' % add_args) + ' -> ' + rtype + where
 
     field_params = [p for p in params if p.get('is_query_param', True)]
 
@@ -678,7 +678,7 @@ else {
         }
         % endif
 
-        let url = hyper::Uri::parse_with_params(&url, params).unwrap();
+        let url = url::Url::parse_with_params(&url, params).unwrap();
 
         % if request_value:
         let mut json_mime_type = mime::Mime(mime::TopLevel::Application, mime::SubLevel::Json, Default::default());
@@ -747,29 +747,33 @@ else {
                 };
             % endif
                 let mut client = &mut *self.hub.client.borrow_mut();
-                let mut req = client.borrow_mut().request(${method_name_to_variant(m.httpMethod)}, url.clone())
-                    .header(USER_AGENT, self.hub._user_agent.clone())\
-                    % if default_scope:
+                dlg.pre_request();
+                let mut req_builder = hyper::Request::builder().method(${method_name_to_variant(m.httpMethod)}).uri(url.into_string())
+                        .header(USER_AGENT, self.hub._user_agent.clone())\
+                        % if default_scope:
 
-                    .header(AUTHORIZATION, format!("Bearer {}", token.access_token))\
-                    % endif
-                    % if request_value:
-                    % if not simple_media_param:
+                        .header(AUTHORIZATION, format!("Bearer {}", token.access_token))\
+                        % endif
+                        % if request_value:
+                        % if not simple_media_param:
 
-                    .header(CONTENT_TYPE, json_mime_type.clone())
-                    .header(CONTENT_LENGTH, request_size as u64)
-                    .body(&mut request_value_reader)\
-                    % else:
+                        .header(CONTENT_TYPE, json_mime_type.clone())
+                        .header(CONTENT_LENGTH, request_size as u64)
+                        .body(&mut request_value_reader)\
+                        % else:
 
-                    .header(content_type.0, content_type.1)
-                    .body(&mut body_reader)\
-                    % endif ## not simple_media_param
-                    % endif
+                        .header(content_type.0, content_type.1)
+                        .body(&mut body_reader)\
+                        % endif ## not simple_media_param
+                        % else:
+                        .body(hyper::body::Body::empty())\
+                        % endif
+                        .unwrap()
 ;
                 % if simple_media_param and not request_value:
                 if protocol == "${simple_media_param.protocol}" {
                     ${READER_SEEK | indent_all_but_first_by(4)}
-                    req = req.header(CONTENT_TYPE, reader_mime_type.clone())
+                    req_builder = req_builder.header(CONTENT_TYPE, reader_mime_type.clone())
                              .header(CONTENT_LENGTH, size)
                              .body(&mut reader);
                 }
@@ -777,12 +781,12 @@ else {
                 % if resumable_media_param:
                 upload_url_from_server = true;
                 if protocol == "${resumable_media_param.protocol}" {
-                    req = req.header("X-Upload-Content-Type", reader_mime_type.clone());
+                    req_builder = req_builder.header("X-Upload-Content-Type", reader_mime_type.clone());
                 }
                 % endif
 
-                dlg.pre_request();
-                req.send()
+                client.borrow_mut().request(req_builder).await
+                
 </%block>\
                 % if resumable_media_param:
             }
@@ -799,9 +803,8 @@ else {
                     return Err(client::Error::HttpError(err))
                 }
                 Ok(mut res) => {
-                    if !res.status.is_success() {
-                        let mut json_err = String::new();
-                        res.read_to_string(&mut json_err).unwrap();
+                    if !res.status().is_success() {
+                        let mut json_err: String = res.body().into().unwrap();
 
                         let json_server_error = json::from_str::<client::JsonServerError>(&json_err).ok();
                         let server_error = json::from_str::<client::ServerError>(&json_err)
@@ -857,7 +860,7 @@ else {
                             ## decoded next
                             Some(Ok(upload_result)) => {
                                 res = upload_result;
-                                if !res.status.is_success() {
+                                if !res.status().is_success() {
                                     ## delegate was called in upload() already - don't tell him again
                                     dlg.store_upload_url(None);
                                     ${delegate_finish}(false);
@@ -874,8 +877,7 @@ else {
 if enable_resource_parsing \
                     % endif
 {
-                        let mut json_response = String::new();
-                        res.read_to_string(&mut json_response).unwrap();
+                        let mut json_response: String = res.body().into().unwrap();
                         match json::from_str(&json_response) {
                             Ok(decoded) => (res, decoded),
                             Err(err) => {

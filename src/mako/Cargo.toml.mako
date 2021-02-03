@@ -17,6 +17,7 @@ documentation = "${util.doc_base_url()}"
 license = "${copyright.license_abbrev}"
 keywords = ["${name[:20]}", ${", ".join(estr(cargo.keywords))}]
 autobins = false
+edition = "2018"
 
 % if cargo.get('is_executable', False):
 [[bin]]
@@ -33,6 +34,7 @@ serde = "^ 1.0"
 serde_json = "^ 1.0"
 serde_derive = "^ 1.0"
 yup-oauth2 = "^ 5.0"
+tokio = "^ 1.0"
 % for dep in cargo.get('dependencies', list()):
 ${dep}
 % endfor
