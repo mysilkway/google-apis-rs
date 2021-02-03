@@ -50,7 +50,7 @@ ${lib.hub_usage_example(c)}\
 </%block>
 pub struct ${hub_type}${ht_params} {
     client: RefCell<C>,
-    auth: RefCell<A>,
+    auth: RefCell<oauth2::authenticator::Authenticator<A>>,
     _user_agent: String,
     _base_url: String,
     _root_url: String,

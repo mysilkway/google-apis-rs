@@ -12,11 +12,18 @@ use hyper::Method;
 use hyper::StatusCode;
 
 use mime::{Attr, Mime, SubLevel, TopLevel, Value};
-use oauth2::{self, Retry, TokenType};
+use oauth2;
 
 use serde_json as json;
 
 const LINE_ENDING: &'static str = "\r\n";
+
+pub enum Retry {
+    /// Signal you don't want to retry
+    Abort,
+    /// Signals you want to retry after the given duration
+    After(Duration),
+}
 
 /// Identifies the Hub. There is only one per library, this trait is supposed
 /// to make intended use more explicit.
@@ -91,39 +98,6 @@ pub struct ServerMessage {
     pub location: Option<String>,
 }
 
-// #[derive(Copy, Clone)]
-// pub struct DummyNetworkStream;
-
-// impl Read for DummyNetworkStream {
-//     fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
-//         Ok(0)
-//     }
-// }
-
-// impl Write for DummyNetworkStream {
-//     fn write(&mut self, _: &[u8]) -> io::Result<usize> {
-//         Ok(0)
-//     }
-
-//     fn flush(&mut self) -> io::Result<()> {
-//         Ok(())
-//     }
-// }
-
-// impl hyper::net::NetworkStream for DummyNetworkStream {
-//     fn peer_addr(&mut self) -> io::Result<std::net::SocketAddr> {
-//         Ok("127.0.0.1:1337".parse().unwrap())
-//     }
-
-//     fn set_read_timeout(&self, _dur: Option<Duration>) -> io::Result<()> {
-//         Ok(())
-//     }
-
-//     fn set_write_timeout(&self, _dur: Option<Duration>) -> io::Result<()> {
-//         Ok(())
-//     }
-// }
-
 /// A trait specifying functionality to help controlling any request performed by the API.
 /// The trait has a conservative default implementation.
 ///
@@ -160,7 +134,7 @@ pub trait Delegate {
     /// impending failure.
     /// The given Error provides information about why the token couldn't be acquired in the
     /// first place
-    fn token(&mut self, err: &dyn error::Error) -> Option<oauth2::Token> {
+    fn token(&mut self, err: &dyn error::Error) -> Option<oauth2::AccessToken> {
         let _ = err;
         None
     }
@@ -213,7 +187,7 @@ pub trait Delegate {
     /// [exponential backoff algorithm](http://en.wikipedia.org/wiki/Exponential_backoff).
     fn http_failure(
         &mut self,
-        _: &hyper::Response,
+        _: &hyper::Response<Vec<u8>>,
         Option<JsonServerError>,
         _: Option<ServerError>,
     ) -> Retry {
@@ -292,7 +266,7 @@ pub enum Error {
     JsonDecodeError(String, json::Error),
 
     /// Indicates an HTTP repsonse with a non-success status code
-    Failure(hyper::Response),
+    Failure(hyper::Response<Vec<u8>>),
 }
 
 impl Display for Error {
@@ -596,7 +570,7 @@ pub struct RangeResponseHeader(pub Chunk);
 
 /// A utility type to perform a resumable upload from start to end.
 pub struct ResumableUploadHelper<'a, A: 'a> {
-    pub client: &'a mut hyper::client::Client,
+    pub client: &'a mut hyper::client::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>,
     pub delegate: &'a mut dyn Delegate,
     pub start_at: Option<u64>,
     pub auth: &'a mut A,
@@ -608,13 +582,10 @@ pub struct ResumableUploadHelper<'a, A: 'a> {
     pub content_length: u64,
 }
 
-impl<'a, A> ResumableUploadHelper<'a, A>
-where
-    A: oauth2::GetToken,
-{
+impl<'a, A> ResumableUploadHelper<'a, A> {
     fn query_transfer_status(
         &mut self,
-    ) -> std::result::Result<u64, hyper::Result<hyper::Response>> {
+    ) -> std::result::Result<u64, hyper::Result<hyper::Response<Vec<u8>>>> {
         loop {
             match self
                 .client
@@ -660,7 +631,7 @@ where
     /// returns None if operation was cancelled by delegate, or the HttpResult.
     /// It can be that we return the result just because we didn't understand the status code -
     /// caller should check for status himself before assuming it's OK to use
-    pub fn upload(&mut self) -> Option<hyper::Result<hyper::Response>> {
+    pub fn upload(&mut self) -> Option<hyper::Result<hyper::Response<Vec<u8>>>> {
         let mut start = match self.start_at {
             Some(s) => s,
             None => match self.query_transfer_status() {

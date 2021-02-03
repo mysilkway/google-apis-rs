@@ -412,7 +412,7 @@ match result {
     where = ''
     qualifier = 'pub '
     add_args = ''
-    rtype = 'client::Result<hyper::client::Response>'
+    rtype = 'client::Result<hyper::Response<Vec<u8>>>'
     response_schema = method_response(c, m)
 
     supports_download = m.get('supportsMediaDownload', False);
@@ -420,7 +420,7 @@ match result {
     if response_schema:
         if not supports_download:
             reserved_params = ['alt']
-        rtype = 'client::Result<(hyper::client::Response, %s)>' % (response_schema.id)
+        rtype = 'client::Result<(hyper::Response<Vec<u8>>, %s)>' % (response_schema.id)
 
     mtype_param = 'RS'
 
@@ -678,7 +678,7 @@ else {
         }
         % endif
 
-        let url = hyper::Url::parse_with_params(&url, params).unwrap();
+        let url = hyper::Uri::parse_with_params(&url, params).unwrap();
 
         % if request_value:
         let mut json_mime_type = mime::Mime(mime::TopLevel::Application, mime::SubLevel::Json, Default::default());
@@ -723,8 +723,8 @@ else {
                 if should_ask_dlg_for_url && (upload_url = dlg.upload_url()) == () && upload_url.is_some() {
                     should_ask_dlg_for_url = false;
                     upload_url_from_server = false;
-                    let url = upload_url.as_ref().and_then(|s| Some(hyper::Url::parse(s).unwrap())).unwrap();
-                    hyper::client::Response::new(url, Box::new(client::DummyNetworkStream)).and_then(|mut res| {
+                    let url = upload_url.as_ref().and_then(|s| Some(hyper::Uri::parse(s).unwrap())).unwrap();
+                    hyper::Response::new(url, Box::new(client::DummyNetworkStream)).and_then(|mut res| {
                         res.status = hyper::status::StatusCode::Ok;
                         res.headers.set(LOCATION(upload_url.as_ref().unwrap().clone()));
                         Ok(res)
@@ -791,7 +791,7 @@ else {
 
             match req_result {
                 Err(err) => {
-                    if let oauth2::Retry::After(d) = dlg.http_error(&err) {
+                    if let client::Retry::After(d) = dlg.http_error(&err) {
                         sleep(d);
                         continue;
                     }
@@ -808,7 +808,7 @@ else {
                             .or_else(|_| json::from_str::<client::ErrorResponse>(&json_err).map(|r| r.error))
                             .ok();
 
-                        if let oauth2::Retry::After(d) = dlg.http_failure(&res,
+                        if let client::Retry::After(d) = dlg.http_failure(&res,
                                                               json_server_error,
                                                               server_error) {
                             sleep(d);

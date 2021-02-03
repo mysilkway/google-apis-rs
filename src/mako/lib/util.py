@@ -899,8 +899,8 @@ def hub_type_params_s():
 
 # return a list of where statements to server as bounds for the hub.
 def hub_type_bounds():
-    return ['C: BorrowMut<hyper::Client>',
-            'A: oauth2::GetToken']
+    return ['C: BorrowMut<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>',
+            'A: hyper::client::connect::Connect']
 
 # Returns True if this API has particular authentication scopes to choose from
 def supports_scopes(auth):
@@ -1025,10 +1025,10 @@ def scope_url_to_variant(name, url, fully_qualified=True):
     return fqvn(dot_sep_to_canonical_type_name(repl(base)))
 
 def method_name_to_variant(name):
-    fmt = 'hyper::method::Method::Extension("%s")'
+    fmt = 'hyper::Method::Extension("%s")'
     if name in HTTP_METHODS:
         name = name.capitalize()
-        fmt = 'hyper::method::Method::%s'
+        fmt = 'hyper::Method::%s'
     return fmt % name.capitalize()
 
 # given a rust type-name (no optional, as from to_rust_type), you will get a suitable random default value
