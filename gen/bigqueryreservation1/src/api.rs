@@ -63,7 +63,7 @@ impl Default for Scope {
 /// use bigqueryreservation1::{Result, Error};
 /// # #[test] fn egal() {
 /// use std::default::Default;
-/// use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// use oauth2;
 /// use bigqueryreservation1::BigQueryReservation;
 /// 
 /// // Get an ApplicationSecret instance by some means. It contains the `client_id` and 
@@ -74,9 +74,10 @@ impl Default for Scope {
 /// // Provide your own `AuthenticatorDelegate` to adjust the way it operates and get feedback about 
 /// // what's going on. You probably want to bring in your own `TokenStorage` to persist tokens and
 /// // retrieve them from storage.
-/// let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-///                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-///                               <MemoryStorage as Default>::default(), None);
+/// let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+///         secret,
+///         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+///     ).build().await.unwrap();
 /// let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -655,13 +656,14 @@ impl client::Part for Status {}
 /// 
 /// # #[test] fn egal() {
 /// use std::default::Default;
-/// use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// use oauth2;
 /// use bigqueryreservation1::BigQueryReservation;
 /// 
 /// let secret: ApplicationSecret = Default::default();
-/// let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-///                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-///                               <MemoryStorage as Default>::default(), None);
+/// let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+///         secret,
+///         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+///     ).build().await.unwrap();
 /// let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // Usually you wouldn't bind this to a variable, but keep calling *CallBuilders*
 /// // like `delete(...)` and `list(...)`
@@ -746,13 +748,14 @@ impl<'a, C> OperationMethods<'a, C> {
 /// 
 /// # #[test] fn egal() {
 /// use std::default::Default;
-/// use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// use oauth2;
 /// use bigqueryreservation1::BigQueryReservation;
 /// 
 /// let secret: ApplicationSecret = Default::default();
-/// let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-///                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-///                               <MemoryStorage as Default>::default(), None);
+/// let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+///         secret,
+///         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+///     ).build().await.unwrap();
 /// let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // Usually you wouldn't bind this to a variable, but keep calling *CallBuilders*
 /// // like `locations_capacity_commitments_create(...)`, `locations_capacity_commitments_delete(...)`, `locations_capacity_commitments_get(...)`, `locations_capacity_commitments_list(...)`, `locations_capacity_commitments_merge(...)`, `locations_capacity_commitments_patch(...)`, `locations_capacity_commitments_split(...)`, `locations_get_bi_reservation(...)`, `locations_reservations_assignments_create(...)`, `locations_reservations_assignments_delete(...)`, `locations_reservations_assignments_list(...)`, `locations_reservations_assignments_move(...)`, `locations_reservations_create(...)`, `locations_reservations_delete(...)`, `locations_reservations_get(...)`, `locations_reservations_list(...)`, `locations_reservations_patch(...)`, `locations_search_all_assignments(...)`, `locations_search_assignments(...)` and `locations_update_bi_reservation(...)`
@@ -1337,13 +1340,14 @@ impl<'a, C> ProjectMethods<'a, C> {
 /// # extern crate google_bigqueryreservation1 as bigqueryreservation1;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use bigqueryreservation1::BigQueryReservation;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -1612,13 +1616,14 @@ impl<'a, C> OperationDeleteCall<'a, C> where C: BorrowMut<hyper::Client<hyper_ru
 /// # extern crate google_bigqueryreservation1 as bigqueryreservation1;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use bigqueryreservation1::BigQueryReservation;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -1915,13 +1920,14 @@ impl<'a, C> OperationListCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rust
 /// use bigqueryreservation1::api::CapacityCommitment;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use bigqueryreservation1::BigQueryReservation;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -2226,13 +2232,14 @@ impl<'a, C> ProjectLocationCapacityCommitmentCreateCall<'a, C> where C: BorrowMu
 /// # extern crate google_bigqueryreservation1 as bigqueryreservation1;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use bigqueryreservation1::BigQueryReservation;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -2493,13 +2500,14 @@ impl<'a, C> ProjectLocationCapacityCommitmentDeleteCall<'a, C> where C: BorrowMu
 /// # extern crate google_bigqueryreservation1 as bigqueryreservation1;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use bigqueryreservation1::BigQueryReservation;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -2760,13 +2768,14 @@ impl<'a, C> ProjectLocationCapacityCommitmentGetCall<'a, C> where C: BorrowMut<h
 /// # extern crate google_bigqueryreservation1 as bigqueryreservation1;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use bigqueryreservation1::BigQueryReservation;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -3058,13 +3067,14 @@ impl<'a, C> ProjectLocationCapacityCommitmentListCall<'a, C> where C: BorrowMut<
 /// use bigqueryreservation1::api::MergeCapacityCommitmentsRequest;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use bigqueryreservation1::BigQueryReservation;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -3361,13 +3371,14 @@ impl<'a, C> ProjectLocationCapacityCommitmentMergeCall<'a, C> where C: BorrowMut
 /// use bigqueryreservation1::api::CapacityCommitment;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use bigqueryreservation1::BigQueryReservation;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -3677,13 +3688,14 @@ impl<'a, C> ProjectLocationCapacityCommitmentPatchCall<'a, C> where C: BorrowMut
 /// use bigqueryreservation1::api::SplitCapacityCommitmentRequest;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use bigqueryreservation1::BigQueryReservation;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -4003,13 +4015,14 @@ impl<'a, C> ProjectLocationCapacityCommitmentSplitCall<'a, C> where C: BorrowMut
 /// use bigqueryreservation1::api::Assignment;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use bigqueryreservation1::BigQueryReservation;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -4313,13 +4326,14 @@ impl<'a, C> ProjectLocationReservationAssignmentCreateCall<'a, C> where C: Borro
 /// # extern crate google_bigqueryreservation1 as bigqueryreservation1;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use bigqueryreservation1::BigQueryReservation;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -4600,13 +4614,14 @@ impl<'a, C> ProjectLocationReservationAssignmentDeleteCall<'a, C> where C: Borro
 /// # extern crate google_bigqueryreservation1 as bigqueryreservation1;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use bigqueryreservation1::BigQueryReservation;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -4901,13 +4916,14 @@ impl<'a, C> ProjectLocationReservationAssignmentListCall<'a, C> where C: BorrowM
 /// use bigqueryreservation1::api::MoveAssignmentRequest;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use bigqueryreservation1::BigQueryReservation;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -5199,13 +5215,14 @@ impl<'a, C> ProjectLocationReservationAssignmentMoveCall<'a, C> where C: BorrowM
 /// use bigqueryreservation1::api::Reservation;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use bigqueryreservation1::BigQueryReservation;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -5510,13 +5527,14 @@ impl<'a, C> ProjectLocationReservationCreateCall<'a, C> where C: BorrowMut<hyper
 /// # extern crate google_bigqueryreservation1 as bigqueryreservation1;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use bigqueryreservation1::BigQueryReservation;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -5777,13 +5795,14 @@ impl<'a, C> ProjectLocationReservationDeleteCall<'a, C> where C: BorrowMut<hyper
 /// # extern crate google_bigqueryreservation1 as bigqueryreservation1;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use bigqueryreservation1::BigQueryReservation;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -6044,13 +6063,14 @@ impl<'a, C> ProjectLocationReservationGetCall<'a, C> where C: BorrowMut<hyper::C
 /// # extern crate google_bigqueryreservation1 as bigqueryreservation1;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use bigqueryreservation1::BigQueryReservation;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -6336,13 +6356,14 @@ impl<'a, C> ProjectLocationReservationListCall<'a, C> where C: BorrowMut<hyper::
 /// use bigqueryreservation1::api::Reservation;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use bigqueryreservation1::BigQueryReservation;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -6644,13 +6665,14 @@ impl<'a, C> ProjectLocationReservationPatchCall<'a, C> where C: BorrowMut<hyper:
 /// # extern crate google_bigqueryreservation1 as bigqueryreservation1;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use bigqueryreservation1::BigQueryReservation;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -6930,13 +6952,14 @@ impl<'a, C> ProjectLocationGetBiReservationCall<'a, C> where C: BorrowMut<hyper:
 /// # extern crate google_bigqueryreservation1 as bigqueryreservation1;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use bigqueryreservation1::BigQueryReservation;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -7262,13 +7285,14 @@ impl<'a, C> ProjectLocationSearchAllAssignmentCall<'a, C> where C: BorrowMut<hyp
 /// # extern crate google_bigqueryreservation1 as bigqueryreservation1;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use bigqueryreservation1::BigQueryReservation;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -7580,13 +7604,14 @@ impl<'a, C> ProjectLocationSearchAssignmentCall<'a, C> where C: BorrowMut<hyper:
 /// use bigqueryreservation1::api::BiReservation;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use bigqueryreservation1::BigQueryReservation;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = BigQueryReservation::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !

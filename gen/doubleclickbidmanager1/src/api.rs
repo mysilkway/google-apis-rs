@@ -59,7 +59,7 @@ impl Default for Scope {
 /// use doubleclickbidmanager1::{Result, Error};
 /// # #[test] fn egal() {
 /// use std::default::Default;
-/// use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// use oauth2;
 /// use doubleclickbidmanager1::DoubleClickBidManager;
 /// 
 /// // Get an ApplicationSecret instance by some means. It contains the `client_id` and 
@@ -70,9 +70,10 @@ impl Default for Scope {
 /// // Provide your own `AuthenticatorDelegate` to adjust the way it operates and get feedback about 
 /// // what's going on. You probably want to bring in your own `TokenStorage` to persist tokens and
 /// // retrieve them from storage.
-/// let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-///                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-///                               <MemoryStorage as Default>::default(), None);
+/// let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+///         secret,
+///         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+///     ).build().await.unwrap();
 /// let mut hub = DoubleClickBidManager::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -691,13 +692,14 @@ impl client::Part for UploadStatus {}
 /// 
 /// # #[test] fn egal() {
 /// use std::default::Default;
-/// use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// use oauth2;
 /// use doubleclickbidmanager1::DoubleClickBidManager;
 /// 
 /// let secret: ApplicationSecret = Default::default();
-/// let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-///                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-///                               <MemoryStorage as Default>::default(), None);
+/// let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+///         secret,
+///         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+///     ).build().await.unwrap();
 /// let mut hub = DoubleClickBidManager::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // Usually you wouldn't bind this to a variable, but keep calling *CallBuilders*
 /// // like `downloadlineitems(...)` and `uploadlineitems(...)`
@@ -767,13 +769,14 @@ impl<'a, C> LineitemMethods<'a, C> {
 /// 
 /// # #[test] fn egal() {
 /// use std::default::Default;
-/// use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// use oauth2;
 /// use doubleclickbidmanager1::DoubleClickBidManager;
 /// 
 /// let secret: ApplicationSecret = Default::default();
-/// let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-///                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-///                               <MemoryStorage as Default>::default(), None);
+/// let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+///         secret,
+///         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+///     ).build().await.unwrap();
 /// let mut hub = DoubleClickBidManager::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // Usually you wouldn't bind this to a variable, but keep calling *CallBuilders*
 /// // like `createquery(...)`, `deletequery(...)`, `getquery(...)`, `listqueries(...)` and `runquery(...)`
@@ -891,13 +894,14 @@ impl<'a, C> QueryMethods<'a, C> {
 /// 
 /// # #[test] fn egal() {
 /// use std::default::Default;
-/// use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// use oauth2;
 /// use doubleclickbidmanager1::DoubleClickBidManager;
 /// 
 /// let secret: ApplicationSecret = Default::default();
-/// let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-///                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-///                               <MemoryStorage as Default>::default(), None);
+/// let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+///         secret,
+///         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+///     ).build().await.unwrap();
 /// let mut hub = DoubleClickBidManager::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // Usually you wouldn't bind this to a variable, but keep calling *CallBuilders*
 /// // like `listreports(...)`
@@ -950,13 +954,14 @@ impl<'a, C> ReportMethods<'a, C> {
 /// 
 /// # #[test] fn egal() {
 /// use std::default::Default;
-/// use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// use oauth2;
 /// use doubleclickbidmanager1::DoubleClickBidManager;
 /// 
 /// let secret: ApplicationSecret = Default::default();
-/// let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-///                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-///                               <MemoryStorage as Default>::default(), None);
+/// let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+///         secret,
+///         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+///     ).build().await.unwrap();
 /// let mut hub = DoubleClickBidManager::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // Usually you wouldn't bind this to a variable, but keep calling *CallBuilders*
 /// // like `download(...)`
@@ -1017,13 +1022,14 @@ impl<'a, C> SdfMethods<'a, C> {
 /// use doubleclickbidmanager1::api::DownloadLineItemsRequest;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use doubleclickbidmanager1::DoubleClickBidManager;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = DoubleClickBidManager::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -1272,13 +1278,14 @@ impl<'a, C> LineitemDownloadlineitemCall<'a, C> where C: BorrowMut<hyper::Client
 /// use doubleclickbidmanager1::api::UploadLineItemsRequest;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use doubleclickbidmanager1::DoubleClickBidManager;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = DoubleClickBidManager::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -1527,13 +1534,14 @@ impl<'a, C> LineitemUploadlineitemCall<'a, C> where C: BorrowMut<hyper::Client<h
 /// use doubleclickbidmanager1::api::Query;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use doubleclickbidmanager1::DoubleClickBidManager;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = DoubleClickBidManager::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -1781,13 +1789,14 @@ impl<'a, C> QueryCreatequeryCall<'a, C> where C: BorrowMut<hyper::Client<hyper_r
 /// # extern crate google_doubleclickbidmanager1 as doubleclickbidmanager1;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use doubleclickbidmanager1::DoubleClickBidManager;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = DoubleClickBidManager::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -2030,13 +2039,14 @@ impl<'a, C> QueryDeletequeryCall<'a, C> where C: BorrowMut<hyper::Client<hyper_r
 /// # extern crate google_doubleclickbidmanager1 as doubleclickbidmanager1;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use doubleclickbidmanager1::DoubleClickBidManager;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = DoubleClickBidManager::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -2288,13 +2298,14 @@ impl<'a, C> QueryGetqueryCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rust
 /// # extern crate google_doubleclickbidmanager1 as doubleclickbidmanager1;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use doubleclickbidmanager1::DoubleClickBidManager;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = DoubleClickBidManager::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -2514,13 +2525,14 @@ impl<'a, C> QueryListqueryCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rus
 /// use doubleclickbidmanager1::api::RunQueryRequest;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use doubleclickbidmanager1::DoubleClickBidManager;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = DoubleClickBidManager::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -2792,13 +2804,14 @@ impl<'a, C> QueryRunqueryCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rust
 /// # extern crate google_doubleclickbidmanager1 as doubleclickbidmanager1;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use doubleclickbidmanager1::DoubleClickBidManager;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = DoubleClickBidManager::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -3051,13 +3064,14 @@ impl<'a, C> ReportListreportCall<'a, C> where C: BorrowMut<hyper::Client<hyper_r
 /// use doubleclickbidmanager1::api::DownloadRequest;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use doubleclickbidmanager1::DoubleClickBidManager;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = DoubleClickBidManager::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !

@@ -37,7 +37,7 @@ use crate::client;
 /// use partners2::{Result, Error};
 /// # #[test] fn egal() {
 /// use std::default::Default;
-/// use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// use oauth2;
 /// use partners2::Partners;
 /// 
 /// // Get an ApplicationSecret instance by some means. It contains the `client_id` and 
@@ -48,9 +48,10 @@ use crate::client;
 /// // Provide your own `AuthenticatorDelegate` to adjust the way it operates and get feedback about 
 /// // what's going on. You probably want to bring in your own `TokenStorage` to persist tokens and
 /// // retrieve them from storage.
-/// let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-///                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-///                               <MemoryStorage as Default>::default(), None);
+/// let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+///         secret,
+///         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+///     ).build().await.unwrap();
 /// let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -1607,13 +1608,14 @@ impl client::Part for Date {}
 /// 
 /// # #[test] fn egal() {
 /// use std::default::Default;
-/// use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// use oauth2;
 /// use partners2::Partners;
 /// 
 /// let secret: ApplicationSecret = Default::default();
-/// let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-///                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-///                               <MemoryStorage as Default>::default(), None);
+/// let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+///         secret,
+///         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+///     ).build().await.unwrap();
 /// let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // Usually you wouldn't bind this to a variable, but keep calling *CallBuilders*
 /// // like `log(...)`
@@ -1665,13 +1667,14 @@ impl<'a, C> UserEventMethods<'a, C> {
 /// 
 /// # #[test] fn egal() {
 /// use std::default::Default;
-/// use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// use oauth2;
 /// use partners2::Partners;
 /// 
 /// let secret: ApplicationSecret = Default::default();
-/// let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-///                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-///                               <MemoryStorage as Default>::default(), None);
+/// let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+///         secret,
+///         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+///     ).build().await.unwrap();
 /// let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // Usually you wouldn't bind this to a variable, but keep calling *CallBuilders*
 /// // like `log(...)`
@@ -1725,13 +1728,14 @@ impl<'a, C> ClientMessageMethods<'a, C> {
 /// 
 /// # #[test] fn egal() {
 /// use std::default::Default;
-/// use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// use oauth2;
 /// use partners2::Partners;
 /// 
 /// let secret: ApplicationSecret = Default::default();
-/// let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-///                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-///                               <MemoryStorage as Default>::default(), None);
+/// let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+///         secret,
+///         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+///     ).build().await.unwrap();
 /// let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // Usually you wouldn't bind this to a variable, but keep calling *CallBuilders*
 /// // like `list(...)`
@@ -1789,13 +1793,14 @@ impl<'a, C> LeadMethods<'a, C> {
 /// 
 /// # #[test] fn egal() {
 /// use std::default::Default;
-/// use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// use oauth2;
 /// use partners2::Partners;
 /// 
 /// let secret: ApplicationSecret = Default::default();
-/// let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-///                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-///                               <MemoryStorage as Default>::default(), None);
+/// let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+///         secret,
+///         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+///     ).build().await.unwrap();
 /// let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // Usually you wouldn't bind this to a variable, but keep calling *CallBuilders*
 /// // like `history_list(...)` and `list(...)`
@@ -1871,13 +1876,14 @@ impl<'a, C> OfferMethods<'a, C> {
 /// 
 /// # #[test] fn egal() {
 /// use std::default::Default;
-/// use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// use oauth2;
 /// use partners2::Partners;
 /// 
 /// let secret: ApplicationSecret = Default::default();
-/// let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-///                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-///                               <MemoryStorage as Default>::default(), None);
+/// let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+///         secret,
+///         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+///     ).build().await.unwrap();
 /// let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // Usually you wouldn't bind this to a variable, but keep calling *CallBuilders*
 /// // like `list(...)`
@@ -1934,13 +1940,14 @@ impl<'a, C> AnalyticMethods<'a, C> {
 /// 
 /// # #[test] fn egal() {
 /// use std::default::Default;
-/// use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// use oauth2;
 /// use partners2::Partners;
 /// 
 /// let secret: ApplicationSecret = Default::default();
-/// let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-///                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-///                               <MemoryStorage as Default>::default(), None);
+/// let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+///         secret,
+///         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+///     ).build().await.unwrap();
 /// let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // Usually you wouldn't bind this to a variable, but keep calling *CallBuilders*
 /// // like `list(...)`
@@ -1994,13 +2001,14 @@ impl<'a, C> UserStateMethods<'a, C> {
 /// 
 /// # #[test] fn egal() {
 /// use std::default::Default;
-/// use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// use oauth2;
 /// use partners2::Partners;
 /// 
 /// let secret: ApplicationSecret = Default::default();
-/// let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-///                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-///                               <MemoryStorage as Default>::default(), None);
+/// let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+///         secret,
+///         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+///     ).build().await.unwrap();
 /// let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // Usually you wouldn't bind this to a variable, but keep calling *CallBuilders*
 /// // like `get_partnersstatus(...)`, `update_companies(...)` and `update_leads(...)`
@@ -2104,13 +2112,14 @@ impl<'a, C> MethodMethods<'a, C> {
 /// 
 /// # #[test] fn egal() {
 /// use std::default::Default;
-/// use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// use oauth2;
 /// use partners2::Partners;
 /// 
 /// let secret: ApplicationSecret = Default::default();
-/// let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-///                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-///                               <MemoryStorage as Default>::default(), None);
+/// let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+///         secret,
+///         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+///     ).build().await.unwrap();
 /// let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // Usually you wouldn't bind this to a variable, but keep calling *CallBuilders*
 /// // like `get(...)`, `leads_create(...)` and `list(...)`
@@ -2227,13 +2236,14 @@ impl<'a, C> CompanyMethods<'a, C> {
 /// 
 /// # #[test] fn egal() {
 /// use std::default::Default;
-/// use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// use oauth2;
 /// use partners2::Partners;
 /// 
 /// let secret: ApplicationSecret = Default::default();
-/// let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-///                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-///                               <MemoryStorage as Default>::default(), None);
+/// let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+///         secret,
+///         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+///     ).build().await.unwrap();
 /// let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // Usually you wouldn't bind this to a variable, but keep calling *CallBuilders*
 /// // like `create_company_relation(...)`, `delete_company_relation(...)`, `get(...)` and `update_profile(...)`
@@ -2376,13 +2386,14 @@ impl<'a, C> UserMethods<'a, C> {
 /// use partners2::api::LogUserEventRequest;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use partners2::Partners;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -2609,13 +2620,14 @@ impl<'a, C> UserEventLogCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rustl
 /// use partners2::api::LogMessageRequest;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use partners2::Partners;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -2840,13 +2852,14 @@ impl<'a, C> ClientMessageLogCall<'a, C> where C: BorrowMut<hyper::Client<hyper_r
 /// # extern crate google_partners2 as partners2;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use partners2::Partners;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -3173,13 +3186,14 @@ impl<'a, C> LeadListCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rustls::H
 /// # extern crate google_partners2 as partners2;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use partners2::Partners;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -3517,13 +3531,14 @@ impl<'a, C> OfferHistoryListCall<'a, C> where C: BorrowMut<hyper::Client<hyper_r
 /// # extern crate google_partners2 as partners2;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use partners2::Partners;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -3810,13 +3825,14 @@ impl<'a, C> OfferListCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rustls::
 /// # extern crate google_partners2 as partners2;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use partners2::Partners;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -4138,13 +4154,14 @@ impl<'a, C> AnalyticListCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rustl
 /// # extern crate google_partners2 as partners2;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use partners2::Partners;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -4431,13 +4448,14 @@ impl<'a, C> UserStateListCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rust
 /// use partners2::api::Lead;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use partners2::Partners;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -4768,13 +4786,14 @@ impl<'a, C> MethodUpdateLeadCall<'a, C> where C: BorrowMut<hyper::Client<hyper_r
 /// use partners2::api::Company;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use partners2::Partners;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -5103,13 +5122,14 @@ impl<'a, C> MethodUpdateCompanyCall<'a, C> where C: BorrowMut<hyper::Client<hype
 /// # extern crate google_partners2 as partners2;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use partners2::Partners;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -5396,13 +5416,14 @@ impl<'a, C> MethodGetPartnersstatuCall<'a, C> where C: BorrowMut<hyper::Client<h
 /// use partners2::api::CreateLeadRequest;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use partners2::Partners;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -5659,13 +5680,14 @@ impl<'a, C> CompanyLeadCreateCall<'a, C> where C: BorrowMut<hyper::Client<hyper_
 /// # extern crate google_partners2 as partners2;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use partners2::Partners;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -6039,13 +6061,14 @@ impl<'a, C> CompanyGetCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rustls:
 /// # extern crate google_partners2 as partners2;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use partners2::Partners;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -6593,13 +6616,14 @@ impl<'a, C> CompanyListCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rustls
 /// use partners2::api::UserProfile;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use partners2::Partners;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -6915,13 +6939,14 @@ impl<'a, C> UserUpdateProfileCall<'a, C> where C: BorrowMut<hyper::Client<hyper_
 /// use partners2::api::CompanyRelation;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use partners2::Partners;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -7270,13 +7295,14 @@ impl<'a, C> UserCreateCompanyRelationCall<'a, C> where C: BorrowMut<hyper::Clien
 /// # extern crate google_partners2 as partners2;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use partners2::Partners;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -7596,13 +7622,14 @@ impl<'a, C> UserDeleteCompanyRelationCall<'a, C> where C: BorrowMut<hyper::Clien
 /// # extern crate google_partners2 as partners2;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use partners2::Partners;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Partners::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.

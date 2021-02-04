@@ -63,7 +63,7 @@ impl Default for Scope {
 /// use pubsub1_beta2::{Result, Error};
 /// # #[test] fn egal() {
 /// use std::default::Default;
-/// use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// use oauth2;
 /// use pubsub1_beta2::Pubsub;
 /// 
 /// // Get an ApplicationSecret instance by some means. It contains the `client_id` and 
@@ -74,9 +74,10 @@ impl Default for Scope {
 /// // Provide your own `AuthenticatorDelegate` to adjust the way it operates and get feedback about 
 /// // what's going on. You probably want to bring in your own `TokenStorage` to persist tokens and
 /// // retrieve them from storage.
-/// let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-///                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-///                               <MemoryStorage as Default>::default(), None);
+/// let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+///         secret,
+///         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+///     ).build().await.unwrap();
 /// let mut hub = Pubsub::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -961,13 +962,14 @@ impl client::ResponseResult for Topic {}
 /// 
 /// # #[test] fn egal() {
 /// use std::default::Default;
-/// use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// use oauth2;
 /// use pubsub1_beta2::Pubsub;
 /// 
 /// let secret: ApplicationSecret = Default::default();
-/// let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-///                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-///                               <MemoryStorage as Default>::default(), None);
+/// let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+///         secret,
+///         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+///     ).build().await.unwrap();
 /// let mut hub = Pubsub::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // Usually you wouldn't bind this to a variable, but keep calling *CallBuilders*
 /// // like `subscriptions_acknowledge(...)`, `subscriptions_create(...)`, `subscriptions_delete(...)`, `subscriptions_get(...)`, `subscriptions_get_iam_policy(...)`, `subscriptions_list(...)`, `subscriptions_modify_ack_deadline(...)`, `subscriptions_modify_push_config(...)`, `subscriptions_pull(...)`, `subscriptions_set_iam_policy(...)`, `subscriptions_test_iam_permissions(...)`, `topics_create(...)`, `topics_delete(...)`, `topics_get(...)`, `topics_get_iam_policy(...)`, `topics_list(...)`, `topics_publish(...)`, `topics_set_iam_policy(...)`, `topics_subscriptions_list(...)` and `topics_test_iam_permissions(...)`
@@ -1459,13 +1461,14 @@ impl<'a, C> ProjectMethods<'a, C> {
 /// use pubsub1_beta2::api::AcknowledgeRequest;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use pubsub1_beta2::Pubsub;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Pubsub::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -1761,13 +1764,14 @@ impl<'a, C> ProjectSubscriptionAcknowledgeCall<'a, C> where C: BorrowMut<hyper::
 /// use pubsub1_beta2::api::Subscription;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use pubsub1_beta2::Pubsub;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Pubsub::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -2065,13 +2069,14 @@ impl<'a, C> ProjectSubscriptionCreateCall<'a, C> where C: BorrowMut<hyper::Clien
 /// # extern crate google_pubsub1_beta2 as pubsub1_beta2;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use pubsub1_beta2::Pubsub;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Pubsub::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -2331,13 +2336,14 @@ impl<'a, C> ProjectSubscriptionDeleteCall<'a, C> where C: BorrowMut<hyper::Clien
 /// # extern crate google_pubsub1_beta2 as pubsub1_beta2;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use pubsub1_beta2::Pubsub;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Pubsub::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -2599,13 +2605,14 @@ impl<'a, C> ProjectSubscriptionGetCall<'a, C> where C: BorrowMut<hyper::Client<h
 /// # extern crate google_pubsub1_beta2 as pubsub1_beta2;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use pubsub1_beta2::Pubsub;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Pubsub::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -2889,13 +2896,14 @@ impl<'a, C> ProjectSubscriptionGetIamPolicyCall<'a, C> where C: BorrowMut<hyper:
 /// # extern crate google_pubsub1_beta2 as pubsub1_beta2;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use pubsub1_beta2::Pubsub;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Pubsub::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -3186,13 +3194,14 @@ impl<'a, C> ProjectSubscriptionListCall<'a, C> where C: BorrowMut<hyper::Client<
 /// use pubsub1_beta2::api::ModifyAckDeadlineRequest;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use pubsub1_beta2::Pubsub;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Pubsub::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -3487,13 +3496,14 @@ impl<'a, C> ProjectSubscriptionModifyAckDeadlineCall<'a, C> where C: BorrowMut<h
 /// use pubsub1_beta2::api::ModifyPushConfigRequest;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use pubsub1_beta2::Pubsub;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Pubsub::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -3786,13 +3796,14 @@ impl<'a, C> ProjectSubscriptionModifyPushConfigCall<'a, C> where C: BorrowMut<hy
 /// use pubsub1_beta2::api::PullRequest;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use pubsub1_beta2::Pubsub;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Pubsub::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -4085,13 +4096,14 @@ impl<'a, C> ProjectSubscriptionPullCall<'a, C> where C: BorrowMut<hyper::Client<
 /// use pubsub1_beta2::api::SetIamPolicyRequest;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use pubsub1_beta2::Pubsub;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Pubsub::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -4388,13 +4400,14 @@ impl<'a, C> ProjectSubscriptionSetIamPolicyCall<'a, C> where C: BorrowMut<hyper:
 /// use pubsub1_beta2::api::TestIamPermissionsRequest;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use pubsub1_beta2::Pubsub;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Pubsub::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -4684,13 +4697,14 @@ impl<'a, C> ProjectSubscriptionTestIamPermissionCall<'a, C> where C: BorrowMut<h
 /// # extern crate google_pubsub1_beta2 as pubsub1_beta2;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use pubsub1_beta2::Pubsub;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Pubsub::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -4977,13 +4991,14 @@ impl<'a, C> ProjectTopicSubscriptionListCall<'a, C> where C: BorrowMut<hyper::Cl
 /// use pubsub1_beta2::api::Topic;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use pubsub1_beta2::Pubsub;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Pubsub::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -5281,13 +5296,14 @@ impl<'a, C> ProjectTopicCreateCall<'a, C> where C: BorrowMut<hyper::Client<hyper
 /// # extern crate google_pubsub1_beta2 as pubsub1_beta2;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use pubsub1_beta2::Pubsub;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Pubsub::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -5547,13 +5563,14 @@ impl<'a, C> ProjectTopicDeleteCall<'a, C> where C: BorrowMut<hyper::Client<hyper
 /// # extern crate google_pubsub1_beta2 as pubsub1_beta2;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use pubsub1_beta2::Pubsub;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Pubsub::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -5815,13 +5832,14 @@ impl<'a, C> ProjectTopicGetCall<'a, C> where C: BorrowMut<hyper::Client<hyper_ru
 /// # extern crate google_pubsub1_beta2 as pubsub1_beta2;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use pubsub1_beta2::Pubsub;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Pubsub::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -6105,13 +6123,14 @@ impl<'a, C> ProjectTopicGetIamPolicyCall<'a, C> where C: BorrowMut<hyper::Client
 /// # extern crate google_pubsub1_beta2 as pubsub1_beta2;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use pubsub1_beta2::Pubsub;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Pubsub::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -6400,13 +6419,14 @@ impl<'a, C> ProjectTopicListCall<'a, C> where C: BorrowMut<hyper::Client<hyper_r
 /// use pubsub1_beta2::api::PublishRequest;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use pubsub1_beta2::Pubsub;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Pubsub::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -6699,13 +6719,14 @@ impl<'a, C> ProjectTopicPublishCall<'a, C> where C: BorrowMut<hyper::Client<hype
 /// use pubsub1_beta2::api::SetIamPolicyRequest;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use pubsub1_beta2::Pubsub;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Pubsub::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !
@@ -7002,13 +7023,14 @@ impl<'a, C> ProjectTopicSetIamPolicyCall<'a, C> where C: BorrowMut<hyper::Client
 /// use pubsub1_beta2::api::TestIamPermissionsRequest;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use pubsub1_beta2::Pubsub;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Pubsub::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // As the method needs a request, you would usually fill it with the desired information
 /// // into the respective structure. Some of the parts shown here might not be applicable !

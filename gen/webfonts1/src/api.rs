@@ -36,7 +36,7 @@ use crate::client;
 /// use webfonts1::{Result, Error};
 /// # #[test] fn egal() {
 /// use std::default::Default;
-/// use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// use oauth2;
 /// use webfonts1::Webfonts;
 /// 
 /// // Get an ApplicationSecret instance by some means. It contains the `client_id` and 
@@ -47,9 +47,10 @@ use crate::client;
 /// // Provide your own `AuthenticatorDelegate` to adjust the way it operates and get feedback about 
 /// // what's going on. You probably want to bring in your own `TokenStorage` to persist tokens and
 /// // retrieve them from storage.
-/// let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-///                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-///                               <MemoryStorage as Default>::default(), None);
+/// let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+///         secret,
+///         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+///     ).build().await.unwrap();
 /// let mut hub = Webfonts::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.
@@ -207,13 +208,14 @@ impl client::ResponseResult for WebfontList {}
 /// 
 /// # #[test] fn egal() {
 /// use std::default::Default;
-/// use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// use oauth2;
 /// use webfonts1::Webfonts;
 /// 
 /// let secret: ApplicationSecret = Default::default();
-/// let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-///                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-///                               <MemoryStorage as Default>::default(), None);
+/// let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+///         secret,
+///         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+///     ).build().await.unwrap();
 /// let mut hub = Webfonts::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // Usually you wouldn't bind this to a variable, but keep calling *CallBuilders*
 /// // like `list(...)`
@@ -270,13 +272,14 @@ impl<'a, C> WebfontMethods<'a, C> {
 /// # extern crate google_webfonts1 as webfonts1;
 /// # #[test] fn egal() {
 /// # use std::default::Default;
-/// # use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+/// # use oauth2;
 /// # use webfonts1::Webfonts;
 /// 
 /// # let secret: ApplicationSecret = Default::default();
-/// # let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-/// #                               hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-/// #                               <MemoryStorage as Default>::default(), None);
+/// # let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+/// #         secret,
+/// #         yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+/// #     ).build().await.unwrap();
 /// # let mut hub = Webfonts::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 /// // You can configure optional parameters by calling the respective setters at will, and
 /// // execute the final call using `doit()`.

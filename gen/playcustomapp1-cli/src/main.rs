@@ -4,6 +4,9 @@
 #![allow(unused_variables, unused_imports, dead_code, unused_mut)]
 
 #[macro_use]
+extern crate tokio;
+
+#[macro_use]
 extern crate clap;
 extern crate yup_oauth2 as oauth2;
 extern crate yup_hyper_mock as mock;
@@ -23,14 +26,13 @@ use google_playcustomapp1::{api, Error};
 
 mod client;
 
-use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+use client::{InvalidOptionsError, CLIError, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
 use std::default::Default;
 use std::str::FromStr;
 
-use oauth2::{Authenticator, DefaultAuthenticatorDelegate, FlowType};
 use serde_json as json;
 use clap::ArgMatches;
 
@@ -41,14 +43,15 @@ enum DoitError {
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Playcustomapp<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
+    hub: api::Playcustomapp<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>
+    >,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
 
 
 impl<'n> Engine<'n> {
-    fn _accounts_custom_apps_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_custom_apps_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -138,7 +141,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
+    async fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
         let mut err = InvalidOptionsError::new();
         let mut call_result: Result<(), DoitError> = Ok(());
         let mut err_opt: Option<InvalidOptionsError> = None;
@@ -146,7 +149,7 @@ impl<'n> Engine<'n> {
             ("accounts", Some(opt)) => {
                 match opt.subcommand() {
                     ("custom-apps-create", Some(opt)) => {
-                        call_result = self._accounts_custom_apps_create(opt, dry_run, &mut err);
+                        call_result = self._accounts_custom_apps_create(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("accounts".to_string()));
@@ -171,7 +174,7 @@ impl<'n> Engine<'n> {
     }
 
     // Please note that this call will fail if any part of the opt can't be handled
-    fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
+    async fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
             let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
@@ -185,18 +188,10 @@ impl<'n> Engine<'n> {
             }
         };
 
-        let auth = Authenticator::new(  &secret, DefaultAuthenticatorDelegate,
-                                        if opt.is_present("debug-auth") {
-                                            hyper::Client::with_connector(mock::TeeConnector {
-                                                    connector: hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
-                                                })
-                                        } else {
-                                            hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new()))
-                                        },
-                                        JsonTokenStorage {
-                                          program_name: "playcustomapp1",
-                                          db_dir: config_dir.clone(),
-                                        }, Some(FlowType::InstalledRedirect(54324)));
+        let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+            secret,
+            yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+        ).persist_tokens_to_disk(format!("{}/playcustomapp1", config_dir)).build().await.unwrap();
 
         let client =
             if opt.is_present("debug") {
@@ -221,22 +216,23 @@ impl<'n> Engine<'n> {
                 ]
         };
 
-        match engine._doit(true) {
+        match engine._doit(true).await {
             Err(Some(err)) => Err(err),
             Err(None)      => Ok(engine),
             Ok(_)          => unreachable!(),
         }
     }
 
-    fn doit(&self) -> Result<(), DoitError> {
-        match self._doit(false) {
+    async fn doit(&self) -> Result<(), DoitError> {
+        match self._doit(false).await {
             Ok(res) => res,
             Err(_) => unreachable!(),
         }
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut exit_status = 0i32;
     let upload_value_names = ["mode", "file"];
     let arg_data = [
@@ -366,7 +362,7 @@ fn main() {
             writeln!(io::stderr(), "{}", err).ok();
         },
         Ok(engine) => {
-            if let Err(doit_err) = engine.doit() {
+            if let Err(doit_err) = engine.doit().await {
                 exit_status = 1;
                 match doit_err {
                     DoitError::IoError(path, err) => {

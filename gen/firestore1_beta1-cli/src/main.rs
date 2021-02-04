@@ -4,6 +4,9 @@
 #![allow(unused_variables, unused_imports, dead_code, unused_mut)]
 
 #[macro_use]
+extern crate tokio;
+
+#[macro_use]
 extern crate clap;
 extern crate yup_oauth2 as oauth2;
 extern crate yup_hyper_mock as mock;
@@ -23,14 +26,13 @@ use google_firestore1_beta1::{api, Error};
 
 mod client;
 
-use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+use client::{InvalidOptionsError, CLIError, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
 use std::default::Default;
 use std::str::FromStr;
 
-use oauth2::{Authenticator, DefaultAuthenticatorDelegate, FlowType};
 use serde_json as json;
 use clap::ArgMatches;
 
@@ -41,14 +43,15 @@ enum DoitError {
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Firestore<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
+    hub: api::Firestore<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>
+    >,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
 
 
 impl<'n> Engine<'n> {
-    fn _projects_databases_documents_batch_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_databases_documents_batch_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -123,7 +126,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -138,7 +141,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_databases_documents_begin_transaction(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_databases_documents_begin_transaction(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -209,7 +212,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -224,7 +227,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_databases_documents_commit(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_databases_documents_commit(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -294,7 +297,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -309,7 +312,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_databases_documents_create_document(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_databases_documents_create_document(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -388,7 +391,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -403,7 +406,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_databases_documents_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_databases_documents_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().databases_documents_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -447,7 +450,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -462,7 +465,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_databases_documents_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_databases_documents_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().databases_documents_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -490,7 +493,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["mask-field-paths", "read-time", "transaction"].iter().map(|v|*v));
+                                                                           v.extend(["transaction", "read-time", "mask-field-paths"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -509,7 +512,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -524,7 +527,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_databases_documents_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_databases_documents_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().databases_documents_list(opt.value_of("parent").unwrap_or(""), opt.value_of("collection-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -564,7 +567,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["show-missing", "page-size", "page-token", "order-by", "mask-field-paths", "read-time", "transaction"].iter().map(|v|*v));
+                                                                           v.extend(["transaction", "order-by", "mask-field-paths", "page-size", "read-time", "show-missing", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -583,7 +586,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -598,7 +601,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_databases_documents_list_collection_ids(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_databases_documents_list_collection_ids(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -669,7 +672,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -684,7 +687,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_databases_documents_listen(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_databases_documents_listen(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -780,7 +783,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -795,7 +798,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_databases_documents_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_databases_documents_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -861,7 +864,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["current-document-exists", "current-document-update-time", "update-mask-field-paths", "mask-field-paths"].iter().map(|v|*v));
+                                                                           v.extend(["current-document-exists", "update-mask-field-paths", "current-document-update-time", "mask-field-paths"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -880,7 +883,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -895,7 +898,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_databases_documents_rollback(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_databases_documents_rollback(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -965,7 +968,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -980,7 +983,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_databases_documents_run_query(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_databases_documents_run_query(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1072,7 +1075,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1087,7 +1090,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_databases_documents_write(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_databases_documents_write(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1159,7 +1162,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1174,7 +1177,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_databases_export_documents(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_databases_export_documents(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1245,7 +1248,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1260,7 +1263,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_databases_import_documents(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_databases_import_documents(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1331,7 +1334,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1346,7 +1349,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_databases_indexes_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_databases_indexes_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1418,7 +1421,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1433,7 +1436,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_databases_indexes_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_databases_indexes_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().databases_indexes_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1470,7 +1473,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1485,7 +1488,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_databases_indexes_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_databases_indexes_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().databases_indexes_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1522,7 +1525,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1537,7 +1540,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_databases_indexes_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_databases_indexes_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().databases_indexes_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1565,7 +1568,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "filter", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "filter", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1584,7 +1587,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1599,7 +1602,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
+    async fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
         let mut err = InvalidOptionsError::new();
         let mut call_result: Result<(), DoitError> = Ok(());
         let mut err_opt: Option<InvalidOptionsError> = None;
@@ -1607,61 +1610,61 @@ impl<'n> Engine<'n> {
             ("projects", Some(opt)) => {
                 match opt.subcommand() {
                     ("databases-documents-batch-get", Some(opt)) => {
-                        call_result = self._projects_databases_documents_batch_get(opt, dry_run, &mut err);
+                        call_result = self._projects_databases_documents_batch_get(opt, dry_run, &mut err).await;
                     },
                     ("databases-documents-begin-transaction", Some(opt)) => {
-                        call_result = self._projects_databases_documents_begin_transaction(opt, dry_run, &mut err);
+                        call_result = self._projects_databases_documents_begin_transaction(opt, dry_run, &mut err).await;
                     },
                     ("databases-documents-commit", Some(opt)) => {
-                        call_result = self._projects_databases_documents_commit(opt, dry_run, &mut err);
+                        call_result = self._projects_databases_documents_commit(opt, dry_run, &mut err).await;
                     },
                     ("databases-documents-create-document", Some(opt)) => {
-                        call_result = self._projects_databases_documents_create_document(opt, dry_run, &mut err);
+                        call_result = self._projects_databases_documents_create_document(opt, dry_run, &mut err).await;
                     },
                     ("databases-documents-delete", Some(opt)) => {
-                        call_result = self._projects_databases_documents_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_databases_documents_delete(opt, dry_run, &mut err).await;
                     },
                     ("databases-documents-get", Some(opt)) => {
-                        call_result = self._projects_databases_documents_get(opt, dry_run, &mut err);
+                        call_result = self._projects_databases_documents_get(opt, dry_run, &mut err).await;
                     },
                     ("databases-documents-list", Some(opt)) => {
-                        call_result = self._projects_databases_documents_list(opt, dry_run, &mut err);
+                        call_result = self._projects_databases_documents_list(opt, dry_run, &mut err).await;
                     },
                     ("databases-documents-list-collection-ids", Some(opt)) => {
-                        call_result = self._projects_databases_documents_list_collection_ids(opt, dry_run, &mut err);
+                        call_result = self._projects_databases_documents_list_collection_ids(opt, dry_run, &mut err).await;
                     },
                     ("databases-documents-listen", Some(opt)) => {
-                        call_result = self._projects_databases_documents_listen(opt, dry_run, &mut err);
+                        call_result = self._projects_databases_documents_listen(opt, dry_run, &mut err).await;
                     },
                     ("databases-documents-patch", Some(opt)) => {
-                        call_result = self._projects_databases_documents_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_databases_documents_patch(opt, dry_run, &mut err).await;
                     },
                     ("databases-documents-rollback", Some(opt)) => {
-                        call_result = self._projects_databases_documents_rollback(opt, dry_run, &mut err);
+                        call_result = self._projects_databases_documents_rollback(opt, dry_run, &mut err).await;
                     },
                     ("databases-documents-run-query", Some(opt)) => {
-                        call_result = self._projects_databases_documents_run_query(opt, dry_run, &mut err);
+                        call_result = self._projects_databases_documents_run_query(opt, dry_run, &mut err).await;
                     },
                     ("databases-documents-write", Some(opt)) => {
-                        call_result = self._projects_databases_documents_write(opt, dry_run, &mut err);
+                        call_result = self._projects_databases_documents_write(opt, dry_run, &mut err).await;
                     },
                     ("databases-export-documents", Some(opt)) => {
-                        call_result = self._projects_databases_export_documents(opt, dry_run, &mut err);
+                        call_result = self._projects_databases_export_documents(opt, dry_run, &mut err).await;
                     },
                     ("databases-import-documents", Some(opt)) => {
-                        call_result = self._projects_databases_import_documents(opt, dry_run, &mut err);
+                        call_result = self._projects_databases_import_documents(opt, dry_run, &mut err).await;
                     },
                     ("databases-indexes-create", Some(opt)) => {
-                        call_result = self._projects_databases_indexes_create(opt, dry_run, &mut err);
+                        call_result = self._projects_databases_indexes_create(opt, dry_run, &mut err).await;
                     },
                     ("databases-indexes-delete", Some(opt)) => {
-                        call_result = self._projects_databases_indexes_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_databases_indexes_delete(opt, dry_run, &mut err).await;
                     },
                     ("databases-indexes-get", Some(opt)) => {
-                        call_result = self._projects_databases_indexes_get(opt, dry_run, &mut err);
+                        call_result = self._projects_databases_indexes_get(opt, dry_run, &mut err).await;
                     },
                     ("databases-indexes-list", Some(opt)) => {
-                        call_result = self._projects_databases_indexes_list(opt, dry_run, &mut err);
+                        call_result = self._projects_databases_indexes_list(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("projects".to_string()));
@@ -1686,7 +1689,7 @@ impl<'n> Engine<'n> {
     }
 
     // Please note that this call will fail if any part of the opt can't be handled
-    fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
+    async fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
             let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
@@ -1700,18 +1703,10 @@ impl<'n> Engine<'n> {
             }
         };
 
-        let auth = Authenticator::new(  &secret, DefaultAuthenticatorDelegate,
-                                        if opt.is_present("debug-auth") {
-                                            hyper::Client::with_connector(mock::TeeConnector {
-                                                    connector: hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
-                                                })
-                                        } else {
-                                            hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new()))
-                                        },
-                                        JsonTokenStorage {
-                                          program_name: "firestore1-beta1",
-                                          db_dir: config_dir.clone(),
-                                        }, Some(FlowType::InstalledRedirect(54324)));
+        let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+            secret,
+            yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+        ).persist_tokens_to_disk(format!("{}/firestore1-beta1", config_dir)).build().await.unwrap();
 
         let client =
             if opt.is_present("debug") {
@@ -1736,22 +1731,23 @@ impl<'n> Engine<'n> {
                 ]
         };
 
-        match engine._doit(true) {
+        match engine._doit(true).await {
             Err(Some(err)) => Err(err),
             Err(None)      => Ok(engine),
             Ok(_)          => unreachable!(),
         }
     }
 
-    fn doit(&self) -> Result<(), DoitError> {
-        match self._doit(false) {
+    async fn doit(&self) -> Result<(), DoitError> {
+        match self._doit(false).await {
             Ok(res) => res,
             Err(_) => unreachable!(),
         }
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut exit_status = 0i32;
     let arg_data = [
         ("projects", "methods: 'databases-documents-batch-get', 'databases-documents-begin-transaction', 'databases-documents-commit', 'databases-documents-create-document', 'databases-documents-delete', 'databases-documents-get', 'databases-documents-list', 'databases-documents-list-collection-ids', 'databases-documents-listen', 'databases-documents-patch', 'databases-documents-rollback', 'databases-documents-run-query', 'databases-documents-write', 'databases-export-documents', 'databases-import-documents', 'databases-indexes-create', 'databases-indexes-delete', 'databases-indexes-get' and 'databases-indexes-list'", vec![
@@ -2402,7 +2398,7 @@ fn main() {
             writeln!(io::stderr(), "{}", err).ok();
         },
         Ok(engine) => {
-            if let Err(doit_err) = engine.doit() {
+            if let Err(doit_err) = engine.doit().await {
                 exit_status = 1;
                 match doit_err {
                     DoitError::IoError(path, err) => {

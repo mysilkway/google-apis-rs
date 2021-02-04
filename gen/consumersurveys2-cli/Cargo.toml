@@ -29,7 +29,6 @@ yup-oauth2 = "^ 5.0"
 tokio = "^ 1.0"
 itertools = "^ 0.10"
 strsim = "^0.5"
-hyper-rustls = "^0.6"
 yup-hyper-mock = "^2.0"
 clap = "^2.0"
 

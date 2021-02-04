@@ -4,6 +4,9 @@
 #![allow(unused_variables, unused_imports, dead_code, unused_mut)]
 
 #[macro_use]
+extern crate tokio;
+
+#[macro_use]
 extern crate clap;
 extern crate yup_oauth2 as oauth2;
 extern crate yup_hyper_mock as mock;
@@ -23,14 +26,13 @@ use google_dns1::{api, Error};
 
 mod client;
 
-use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+use client::{InvalidOptionsError, CLIError, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
 use std::default::Default;
 use std::str::FromStr;
 
-use oauth2::{Authenticator, DefaultAuthenticatorDelegate, FlowType};
 use serde_json as json;
 use clap::ArgMatches;
 
@@ -41,14 +43,15 @@ enum DoitError {
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Dns<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
+    hub: api::Dns<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>
+    >,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
 
 
 impl<'n> Engine<'n> {
-    fn _changes_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _changes_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -126,7 +129,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -141,7 +144,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _changes_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _changes_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.changes().get(opt.value_of("project").unwrap_or(""), opt.value_of("managed-zone").unwrap_or(""), opt.value_of("change-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -182,7 +185,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -197,7 +200,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _changes_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _changes_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.changes().list(opt.value_of("project").unwrap_or(""), opt.value_of("managed-zone").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -228,7 +231,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "max-results", "sort-by", "sort-order"].iter().map(|v|*v));
+                                                                           v.extend(["max-results", "page-token", "sort-by", "sort-order"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -247,7 +250,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -262,7 +265,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _dns_keys_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _dns_keys_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.dns_keys().get(opt.value_of("project").unwrap_or(""), opt.value_of("managed-zone").unwrap_or(""), opt.value_of("dns-key-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -306,7 +309,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -321,7 +324,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _dns_keys_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _dns_keys_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.dns_keys().list(opt.value_of("project").unwrap_or(""), opt.value_of("managed-zone").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -349,7 +352,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["digest-type", "max-results", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["max-results", "page-token", "digest-type"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -368,7 +371,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -383,7 +386,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _managed_zone_operations_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _managed_zone_operations_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.managed_zone_operations().get(opt.value_of("project").unwrap_or(""), opt.value_of("managed-zone").unwrap_or(""), opt.value_of("operation").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -424,7 +427,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -439,7 +442,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _managed_zone_operations_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _managed_zone_operations_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.managed_zone_operations().list(opt.value_of("project").unwrap_or(""), opt.value_of("managed-zone").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -467,7 +470,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["max-results", "sort-by", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["max-results", "page-token", "sort-by"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -486,7 +489,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -501,7 +504,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _managed_zones_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _managed_zones_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -594,7 +597,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -609,7 +612,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _managed_zones_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _managed_zones_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.managed_zones().delete(opt.value_of("project").unwrap_or(""), opt.value_of("managed-zone").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -646,7 +649,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -657,7 +660,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _managed_zones_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _managed_zones_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.managed_zones().get(opt.value_of("project").unwrap_or(""), opt.value_of("managed-zone").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -698,7 +701,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -713,7 +716,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _managed_zones_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _managed_zones_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.managed_zones().list(opt.value_of("project").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -741,7 +744,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["dns-name", "max-results", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["max-results", "page-token", "dns-name"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -760,7 +763,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -775,7 +778,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _managed_zones_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _managed_zones_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -868,7 +871,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -883,7 +886,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _managed_zones_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _managed_zones_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -976,7 +979,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -991,7 +994,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _policies_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _policies_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1071,7 +1074,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1086,7 +1089,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _policies_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _policies_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.policies().delete(opt.value_of("project").unwrap_or(""), opt.value_of("policy").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1123,7 +1126,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1134,7 +1137,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _policies_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _policies_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.policies().get(opt.value_of("project").unwrap_or(""), opt.value_of("policy").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1175,7 +1178,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1190,7 +1193,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _policies_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _policies_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.policies().list(opt.value_of("project").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1234,7 +1237,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1249,7 +1252,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _policies_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _policies_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1329,7 +1332,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1344,7 +1347,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _policies_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _policies_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1424,7 +1427,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1439,7 +1442,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().get(opt.value_of("project").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1480,7 +1483,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1495,7 +1498,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _resource_record_sets_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _resource_record_sets_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.resource_record_sets().list(opt.value_of("project").unwrap_or(""), opt.value_of("managed-zone").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1526,7 +1529,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["type", "max-results", "name", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["name", "page-token", "max-results", "type"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1545,7 +1548,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1560,7 +1563,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
+    async fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
         let mut err = InvalidOptionsError::new();
         let mut call_result: Result<(), DoitError> = Ok(());
         let mut err_opt: Option<InvalidOptionsError> = None;
@@ -1568,13 +1571,13 @@ impl<'n> Engine<'n> {
             ("changes", Some(opt)) => {
                 match opt.subcommand() {
                     ("create", Some(opt)) => {
-                        call_result = self._changes_create(opt, dry_run, &mut err);
+                        call_result = self._changes_create(opt, dry_run, &mut err).await;
                     },
                     ("get", Some(opt)) => {
-                        call_result = self._changes_get(opt, dry_run, &mut err);
+                        call_result = self._changes_get(opt, dry_run, &mut err).await;
                     },
                     ("list", Some(opt)) => {
-                        call_result = self._changes_list(opt, dry_run, &mut err);
+                        call_result = self._changes_list(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("changes".to_string()));
@@ -1585,10 +1588,10 @@ impl<'n> Engine<'n> {
             ("dns-keys", Some(opt)) => {
                 match opt.subcommand() {
                     ("get", Some(opt)) => {
-                        call_result = self._dns_keys_get(opt, dry_run, &mut err);
+                        call_result = self._dns_keys_get(opt, dry_run, &mut err).await;
                     },
                     ("list", Some(opt)) => {
-                        call_result = self._dns_keys_list(opt, dry_run, &mut err);
+                        call_result = self._dns_keys_list(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("dns-keys".to_string()));
@@ -1599,10 +1602,10 @@ impl<'n> Engine<'n> {
             ("managed-zone-operations", Some(opt)) => {
                 match opt.subcommand() {
                     ("get", Some(opt)) => {
-                        call_result = self._managed_zone_operations_get(opt, dry_run, &mut err);
+                        call_result = self._managed_zone_operations_get(opt, dry_run, &mut err).await;
                     },
                     ("list", Some(opt)) => {
-                        call_result = self._managed_zone_operations_list(opt, dry_run, &mut err);
+                        call_result = self._managed_zone_operations_list(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("managed-zone-operations".to_string()));
@@ -1613,22 +1616,22 @@ impl<'n> Engine<'n> {
             ("managed-zones", Some(opt)) => {
                 match opt.subcommand() {
                     ("create", Some(opt)) => {
-                        call_result = self._managed_zones_create(opt, dry_run, &mut err);
+                        call_result = self._managed_zones_create(opt, dry_run, &mut err).await;
                     },
                     ("delete", Some(opt)) => {
-                        call_result = self._managed_zones_delete(opt, dry_run, &mut err);
+                        call_result = self._managed_zones_delete(opt, dry_run, &mut err).await;
                     },
                     ("get", Some(opt)) => {
-                        call_result = self._managed_zones_get(opt, dry_run, &mut err);
+                        call_result = self._managed_zones_get(opt, dry_run, &mut err).await;
                     },
                     ("list", Some(opt)) => {
-                        call_result = self._managed_zones_list(opt, dry_run, &mut err);
+                        call_result = self._managed_zones_list(opt, dry_run, &mut err).await;
                     },
                     ("patch", Some(opt)) => {
-                        call_result = self._managed_zones_patch(opt, dry_run, &mut err);
+                        call_result = self._managed_zones_patch(opt, dry_run, &mut err).await;
                     },
                     ("update", Some(opt)) => {
-                        call_result = self._managed_zones_update(opt, dry_run, &mut err);
+                        call_result = self._managed_zones_update(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("managed-zones".to_string()));
@@ -1639,22 +1642,22 @@ impl<'n> Engine<'n> {
             ("policies", Some(opt)) => {
                 match opt.subcommand() {
                     ("create", Some(opt)) => {
-                        call_result = self._policies_create(opt, dry_run, &mut err);
+                        call_result = self._policies_create(opt, dry_run, &mut err).await;
                     },
                     ("delete", Some(opt)) => {
-                        call_result = self._policies_delete(opt, dry_run, &mut err);
+                        call_result = self._policies_delete(opt, dry_run, &mut err).await;
                     },
                     ("get", Some(opt)) => {
-                        call_result = self._policies_get(opt, dry_run, &mut err);
+                        call_result = self._policies_get(opt, dry_run, &mut err).await;
                     },
                     ("list", Some(opt)) => {
-                        call_result = self._policies_list(opt, dry_run, &mut err);
+                        call_result = self._policies_list(opt, dry_run, &mut err).await;
                     },
                     ("patch", Some(opt)) => {
-                        call_result = self._policies_patch(opt, dry_run, &mut err);
+                        call_result = self._policies_patch(opt, dry_run, &mut err).await;
                     },
                     ("update", Some(opt)) => {
-                        call_result = self._policies_update(opt, dry_run, &mut err);
+                        call_result = self._policies_update(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("policies".to_string()));
@@ -1665,7 +1668,7 @@ impl<'n> Engine<'n> {
             ("projects", Some(opt)) => {
                 match opt.subcommand() {
                     ("get", Some(opt)) => {
-                        call_result = self._projects_get(opt, dry_run, &mut err);
+                        call_result = self._projects_get(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("projects".to_string()));
@@ -1676,7 +1679,7 @@ impl<'n> Engine<'n> {
             ("resource-record-sets", Some(opt)) => {
                 match opt.subcommand() {
                     ("list", Some(opt)) => {
-                        call_result = self._resource_record_sets_list(opt, dry_run, &mut err);
+                        call_result = self._resource_record_sets_list(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("resource-record-sets".to_string()));
@@ -1701,7 +1704,7 @@ impl<'n> Engine<'n> {
     }
 
     // Please note that this call will fail if any part of the opt can't be handled
-    fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
+    async fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
             let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
@@ -1715,18 +1718,10 @@ impl<'n> Engine<'n> {
             }
         };
 
-        let auth = Authenticator::new(  &secret, DefaultAuthenticatorDelegate,
-                                        if opt.is_present("debug-auth") {
-                                            hyper::Client::with_connector(mock::TeeConnector {
-                                                    connector: hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
-                                                })
-                                        } else {
-                                            hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new()))
-                                        },
-                                        JsonTokenStorage {
-                                          program_name: "dns1",
-                                          db_dir: config_dir.clone(),
-                                        }, Some(FlowType::InstalledRedirect(54324)));
+        let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+            secret,
+            yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+        ).persist_tokens_to_disk(format!("{}/dns1", config_dir)).build().await.unwrap();
 
         let client =
             if opt.is_present("debug") {
@@ -1748,22 +1743,23 @@ impl<'n> Engine<'n> {
                 ]
         };
 
-        match engine._doit(true) {
+        match engine._doit(true).await {
             Err(Some(err)) => Err(err),
             Err(None)      => Ok(engine),
             Ok(_)          => unreachable!(),
         }
     }
 
-    fn doit(&self) -> Result<(), DoitError> {
-        match self._doit(false) {
+    async fn doit(&self) -> Result<(), DoitError> {
+        match self._doit(false).await {
             Ok(res) => res,
             Err(_) => unreachable!(),
         }
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut exit_status = 0i32;
     let arg_data = [
         ("changes", "methods: 'create', 'get' and 'list'", vec![
@@ -2471,7 +2467,7 @@ fn main() {
             writeln!(io::stderr(), "{}", err).ok();
         },
         Ok(engine) => {
-            if let Err(doit_err) = engine.doit() {
+            if let Err(doit_err) = engine.doit().await {
                 exit_status = 1;
                 match doit_err {
                     DoitError::IoError(path, err) => {

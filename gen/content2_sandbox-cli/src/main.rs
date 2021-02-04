@@ -4,6 +4,9 @@
 #![allow(unused_variables, unused_imports, dead_code, unused_mut)]
 
 #[macro_use]
+extern crate tokio;
+
+#[macro_use]
 extern crate clap;
 extern crate yup_oauth2 as oauth2;
 extern crate yup_hyper_mock as mock;
@@ -23,14 +26,13 @@ use google_content2_sandbox::{api, Error};
 
 mod client;
 
-use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+use client::{InvalidOptionsError, CLIError, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
 use std::default::Default;
 use std::str::FromStr;
 
-use oauth2::{Authenticator, DefaultAuthenticatorDelegate, FlowType};
 use serde_json as json;
 use clap::ArgMatches;
 
@@ -41,14 +43,15 @@ enum DoitError {
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::ShoppingContent<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
+    hub: api::ShoppingContent<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>
+    >,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
 
 
 impl<'n> Engine<'n> {
-    fn _orderinvoices_createchargeinvoice(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orderinvoices_createchargeinvoice(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -136,7 +139,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -151,7 +154,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orderinvoices_createrefundinvoice(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orderinvoices_createrefundinvoice(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -226,7 +229,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -241,7 +244,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orderpayments_notifyauthapproved(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orderpayments_notifyauthapproved(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -314,7 +317,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -329,7 +332,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orderpayments_notifyauthdeclined(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orderpayments_notifyauthdeclined(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -399,7 +402,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -414,7 +417,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orderpayments_notifycharge(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orderpayments_notifycharge(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -486,7 +489,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -501,7 +504,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orderpayments_notifyrefund(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orderpayments_notifyrefund(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -573,7 +576,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -588,7 +591,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orderreturns_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orderreturns_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.orderreturns().get(opt.value_of("merchant-id").unwrap_or(""), opt.value_of("return-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -625,7 +628,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -640,7 +643,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orderreturns_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orderreturns_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.orderreturns().list(opt.value_of("merchant-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -674,7 +677,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["max-results", "order-by", "created-end-date", "created-start-date", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["created-start-date", "order-by", "created-end-date", "page-token", "max-results"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -693,7 +696,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -708,7 +711,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orders_acknowledge(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orders_acknowledge(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -778,7 +781,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -793,7 +796,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orders_advancetestorder(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orders_advancetestorder(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.orders().advancetestorder(opt.value_of("merchant-id").unwrap_or(""), opt.value_of("order-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -830,7 +833,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -845,7 +848,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orders_cancel(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orders_cancel(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -917,7 +920,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -932,7 +935,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orders_cancellineitem(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orders_cancellineitem(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1013,7 +1016,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1028,7 +1031,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orders_canceltestorderbycustomer(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orders_canceltestorderbycustomer(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1098,7 +1101,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1113,7 +1116,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orders_createtestorder(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orders_createtestorder(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1203,7 +1206,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1218,7 +1221,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orders_createtestreturn(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orders_createtestreturn(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1287,7 +1290,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1302,7 +1305,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orders_custombatch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orders_custombatch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1371,7 +1374,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1386,7 +1389,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orders_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orders_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.orders().get(opt.value_of("merchant-id").unwrap_or(""), opt.value_of("order-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1423,7 +1426,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1438,7 +1441,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orders_getbymerchantorderid(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orders_getbymerchantorderid(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.orders().getbymerchantorderid(opt.value_of("merchant-id").unwrap_or(""), opt.value_of("merchant-order-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1475,7 +1478,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1490,7 +1493,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orders_gettestordertemplate(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orders_gettestordertemplate(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.orders().gettestordertemplate(opt.value_of("merchant-id").unwrap_or(""), opt.value_of("template-name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1531,7 +1534,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1546,7 +1549,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orders_instorerefundlineitem(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orders_instorerefundlineitem(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1625,7 +1628,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1640,7 +1643,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orders_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orders_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.orders().list(opt.value_of("merchant-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1680,7 +1683,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["max-results", "acknowledged", "order-by", "placed-date-end", "placed-date-start", "page-token", "statuses"].iter().map(|v|*v));
+                                                                           v.extend(["order-by", "statuses", "page-token", "max-results", "placed-date-start", "placed-date-end", "acknowledged"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1699,7 +1702,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1714,7 +1717,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orders_refund(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orders_refund(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1792,7 +1795,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1807,7 +1810,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orders_rejectreturnlineitem(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orders_rejectreturnlineitem(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1882,7 +1885,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1897,7 +1900,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orders_returnlineitem(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orders_returnlineitem(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1972,7 +1975,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1987,7 +1990,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orders_returnrefundlineitem(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orders_returnrefundlineitem(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2066,7 +2069,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2081,7 +2084,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orders_setlineitemmetadata(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orders_setlineitemmetadata(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2153,7 +2156,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2168,7 +2171,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orders_shiplineitems(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orders_shiplineitems(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2242,7 +2245,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2257,7 +2260,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orders_updatelineitemshippingdetails(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orders_updatelineitemshippingdetails(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2331,7 +2334,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2346,7 +2349,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orders_updatemerchantorderid(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orders_updatemerchantorderid(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2417,7 +2420,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2432,7 +2435,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _orders_updateshipment(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _orders_updateshipment(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2507,7 +2510,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2522,7 +2525,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
+    async fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
         let mut err = InvalidOptionsError::new();
         let mut call_result: Result<(), DoitError> = Ok(());
         let mut err_opt: Option<InvalidOptionsError> = None;
@@ -2530,10 +2533,10 @@ impl<'n> Engine<'n> {
             ("orderinvoices", Some(opt)) => {
                 match opt.subcommand() {
                     ("createchargeinvoice", Some(opt)) => {
-                        call_result = self._orderinvoices_createchargeinvoice(opt, dry_run, &mut err);
+                        call_result = self._orderinvoices_createchargeinvoice(opt, dry_run, &mut err).await;
                     },
                     ("createrefundinvoice", Some(opt)) => {
-                        call_result = self._orderinvoices_createrefundinvoice(opt, dry_run, &mut err);
+                        call_result = self._orderinvoices_createrefundinvoice(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("orderinvoices".to_string()));
@@ -2544,16 +2547,16 @@ impl<'n> Engine<'n> {
             ("orderpayments", Some(opt)) => {
                 match opt.subcommand() {
                     ("notifyauthapproved", Some(opt)) => {
-                        call_result = self._orderpayments_notifyauthapproved(opt, dry_run, &mut err);
+                        call_result = self._orderpayments_notifyauthapproved(opt, dry_run, &mut err).await;
                     },
                     ("notifyauthdeclined", Some(opt)) => {
-                        call_result = self._orderpayments_notifyauthdeclined(opt, dry_run, &mut err);
+                        call_result = self._orderpayments_notifyauthdeclined(opt, dry_run, &mut err).await;
                     },
                     ("notifycharge", Some(opt)) => {
-                        call_result = self._orderpayments_notifycharge(opt, dry_run, &mut err);
+                        call_result = self._orderpayments_notifycharge(opt, dry_run, &mut err).await;
                     },
                     ("notifyrefund", Some(opt)) => {
-                        call_result = self._orderpayments_notifyrefund(opt, dry_run, &mut err);
+                        call_result = self._orderpayments_notifyrefund(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("orderpayments".to_string()));
@@ -2564,10 +2567,10 @@ impl<'n> Engine<'n> {
             ("orderreturns", Some(opt)) => {
                 match opt.subcommand() {
                     ("get", Some(opt)) => {
-                        call_result = self._orderreturns_get(opt, dry_run, &mut err);
+                        call_result = self._orderreturns_get(opt, dry_run, &mut err).await;
                     },
                     ("list", Some(opt)) => {
-                        call_result = self._orderreturns_list(opt, dry_run, &mut err);
+                        call_result = self._orderreturns_list(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("orderreturns".to_string()));
@@ -2578,70 +2581,70 @@ impl<'n> Engine<'n> {
             ("orders", Some(opt)) => {
                 match opt.subcommand() {
                     ("acknowledge", Some(opt)) => {
-                        call_result = self._orders_acknowledge(opt, dry_run, &mut err);
+                        call_result = self._orders_acknowledge(opt, dry_run, &mut err).await;
                     },
                     ("advancetestorder", Some(opt)) => {
-                        call_result = self._orders_advancetestorder(opt, dry_run, &mut err);
+                        call_result = self._orders_advancetestorder(opt, dry_run, &mut err).await;
                     },
                     ("cancel", Some(opt)) => {
-                        call_result = self._orders_cancel(opt, dry_run, &mut err);
+                        call_result = self._orders_cancel(opt, dry_run, &mut err).await;
                     },
                     ("cancellineitem", Some(opt)) => {
-                        call_result = self._orders_cancellineitem(opt, dry_run, &mut err);
+                        call_result = self._orders_cancellineitem(opt, dry_run, &mut err).await;
                     },
                     ("canceltestorderbycustomer", Some(opt)) => {
-                        call_result = self._orders_canceltestorderbycustomer(opt, dry_run, &mut err);
+                        call_result = self._orders_canceltestorderbycustomer(opt, dry_run, &mut err).await;
                     },
                     ("createtestorder", Some(opt)) => {
-                        call_result = self._orders_createtestorder(opt, dry_run, &mut err);
+                        call_result = self._orders_createtestorder(opt, dry_run, &mut err).await;
                     },
                     ("createtestreturn", Some(opt)) => {
-                        call_result = self._orders_createtestreturn(opt, dry_run, &mut err);
+                        call_result = self._orders_createtestreturn(opt, dry_run, &mut err).await;
                     },
                     ("custombatch", Some(opt)) => {
-                        call_result = self._orders_custombatch(opt, dry_run, &mut err);
+                        call_result = self._orders_custombatch(opt, dry_run, &mut err).await;
                     },
                     ("get", Some(opt)) => {
-                        call_result = self._orders_get(opt, dry_run, &mut err);
+                        call_result = self._orders_get(opt, dry_run, &mut err).await;
                     },
                     ("getbymerchantorderid", Some(opt)) => {
-                        call_result = self._orders_getbymerchantorderid(opt, dry_run, &mut err);
+                        call_result = self._orders_getbymerchantorderid(opt, dry_run, &mut err).await;
                     },
                     ("gettestordertemplate", Some(opt)) => {
-                        call_result = self._orders_gettestordertemplate(opt, dry_run, &mut err);
+                        call_result = self._orders_gettestordertemplate(opt, dry_run, &mut err).await;
                     },
                     ("instorerefundlineitem", Some(opt)) => {
-                        call_result = self._orders_instorerefundlineitem(opt, dry_run, &mut err);
+                        call_result = self._orders_instorerefundlineitem(opt, dry_run, &mut err).await;
                     },
                     ("list", Some(opt)) => {
-                        call_result = self._orders_list(opt, dry_run, &mut err);
+                        call_result = self._orders_list(opt, dry_run, &mut err).await;
                     },
                     ("refund", Some(opt)) => {
-                        call_result = self._orders_refund(opt, dry_run, &mut err);
+                        call_result = self._orders_refund(opt, dry_run, &mut err).await;
                     },
                     ("rejectreturnlineitem", Some(opt)) => {
-                        call_result = self._orders_rejectreturnlineitem(opt, dry_run, &mut err);
+                        call_result = self._orders_rejectreturnlineitem(opt, dry_run, &mut err).await;
                     },
                     ("returnlineitem", Some(opt)) => {
-                        call_result = self._orders_returnlineitem(opt, dry_run, &mut err);
+                        call_result = self._orders_returnlineitem(opt, dry_run, &mut err).await;
                     },
                     ("returnrefundlineitem", Some(opt)) => {
-                        call_result = self._orders_returnrefundlineitem(opt, dry_run, &mut err);
+                        call_result = self._orders_returnrefundlineitem(opt, dry_run, &mut err).await;
                     },
                     ("setlineitemmetadata", Some(opt)) => {
-                        call_result = self._orders_setlineitemmetadata(opt, dry_run, &mut err);
+                        call_result = self._orders_setlineitemmetadata(opt, dry_run, &mut err).await;
                     },
                     ("shiplineitems", Some(opt)) => {
-                        call_result = self._orders_shiplineitems(opt, dry_run, &mut err);
+                        call_result = self._orders_shiplineitems(opt, dry_run, &mut err).await;
                     },
                     ("updatelineitemshippingdetails", Some(opt)) => {
-                        call_result = self._orders_updatelineitemshippingdetails(opt, dry_run, &mut err);
+                        call_result = self._orders_updatelineitemshippingdetails(opt, dry_run, &mut err).await;
                     },
                     ("updatemerchantorderid", Some(opt)) => {
-                        call_result = self._orders_updatemerchantorderid(opt, dry_run, &mut err);
+                        call_result = self._orders_updatemerchantorderid(opt, dry_run, &mut err).await;
                     },
                     ("updateshipment", Some(opt)) => {
-                        call_result = self._orders_updateshipment(opt, dry_run, &mut err);
+                        call_result = self._orders_updateshipment(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("orders".to_string()));
@@ -2666,7 +2669,7 @@ impl<'n> Engine<'n> {
     }
 
     // Please note that this call will fail if any part of the opt can't be handled
-    fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
+    async fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
             let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
@@ -2680,18 +2683,10 @@ impl<'n> Engine<'n> {
             }
         };
 
-        let auth = Authenticator::new(  &secret, DefaultAuthenticatorDelegate,
-                                        if opt.is_present("debug-auth") {
-                                            hyper::Client::with_connector(mock::TeeConnector {
-                                                    connector: hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
-                                                })
-                                        } else {
-                                            hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new()))
-                                        },
-                                        JsonTokenStorage {
-                                          program_name: "content2-sandbox",
-                                          db_dir: config_dir.clone(),
-                                        }, Some(FlowType::InstalledRedirect(54324)));
+        let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+            secret,
+            yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+        ).persist_tokens_to_disk(format!("{}/content2-sandbox", config_dir)).build().await.unwrap();
 
         let client =
             if opt.is_present("debug") {
@@ -2713,22 +2708,23 @@ impl<'n> Engine<'n> {
                 ]
         };
 
-        match engine._doit(true) {
+        match engine._doit(true).await {
             Err(Some(err)) => Err(err),
             Err(None)      => Ok(engine),
             Ok(_)          => unreachable!(),
         }
     }
 
-    fn doit(&self) -> Result<(), DoitError> {
-        match self._doit(false) {
+    async fn doit(&self) -> Result<(), DoitError> {
+        match self._doit(false).await {
             Ok(res) => res,
             Err(_) => unreachable!(),
         }
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut exit_status = 0i32;
     let arg_data = [
         ("orderinvoices", "methods: 'createchargeinvoice' and 'createrefundinvoice'", vec![
@@ -3769,7 +3765,7 @@ fn main() {
             writeln!(io::stderr(), "{}", err).ok();
         },
         Ok(engine) => {
-            if let Err(doit_err) = engine.doit() {
+            if let Err(doit_err) = engine.doit().await {
                 exit_status = 1;
                 match doit_err {
                     DoitError::IoError(path, err) => {

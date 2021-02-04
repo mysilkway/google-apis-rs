@@ -4,6 +4,9 @@
 #![allow(unused_variables, unused_imports, dead_code, unused_mut)]
 
 #[macro_use]
+extern crate tokio;
+
+#[macro_use]
 extern crate clap;
 extern crate yup_oauth2 as oauth2;
 extern crate yup_hyper_mock as mock;
@@ -23,14 +26,13 @@ use google_fusiontables2::{api, Error};
 
 mod client;
 
-use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+use client::{InvalidOptionsError, CLIError, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
 use std::default::Default;
 use std::str::FromStr;
 
-use oauth2::{Authenticator, DefaultAuthenticatorDelegate, FlowType};
 use serde_json as json;
 use clap::ArgMatches;
 
@@ -41,14 +43,15 @@ enum DoitError {
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Fusiontables<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
+    hub: api::Fusiontables<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>
+    >,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
 
 
 impl<'n> Engine<'n> {
-    fn _column_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _column_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.column().delete(opt.value_of("table-id").unwrap_or(""), opt.value_of("column-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -81,7 +84,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -92,7 +95,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _column_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _column_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.column().get(opt.value_of("table-id").unwrap_or(""), opt.value_of("column-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -129,7 +132,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -144,7 +147,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _column_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _column_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -226,7 +229,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -241,7 +244,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _column_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _column_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.column().list(opt.value_of("table-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -285,7 +288,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -300,7 +303,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _column_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _column_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -382,7 +385,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -397,7 +400,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _column_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _column_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -479,7 +482,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -494,7 +497,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _query_sql(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _query_sql(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut download_mode = false;
         let mut call = self.hub.query().sql(opt.value_of("sql").unwrap_or(""));
@@ -542,7 +545,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -562,7 +565,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _query_sql_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _query_sql_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut download_mode = false;
         let mut call = self.hub.query().sql_get(opt.value_of("sql").unwrap_or(""));
@@ -610,7 +613,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -630,7 +633,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _style_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _style_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let style_id: i32 = arg_from_str(&opt.value_of("style-id").unwrap_or(""), err, "<style-id>", "integer");
         let mut call = self.hub.style().delete(opt.value_of("table-id").unwrap_or(""), style_id);
@@ -664,7 +667,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -675,7 +678,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _style_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _style_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let style_id: i32 = arg_from_str(&opt.value_of("style-id").unwrap_or(""), err, "<style-id>", "integer");
         let mut call = self.hub.style().get(opt.value_of("table-id").unwrap_or(""), style_id);
@@ -713,7 +716,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -728,7 +731,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _style_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _style_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -834,7 +837,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -849,7 +852,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _style_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _style_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.style().list(opt.value_of("table-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -893,7 +896,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -908,7 +911,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _style_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _style_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1015,7 +1018,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1030,7 +1033,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _style_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _style_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1137,7 +1140,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1152,7 +1155,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _table_copy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _table_copy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.table().copy(opt.value_of("table-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1193,7 +1196,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1208,7 +1211,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _table_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _table_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.table().delete(opt.value_of("table-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1241,7 +1244,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1252,7 +1255,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _table_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _table_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.table().get(opt.value_of("table-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1289,7 +1292,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1304,7 +1307,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _table_import_rows(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _table_import_rows(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.table().import_rows(opt.value_of("table-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1338,7 +1341,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["encoding", "delimiter", "start-line", "is-strict", "end-line"].iter().map(|v|*v));
+                                                                           v.extend(["delimiter", "encoding", "is-strict", "start-line", "end-line"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1376,7 +1379,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _table_import_table(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _table_import_table(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.table().import_table(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1401,7 +1404,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["delimiter", "encoding"].iter().map(|v|*v));
+                                                                           v.extend(["encoding", "delimiter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1439,7 +1442,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _table_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _table_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1520,7 +1523,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1535,7 +1538,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _table_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _table_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.table().list();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1579,7 +1582,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1594,7 +1597,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _table_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _table_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1679,7 +1682,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1694,7 +1697,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _table_refetch_sheet(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _table_refetch_sheet(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.table().refetch_sheet(opt.value_of("table-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1731,7 +1734,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1746,7 +1749,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _table_replace_rows(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _table_replace_rows(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.table().replace_rows(opt.value_of("table-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1780,7 +1783,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["encoding", "delimiter", "start-line", "is-strict", "end-line"].iter().map(|v|*v));
+                                                                           v.extend(["delimiter", "encoding", "is-strict", "start-line", "end-line"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1818,7 +1821,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _table_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _table_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1903,7 +1906,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1918,7 +1921,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _task_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _task_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.task().delete(opt.value_of("table-id").unwrap_or(""), opt.value_of("task-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1951,7 +1954,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1962,7 +1965,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _task_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _task_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.task().get(opt.value_of("table-id").unwrap_or(""), opt.value_of("task-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1999,7 +2002,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2014,7 +2017,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _task_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _task_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.task().list(opt.value_of("table-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2042,7 +2045,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["max-results", "page-token", "start-index"].iter().map(|v|*v));
+                                                                           v.extend(["max-results", "start-index", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2061,7 +2064,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2076,7 +2079,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _template_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _template_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let template_id: i32 = arg_from_str(&opt.value_of("template-id").unwrap_or(""), err, "<template-id>", "integer");
         let mut call = self.hub.template().delete(opt.value_of("table-id").unwrap_or(""), template_id);
@@ -2110,7 +2113,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2121,7 +2124,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _template_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _template_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let template_id: i32 = arg_from_str(&opt.value_of("template-id").unwrap_or(""), err, "<template-id>", "integer");
         let mut call = self.hub.template().get(opt.value_of("table-id").unwrap_or(""), template_id);
@@ -2159,7 +2162,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2174,7 +2177,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _template_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _template_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2249,7 +2252,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2264,7 +2267,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _template_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _template_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.template().list(opt.value_of("table-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2308,7 +2311,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2323,7 +2326,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _template_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _template_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2399,7 +2402,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2414,7 +2417,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _template_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _template_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2490,7 +2493,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2505,7 +2508,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
+    async fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
         let mut err = InvalidOptionsError::new();
         let mut call_result: Result<(), DoitError> = Ok(());
         let mut err_opt: Option<InvalidOptionsError> = None;
@@ -2513,22 +2516,22 @@ impl<'n> Engine<'n> {
             ("column", Some(opt)) => {
                 match opt.subcommand() {
                     ("delete", Some(opt)) => {
-                        call_result = self._column_delete(opt, dry_run, &mut err);
+                        call_result = self._column_delete(opt, dry_run, &mut err).await;
                     },
                     ("get", Some(opt)) => {
-                        call_result = self._column_get(opt, dry_run, &mut err);
+                        call_result = self._column_get(opt, dry_run, &mut err).await;
                     },
                     ("insert", Some(opt)) => {
-                        call_result = self._column_insert(opt, dry_run, &mut err);
+                        call_result = self._column_insert(opt, dry_run, &mut err).await;
                     },
                     ("list", Some(opt)) => {
-                        call_result = self._column_list(opt, dry_run, &mut err);
+                        call_result = self._column_list(opt, dry_run, &mut err).await;
                     },
                     ("patch", Some(opt)) => {
-                        call_result = self._column_patch(opt, dry_run, &mut err);
+                        call_result = self._column_patch(opt, dry_run, &mut err).await;
                     },
                     ("update", Some(opt)) => {
-                        call_result = self._column_update(opt, dry_run, &mut err);
+                        call_result = self._column_update(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("column".to_string()));
@@ -2539,10 +2542,10 @@ impl<'n> Engine<'n> {
             ("query", Some(opt)) => {
                 match opt.subcommand() {
                     ("sql", Some(opt)) => {
-                        call_result = self._query_sql(opt, dry_run, &mut err);
+                        call_result = self._query_sql(opt, dry_run, &mut err).await;
                     },
                     ("sql-get", Some(opt)) => {
-                        call_result = self._query_sql_get(opt, dry_run, &mut err);
+                        call_result = self._query_sql_get(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("query".to_string()));
@@ -2553,22 +2556,22 @@ impl<'n> Engine<'n> {
             ("style", Some(opt)) => {
                 match opt.subcommand() {
                     ("delete", Some(opt)) => {
-                        call_result = self._style_delete(opt, dry_run, &mut err);
+                        call_result = self._style_delete(opt, dry_run, &mut err).await;
                     },
                     ("get", Some(opt)) => {
-                        call_result = self._style_get(opt, dry_run, &mut err);
+                        call_result = self._style_get(opt, dry_run, &mut err).await;
                     },
                     ("insert", Some(opt)) => {
-                        call_result = self._style_insert(opt, dry_run, &mut err);
+                        call_result = self._style_insert(opt, dry_run, &mut err).await;
                     },
                     ("list", Some(opt)) => {
-                        call_result = self._style_list(opt, dry_run, &mut err);
+                        call_result = self._style_list(opt, dry_run, &mut err).await;
                     },
                     ("patch", Some(opt)) => {
-                        call_result = self._style_patch(opt, dry_run, &mut err);
+                        call_result = self._style_patch(opt, dry_run, &mut err).await;
                     },
                     ("update", Some(opt)) => {
-                        call_result = self._style_update(opt, dry_run, &mut err);
+                        call_result = self._style_update(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("style".to_string()));
@@ -2579,37 +2582,37 @@ impl<'n> Engine<'n> {
             ("table", Some(opt)) => {
                 match opt.subcommand() {
                     ("copy", Some(opt)) => {
-                        call_result = self._table_copy(opt, dry_run, &mut err);
+                        call_result = self._table_copy(opt, dry_run, &mut err).await;
                     },
                     ("delete", Some(opt)) => {
-                        call_result = self._table_delete(opt, dry_run, &mut err);
+                        call_result = self._table_delete(opt, dry_run, &mut err).await;
                     },
                     ("get", Some(opt)) => {
-                        call_result = self._table_get(opt, dry_run, &mut err);
+                        call_result = self._table_get(opt, dry_run, &mut err).await;
                     },
                     ("import-rows", Some(opt)) => {
-                        call_result = self._table_import_rows(opt, dry_run, &mut err);
+                        call_result = self._table_import_rows(opt, dry_run, &mut err).await;
                     },
                     ("import-table", Some(opt)) => {
-                        call_result = self._table_import_table(opt, dry_run, &mut err);
+                        call_result = self._table_import_table(opt, dry_run, &mut err).await;
                     },
                     ("insert", Some(opt)) => {
-                        call_result = self._table_insert(opt, dry_run, &mut err);
+                        call_result = self._table_insert(opt, dry_run, &mut err).await;
                     },
                     ("list", Some(opt)) => {
-                        call_result = self._table_list(opt, dry_run, &mut err);
+                        call_result = self._table_list(opt, dry_run, &mut err).await;
                     },
                     ("patch", Some(opt)) => {
-                        call_result = self._table_patch(opt, dry_run, &mut err);
+                        call_result = self._table_patch(opt, dry_run, &mut err).await;
                     },
                     ("refetch-sheet", Some(opt)) => {
-                        call_result = self._table_refetch_sheet(opt, dry_run, &mut err);
+                        call_result = self._table_refetch_sheet(opt, dry_run, &mut err).await;
                     },
                     ("replace-rows", Some(opt)) => {
-                        call_result = self._table_replace_rows(opt, dry_run, &mut err);
+                        call_result = self._table_replace_rows(opt, dry_run, &mut err).await;
                     },
                     ("update", Some(opt)) => {
-                        call_result = self._table_update(opt, dry_run, &mut err);
+                        call_result = self._table_update(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("table".to_string()));
@@ -2620,13 +2623,13 @@ impl<'n> Engine<'n> {
             ("task", Some(opt)) => {
                 match opt.subcommand() {
                     ("delete", Some(opt)) => {
-                        call_result = self._task_delete(opt, dry_run, &mut err);
+                        call_result = self._task_delete(opt, dry_run, &mut err).await;
                     },
                     ("get", Some(opt)) => {
-                        call_result = self._task_get(opt, dry_run, &mut err);
+                        call_result = self._task_get(opt, dry_run, &mut err).await;
                     },
                     ("list", Some(opt)) => {
-                        call_result = self._task_list(opt, dry_run, &mut err);
+                        call_result = self._task_list(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("task".to_string()));
@@ -2637,22 +2640,22 @@ impl<'n> Engine<'n> {
             ("template", Some(opt)) => {
                 match opt.subcommand() {
                     ("delete", Some(opt)) => {
-                        call_result = self._template_delete(opt, dry_run, &mut err);
+                        call_result = self._template_delete(opt, dry_run, &mut err).await;
                     },
                     ("get", Some(opt)) => {
-                        call_result = self._template_get(opt, dry_run, &mut err);
+                        call_result = self._template_get(opt, dry_run, &mut err).await;
                     },
                     ("insert", Some(opt)) => {
-                        call_result = self._template_insert(opt, dry_run, &mut err);
+                        call_result = self._template_insert(opt, dry_run, &mut err).await;
                     },
                     ("list", Some(opt)) => {
-                        call_result = self._template_list(opt, dry_run, &mut err);
+                        call_result = self._template_list(opt, dry_run, &mut err).await;
                     },
                     ("patch", Some(opt)) => {
-                        call_result = self._template_patch(opt, dry_run, &mut err);
+                        call_result = self._template_patch(opt, dry_run, &mut err).await;
                     },
                     ("update", Some(opt)) => {
-                        call_result = self._template_update(opt, dry_run, &mut err);
+                        call_result = self._template_update(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("template".to_string()));
@@ -2677,7 +2680,7 @@ impl<'n> Engine<'n> {
     }
 
     // Please note that this call will fail if any part of the opt can't be handled
-    fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
+    async fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
             let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
@@ -2691,18 +2694,10 @@ impl<'n> Engine<'n> {
             }
         };
 
-        let auth = Authenticator::new(  &secret, DefaultAuthenticatorDelegate,
-                                        if opt.is_present("debug-auth") {
-                                            hyper::Client::with_connector(mock::TeeConnector {
-                                                    connector: hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
-                                                })
-                                        } else {
-                                            hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new()))
-                                        },
-                                        JsonTokenStorage {
-                                          program_name: "fusiontables2",
-                                          db_dir: config_dir.clone(),
-                                        }, Some(FlowType::InstalledRedirect(54324)));
+        let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+            secret,
+            yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+        ).persist_tokens_to_disk(format!("{}/fusiontables2", config_dir)).build().await.unwrap();
 
         let client =
             if opt.is_present("debug") {
@@ -2724,22 +2719,23 @@ impl<'n> Engine<'n> {
                 ]
         };
 
-        match engine._doit(true) {
+        match engine._doit(true).await {
             Err(Some(err)) => Err(err),
             Err(None)      => Ok(engine),
             Ok(_)          => unreachable!(),
         }
     }
 
-    fn doit(&self) -> Result<(), DoitError> {
-        match self._doit(false) {
+    async fn doit(&self) -> Result<(), DoitError> {
+        match self._doit(false).await {
             Ok(res) => res,
             Err(_) => unreachable!(),
         }
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut exit_status = 0i32;
     let upload_value_names = ["mode", "file"];
     let arg_data = [
@@ -3750,7 +3746,7 @@ fn main() {
             writeln!(io::stderr(), "{}", err).ok();
         },
         Ok(engine) => {
-            if let Err(doit_err) = engine.doit() {
+            if let Err(doit_err) = engine.doit().await {
                 exit_status = 1;
                 match doit_err {
                     DoitError::IoError(path, err) => {

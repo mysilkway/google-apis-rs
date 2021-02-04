@@ -4,6 +4,9 @@
 #![allow(unused_variables, unused_imports, dead_code, unused_mut)]
 
 #[macro_use]
+extern crate tokio;
+
+#[macro_use]
 extern crate clap;
 extern crate yup_oauth2 as oauth2;
 extern crate yup_hyper_mock as mock;
@@ -23,14 +26,13 @@ use google_books1::{api, Error};
 
 mod client;
 
-use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+use client::{InvalidOptionsError, CLIError, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
 use std::default::Default;
 use std::str::FromStr;
 
-use oauth2::{Authenticator, DefaultAuthenticatorDelegate, FlowType};
 use serde_json as json;
 use clap::ArgMatches;
 
@@ -41,14 +43,15 @@ enum DoitError {
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Books<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
+    hub: api::Books<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>
+    >,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
 
 
 impl<'n> Engine<'n> {
-    fn _bookshelves_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _bookshelves_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.bookshelves().get(opt.value_of("user-id").unwrap_or(""), opt.value_of("shelf").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -89,7 +92,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -104,7 +107,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _bookshelves_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _bookshelves_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.bookshelves().list(opt.value_of("user-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -145,7 +148,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -160,7 +163,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _bookshelves_volumes_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _bookshelves_volumes_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.bookshelves().volumes_list(opt.value_of("user-id").unwrap_or(""), opt.value_of("shelf").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -191,7 +194,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["source", "start-index", "show-preorders", "max-results"].iter().map(|v|*v));
+                                                                           v.extend(["show-preorders", "start-index", "max-results", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -210,7 +213,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -225,7 +228,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _cloudloading_add_book(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _cloudloading_add_book(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.cloudloading().add_book();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -256,7 +259,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["mime-type", "upload-client-token", "name", "drive-document-id"].iter().map(|v|*v));
+                                                                           v.extend(["name", "mime-type", "upload-client-token", "drive-document-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -275,7 +278,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -290,7 +293,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _cloudloading_delete_book(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _cloudloading_delete_book(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.cloudloading().delete_book();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -331,7 +334,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -346,7 +349,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _cloudloading_update_book(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _cloudloading_update_book(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -419,7 +422,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -434,7 +437,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _dictionary_list_offline_metadata(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _dictionary_list_offline_metadata(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.dictionary().list_offline_metadata();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -475,7 +478,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -490,7 +493,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _familysharing_get_family_info(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _familysharing_get_family_info(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.familysharing().get_family_info();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -531,7 +534,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -546,7 +549,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _familysharing_share(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _familysharing_share(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.familysharing().share();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -574,7 +577,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["volume-id", "source", "doc-id"].iter().map(|v|*v));
+                                                                           v.extend(["volume-id", "doc-id", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -593,7 +596,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -608,7 +611,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _familysharing_unshare(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _familysharing_unshare(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.familysharing().unshare();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -636,7 +639,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["volume-id", "source", "doc-id"].iter().map(|v|*v));
+                                                                           v.extend(["volume-id", "doc-id", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -655,7 +658,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -670,7 +673,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _layers_annotation_data_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _layers_annotation_data_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.layers().annotation_data_get(opt.value_of("volume-id").unwrap_or(""), opt.value_of("layer-id").unwrap_or(""), opt.value_of("annotation-data-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -710,7 +713,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["allow-web-definitions", "source", "h", "content-version", "scale", "w", "locale"].iter().map(|v|*v));
+                                                                           v.extend(["w", "source", "h", "content-version", "scale", "allow-web-definitions", "locale"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -729,7 +732,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -744,7 +747,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _layers_annotation_data_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _layers_annotation_data_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.layers().annotation_data_list(opt.value_of("volume-id").unwrap_or(""), opt.value_of("layer-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -796,7 +799,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "updated-max", "source", "h", "max-results", "updated-min", "annotation-data-id", "content-version", "scale", "w", "locale"].iter().map(|v|*v));
+                                                                           v.extend(["updated-min", "w", "annotation-data-id", "page-token", "max-results", "locale", "h", "content-version", "scale", "updated-max", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -815,7 +818,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -830,7 +833,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _layers_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _layers_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.layers().get(opt.value_of("volume-id").unwrap_or(""), opt.value_of("summary-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -874,7 +877,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -889,7 +892,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _layers_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _layers_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.layers().list(opt.value_of("volume-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -920,7 +923,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["content-version", "source", "page-token", "max-results"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "max-results", "content-version", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -939,7 +942,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -954,7 +957,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _layers_volume_annotations_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _layers_volume_annotations_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.layers().volume_annotations_get(opt.value_of("volume-id").unwrap_or(""), opt.value_of("layer-id").unwrap_or(""), opt.value_of("annotation-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -998,7 +1001,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1013,7 +1016,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _layers_volume_annotations_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _layers_volume_annotations_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.layers().volume_annotations_list(opt.value_of("volume-id").unwrap_or(""), opt.value_of("layer-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1071,7 +1074,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "content-version", "updated-max", "source", "max-results", "end-offset", "updated-min", "show-deleted", "start-position", "end-position", "locale", "volume-annotations-version", "start-offset"].iter().map(|v|*v));
+                                                                           v.extend(["end-offset", "updated-min", "max-results", "show-deleted", "start-offset", "start-position", "locale", "content-version", "end-position", "volume-annotations-version", "page-token", "updated-max", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1090,7 +1093,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1105,7 +1108,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _myconfig_get_user_settings(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _myconfig_get_user_settings(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.myconfig().get_user_settings();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1146,7 +1149,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1161,7 +1164,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _myconfig_release_download_access(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _myconfig_release_download_access(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.myconfig().release_download_access();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1192,7 +1195,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["locale", "source", "volume-ids", "cpksver"].iter().map(|v|*v));
+                                                                           v.extend(["cpksver", "volume-ids", "locale", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1211,7 +1214,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1226,7 +1229,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _myconfig_request_access(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _myconfig_request_access(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.myconfig().request_access();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1263,7 +1266,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["cpksver", "source", "license-types", "locale", "volume-id", "nonce"].iter().map(|v|*v));
+                                                                           v.extend(["volume-id", "nonce", "source", "cpksver", "license-types", "locale"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1282,7 +1285,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1297,7 +1300,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _myconfig_sync_volume_licenses(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _myconfig_sync_volume_licenses(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.myconfig().sync_volume_licenses();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1340,7 +1343,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["nonce", "cpksver", "source", "show-preorders", "features", "include-non-comics-series", "locale", "volume-ids"].iter().map(|v|*v));
+                                                                           v.extend(["nonce", "include-non-comics-series", "volume-ids", "source", "features", "show-preorders", "cpksver", "locale"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1359,7 +1362,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1374,7 +1377,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _myconfig_update_user_settings(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _myconfig_update_user_settings(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1451,7 +1454,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1466,7 +1469,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _mylibrary_annotations_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _mylibrary_annotations_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.mylibrary().annotations_delete(opt.value_of("annotation-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1507,7 +1510,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1522,7 +1525,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _mylibrary_annotations_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _mylibrary_annotations_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1636,7 +1639,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["show-only-summary-in-response", "source", "annotation-id", "country"].iter().map(|v|*v));
+                                                                           v.extend(["annotation-id", "show-only-summary-in-response", "source", "country"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1655,7 +1658,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1670,7 +1673,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _mylibrary_annotations_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _mylibrary_annotations_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.mylibrary().annotations_list();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1719,7 +1722,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "updated-max", "source", "layer-id", "layer-ids", "updated-min", "show-deleted", "content-version", "volume-id", "max-results"].iter().map(|v|*v));
+                                                                           v.extend(["volume-id", "layer-id", "updated-min", "layer-ids", "max-results", "show-deleted", "content-version", "page-token", "updated-max", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1738,7 +1741,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1753,7 +1756,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _mylibrary_annotations_summary(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _mylibrary_annotations_summary(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.mylibrary().annotations_summary();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1797,7 +1800,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1812,7 +1815,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _mylibrary_annotations_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _mylibrary_annotations_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1936,7 +1939,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1951,7 +1954,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _mylibrary_bookshelves_add_volume(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _mylibrary_bookshelves_add_volume(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.mylibrary().bookshelves_add_volume(opt.value_of("shelf").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1979,7 +1982,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["volume-id", "reason", "source"].iter().map(|v|*v));
+                                                                           v.extend(["reason", "volume-id", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1998,7 +2001,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2013,7 +2016,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _mylibrary_bookshelves_clear_volumes(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _mylibrary_bookshelves_clear_volumes(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.mylibrary().bookshelves_clear_volumes(opt.value_of("shelf").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2054,7 +2057,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2069,7 +2072,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _mylibrary_bookshelves_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _mylibrary_bookshelves_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.mylibrary().bookshelves_get(opt.value_of("shelf").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2110,7 +2113,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2125,7 +2128,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _mylibrary_bookshelves_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _mylibrary_bookshelves_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.mylibrary().bookshelves_list();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2166,7 +2169,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2181,7 +2184,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _mylibrary_bookshelves_move_volume(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _mylibrary_bookshelves_move_volume(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.mylibrary().bookshelves_move_volume(opt.value_of("shelf").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2228,7 +2231,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2243,7 +2246,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _mylibrary_bookshelves_remove_volume(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _mylibrary_bookshelves_remove_volume(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.mylibrary().bookshelves_remove_volume(opt.value_of("shelf").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2271,7 +2274,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["volume-id", "reason", "source"].iter().map(|v|*v));
+                                                                           v.extend(["reason", "volume-id", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2290,7 +2293,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2305,7 +2308,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _mylibrary_bookshelves_volumes_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _mylibrary_bookshelves_volumes_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.mylibrary().bookshelves_volumes_list(opt.value_of("shelf").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2345,7 +2348,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["start-index", "q", "country", "source", "show-preorders", "projection", "max-results"].iter().map(|v|*v));
+                                                                           v.extend(["projection", "start-index", "country", "max-results", "q", "show-preorders", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2364,7 +2367,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2379,7 +2382,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _mylibrary_readingpositions_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _mylibrary_readingpositions_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.mylibrary().readingpositions_get(opt.value_of("volume-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2423,7 +2426,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2438,7 +2441,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _mylibrary_readingpositions_set_position(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _mylibrary_readingpositions_set_position(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.mylibrary().readingpositions_set_position(opt.value_of("volume-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2475,7 +2478,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["action", "device-cookie", "position", "source", "content-version", "timestamp"].iter().map(|v|*v));
+                                                                           v.extend(["timestamp", "device-cookie", "content-version", "action", "position", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2494,7 +2497,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2509,7 +2512,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _notification_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _notification_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.notification().get();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2537,7 +2540,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["locale", "source", "notification-id"].iter().map(|v|*v));
+                                                                           v.extend(["locale", "notification-id", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2556,7 +2559,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2571,7 +2574,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _onboarding_list_categories(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _onboarding_list_categories(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.onboarding().list_categories();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2612,7 +2615,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2627,7 +2630,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _onboarding_list_category_volumes(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _onboarding_list_category_volumes(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.onboarding().list_category_volumes();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2661,7 +2664,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "category-id", "page-size", "locale", "max-allowed-maturity-rating"].iter().map(|v|*v));
+                                                                           v.extend(["category-id", "max-allowed-maturity-rating", "page-token", "page-size", "locale"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2680,7 +2683,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2695,7 +2698,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _personalizedstream_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _personalizedstream_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.personalizedstream().get();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2723,7 +2726,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["locale", "source", "max-allowed-maturity-rating"].iter().map(|v|*v));
+                                                                           v.extend(["locale", "max-allowed-maturity-rating", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2742,7 +2745,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2757,7 +2760,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _promooffer_accept(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _promooffer_accept(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.promooffer().accept();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2800,7 +2803,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["model", "device", "offer-id", "android-id", "serial", "volume-id", "manufacturer", "product"].iter().map(|v|*v));
+                                                                           v.extend(["serial", "volume-id", "product", "model", "manufacturer", "offer-id", "android-id", "device"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2819,7 +2822,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2834,7 +2837,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _promooffer_dismiss(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _promooffer_dismiss(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.promooffer().dismiss();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2874,7 +2877,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["model", "device", "offer-id", "android-id", "serial", "manufacturer", "product"].iter().map(|v|*v));
+                                                                           v.extend(["serial", "product", "model", "manufacturer", "offer-id", "android-id", "device"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2893,7 +2896,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2908,7 +2911,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _promooffer_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _promooffer_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.promooffer().get();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2945,7 +2948,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["model", "device", "android-id", "serial", "manufacturer", "product"].iter().map(|v|*v));
+                                                                           v.extend(["serial", "product", "model", "manufacturer", "android-id", "device"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2964,7 +2967,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2979,7 +2982,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _series_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _series_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.series().get();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3020,7 +3023,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3035,7 +3038,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _series_membership_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _series_membership_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.series().membership_get();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3082,7 +3085,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3097,7 +3100,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _volumes_associated_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _volumes_associated_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.volumes().associated_list(opt.value_of("volume-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3128,7 +3131,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["association", "locale", "source", "max-allowed-maturity-rating"].iter().map(|v|*v));
+                                                                           v.extend(["locale", "max-allowed-maturity-rating", "association", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3147,7 +3150,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3162,7 +3165,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _volumes_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _volumes_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.volumes().get(opt.value_of("volume-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3199,7 +3202,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["partner", "country", "source", "user-library-consistent-read", "include-non-comics-series", "projection"].iter().map(|v|*v));
+                                                                           v.extend(["projection", "country", "include-non-comics-series", "user-library-consistent-read", "partner", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3218,7 +3221,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3233,7 +3236,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _volumes_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _volumes_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.volumes().list();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3294,7 +3297,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["start-index", "partner", "q", "order-by", "filter", "source", "library-restrict", "max-allowed-maturity-rating", "show-preorders", "lang-restrict", "print-type", "download", "projection", "max-results"].iter().map(|v|*v));
+                                                                           v.extend(["projection", "start-index", "download", "filter", "library-restrict", "lang-restrict", "max-results", "max-allowed-maturity-rating", "q", "print-type", "show-preorders", "order-by", "partner", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3313,7 +3316,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3328,7 +3331,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _volumes_mybooks_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _volumes_mybooks_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.volumes().mybooks_list();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3368,7 +3371,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["start-index", "processing-state", "country", "source", "acquire-method", "locale", "max-results"].iter().map(|v|*v));
+                                                                           v.extend(["start-index", "acquire-method", "processing-state", "country", "max-results", "source", "locale"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3387,7 +3390,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3402,7 +3405,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _volumes_recommended_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _volumes_recommended_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.volumes().recommended_list();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3430,7 +3433,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["locale", "source", "max-allowed-maturity-rating"].iter().map(|v|*v));
+                                                                           v.extend(["locale", "max-allowed-maturity-rating", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3449,7 +3452,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3464,7 +3467,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _volumes_recommended_rate(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _volumes_recommended_rate(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.volumes().recommended_rate();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3495,7 +3498,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["locale", "volume-id", "source", "rating"].iter().map(|v|*v));
+                                                                           v.extend(["rating", "volume-id", "locale", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3514,7 +3517,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3529,7 +3532,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _volumes_useruploaded_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _volumes_useruploaded_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.volumes().useruploaded_list();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3566,7 +3569,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["start-index", "processing-state", "source", "locale", "volume-id", "max-results"].iter().map(|v|*v));
+                                                                           v.extend(["volume-id", "start-index", "processing-state", "max-results", "locale", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3585,7 +3588,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3600,7 +3603,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
+    async fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
         let mut err = InvalidOptionsError::new();
         let mut call_result: Result<(), DoitError> = Ok(());
         let mut err_opt: Option<InvalidOptionsError> = None;
@@ -3608,13 +3611,13 @@ impl<'n> Engine<'n> {
             ("bookshelves", Some(opt)) => {
                 match opt.subcommand() {
                     ("get", Some(opt)) => {
-                        call_result = self._bookshelves_get(opt, dry_run, &mut err);
+                        call_result = self._bookshelves_get(opt, dry_run, &mut err).await;
                     },
                     ("list", Some(opt)) => {
-                        call_result = self._bookshelves_list(opt, dry_run, &mut err);
+                        call_result = self._bookshelves_list(opt, dry_run, &mut err).await;
                     },
                     ("volumes-list", Some(opt)) => {
-                        call_result = self._bookshelves_volumes_list(opt, dry_run, &mut err);
+                        call_result = self._bookshelves_volumes_list(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("bookshelves".to_string()));
@@ -3625,13 +3628,13 @@ impl<'n> Engine<'n> {
             ("cloudloading", Some(opt)) => {
                 match opt.subcommand() {
                     ("add-book", Some(opt)) => {
-                        call_result = self._cloudloading_add_book(opt, dry_run, &mut err);
+                        call_result = self._cloudloading_add_book(opt, dry_run, &mut err).await;
                     },
                     ("delete-book", Some(opt)) => {
-                        call_result = self._cloudloading_delete_book(opt, dry_run, &mut err);
+                        call_result = self._cloudloading_delete_book(opt, dry_run, &mut err).await;
                     },
                     ("update-book", Some(opt)) => {
-                        call_result = self._cloudloading_update_book(opt, dry_run, &mut err);
+                        call_result = self._cloudloading_update_book(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("cloudloading".to_string()));
@@ -3642,7 +3645,7 @@ impl<'n> Engine<'n> {
             ("dictionary", Some(opt)) => {
                 match opt.subcommand() {
                     ("list-offline-metadata", Some(opt)) => {
-                        call_result = self._dictionary_list_offline_metadata(opt, dry_run, &mut err);
+                        call_result = self._dictionary_list_offline_metadata(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("dictionary".to_string()));
@@ -3653,13 +3656,13 @@ impl<'n> Engine<'n> {
             ("familysharing", Some(opt)) => {
                 match opt.subcommand() {
                     ("get-family-info", Some(opt)) => {
-                        call_result = self._familysharing_get_family_info(opt, dry_run, &mut err);
+                        call_result = self._familysharing_get_family_info(opt, dry_run, &mut err).await;
                     },
                     ("share", Some(opt)) => {
-                        call_result = self._familysharing_share(opt, dry_run, &mut err);
+                        call_result = self._familysharing_share(opt, dry_run, &mut err).await;
                     },
                     ("unshare", Some(opt)) => {
-                        call_result = self._familysharing_unshare(opt, dry_run, &mut err);
+                        call_result = self._familysharing_unshare(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("familysharing".to_string()));
@@ -3670,22 +3673,22 @@ impl<'n> Engine<'n> {
             ("layers", Some(opt)) => {
                 match opt.subcommand() {
                     ("annotation-data-get", Some(opt)) => {
-                        call_result = self._layers_annotation_data_get(opt, dry_run, &mut err);
+                        call_result = self._layers_annotation_data_get(opt, dry_run, &mut err).await;
                     },
                     ("annotation-data-list", Some(opt)) => {
-                        call_result = self._layers_annotation_data_list(opt, dry_run, &mut err);
+                        call_result = self._layers_annotation_data_list(opt, dry_run, &mut err).await;
                     },
                     ("get", Some(opt)) => {
-                        call_result = self._layers_get(opt, dry_run, &mut err);
+                        call_result = self._layers_get(opt, dry_run, &mut err).await;
                     },
                     ("list", Some(opt)) => {
-                        call_result = self._layers_list(opt, dry_run, &mut err);
+                        call_result = self._layers_list(opt, dry_run, &mut err).await;
                     },
                     ("volume-annotations-get", Some(opt)) => {
-                        call_result = self._layers_volume_annotations_get(opt, dry_run, &mut err);
+                        call_result = self._layers_volume_annotations_get(opt, dry_run, &mut err).await;
                     },
                     ("volume-annotations-list", Some(opt)) => {
-                        call_result = self._layers_volume_annotations_list(opt, dry_run, &mut err);
+                        call_result = self._layers_volume_annotations_list(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("layers".to_string()));
@@ -3696,19 +3699,19 @@ impl<'n> Engine<'n> {
             ("myconfig", Some(opt)) => {
                 match opt.subcommand() {
                     ("get-user-settings", Some(opt)) => {
-                        call_result = self._myconfig_get_user_settings(opt, dry_run, &mut err);
+                        call_result = self._myconfig_get_user_settings(opt, dry_run, &mut err).await;
                     },
                     ("release-download-access", Some(opt)) => {
-                        call_result = self._myconfig_release_download_access(opt, dry_run, &mut err);
+                        call_result = self._myconfig_release_download_access(opt, dry_run, &mut err).await;
                     },
                     ("request-access", Some(opt)) => {
-                        call_result = self._myconfig_request_access(opt, dry_run, &mut err);
+                        call_result = self._myconfig_request_access(opt, dry_run, &mut err).await;
                     },
                     ("sync-volume-licenses", Some(opt)) => {
-                        call_result = self._myconfig_sync_volume_licenses(opt, dry_run, &mut err);
+                        call_result = self._myconfig_sync_volume_licenses(opt, dry_run, &mut err).await;
                     },
                     ("update-user-settings", Some(opt)) => {
-                        call_result = self._myconfig_update_user_settings(opt, dry_run, &mut err);
+                        call_result = self._myconfig_update_user_settings(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("myconfig".to_string()));
@@ -3719,46 +3722,46 @@ impl<'n> Engine<'n> {
             ("mylibrary", Some(opt)) => {
                 match opt.subcommand() {
                     ("annotations-delete", Some(opt)) => {
-                        call_result = self._mylibrary_annotations_delete(opt, dry_run, &mut err);
+                        call_result = self._mylibrary_annotations_delete(opt, dry_run, &mut err).await;
                     },
                     ("annotations-insert", Some(opt)) => {
-                        call_result = self._mylibrary_annotations_insert(opt, dry_run, &mut err);
+                        call_result = self._mylibrary_annotations_insert(opt, dry_run, &mut err).await;
                     },
                     ("annotations-list", Some(opt)) => {
-                        call_result = self._mylibrary_annotations_list(opt, dry_run, &mut err);
+                        call_result = self._mylibrary_annotations_list(opt, dry_run, &mut err).await;
                     },
                     ("annotations-summary", Some(opt)) => {
-                        call_result = self._mylibrary_annotations_summary(opt, dry_run, &mut err);
+                        call_result = self._mylibrary_annotations_summary(opt, dry_run, &mut err).await;
                     },
                     ("annotations-update", Some(opt)) => {
-                        call_result = self._mylibrary_annotations_update(opt, dry_run, &mut err);
+                        call_result = self._mylibrary_annotations_update(opt, dry_run, &mut err).await;
                     },
                     ("bookshelves-add-volume", Some(opt)) => {
-                        call_result = self._mylibrary_bookshelves_add_volume(opt, dry_run, &mut err);
+                        call_result = self._mylibrary_bookshelves_add_volume(opt, dry_run, &mut err).await;
                     },
                     ("bookshelves-clear-volumes", Some(opt)) => {
-                        call_result = self._mylibrary_bookshelves_clear_volumes(opt, dry_run, &mut err);
+                        call_result = self._mylibrary_bookshelves_clear_volumes(opt, dry_run, &mut err).await;
                     },
                     ("bookshelves-get", Some(opt)) => {
-                        call_result = self._mylibrary_bookshelves_get(opt, dry_run, &mut err);
+                        call_result = self._mylibrary_bookshelves_get(opt, dry_run, &mut err).await;
                     },
                     ("bookshelves-list", Some(opt)) => {
-                        call_result = self._mylibrary_bookshelves_list(opt, dry_run, &mut err);
+                        call_result = self._mylibrary_bookshelves_list(opt, dry_run, &mut err).await;
                     },
                     ("bookshelves-move-volume", Some(opt)) => {
-                        call_result = self._mylibrary_bookshelves_move_volume(opt, dry_run, &mut err);
+                        call_result = self._mylibrary_bookshelves_move_volume(opt, dry_run, &mut err).await;
                     },
                     ("bookshelves-remove-volume", Some(opt)) => {
-                        call_result = self._mylibrary_bookshelves_remove_volume(opt, dry_run, &mut err);
+                        call_result = self._mylibrary_bookshelves_remove_volume(opt, dry_run, &mut err).await;
                     },
                     ("bookshelves-volumes-list", Some(opt)) => {
-                        call_result = self._mylibrary_bookshelves_volumes_list(opt, dry_run, &mut err);
+                        call_result = self._mylibrary_bookshelves_volumes_list(opt, dry_run, &mut err).await;
                     },
                     ("readingpositions-get", Some(opt)) => {
-                        call_result = self._mylibrary_readingpositions_get(opt, dry_run, &mut err);
+                        call_result = self._mylibrary_readingpositions_get(opt, dry_run, &mut err).await;
                     },
                     ("readingpositions-set-position", Some(opt)) => {
-                        call_result = self._mylibrary_readingpositions_set_position(opt, dry_run, &mut err);
+                        call_result = self._mylibrary_readingpositions_set_position(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("mylibrary".to_string()));
@@ -3769,7 +3772,7 @@ impl<'n> Engine<'n> {
             ("notification", Some(opt)) => {
                 match opt.subcommand() {
                     ("get", Some(opt)) => {
-                        call_result = self._notification_get(opt, dry_run, &mut err);
+                        call_result = self._notification_get(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("notification".to_string()));
@@ -3780,10 +3783,10 @@ impl<'n> Engine<'n> {
             ("onboarding", Some(opt)) => {
                 match opt.subcommand() {
                     ("list-categories", Some(opt)) => {
-                        call_result = self._onboarding_list_categories(opt, dry_run, &mut err);
+                        call_result = self._onboarding_list_categories(opt, dry_run, &mut err).await;
                     },
                     ("list-category-volumes", Some(opt)) => {
-                        call_result = self._onboarding_list_category_volumes(opt, dry_run, &mut err);
+                        call_result = self._onboarding_list_category_volumes(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("onboarding".to_string()));
@@ -3794,7 +3797,7 @@ impl<'n> Engine<'n> {
             ("personalizedstream", Some(opt)) => {
                 match opt.subcommand() {
                     ("get", Some(opt)) => {
-                        call_result = self._personalizedstream_get(opt, dry_run, &mut err);
+                        call_result = self._personalizedstream_get(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("personalizedstream".to_string()));
@@ -3805,13 +3808,13 @@ impl<'n> Engine<'n> {
             ("promooffer", Some(opt)) => {
                 match opt.subcommand() {
                     ("accept", Some(opt)) => {
-                        call_result = self._promooffer_accept(opt, dry_run, &mut err);
+                        call_result = self._promooffer_accept(opt, dry_run, &mut err).await;
                     },
                     ("dismiss", Some(opt)) => {
-                        call_result = self._promooffer_dismiss(opt, dry_run, &mut err);
+                        call_result = self._promooffer_dismiss(opt, dry_run, &mut err).await;
                     },
                     ("get", Some(opt)) => {
-                        call_result = self._promooffer_get(opt, dry_run, &mut err);
+                        call_result = self._promooffer_get(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("promooffer".to_string()));
@@ -3822,10 +3825,10 @@ impl<'n> Engine<'n> {
             ("series", Some(opt)) => {
                 match opt.subcommand() {
                     ("get", Some(opt)) => {
-                        call_result = self._series_get(opt, dry_run, &mut err);
+                        call_result = self._series_get(opt, dry_run, &mut err).await;
                     },
                     ("membership-get", Some(opt)) => {
-                        call_result = self._series_membership_get(opt, dry_run, &mut err);
+                        call_result = self._series_membership_get(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("series".to_string()));
@@ -3836,25 +3839,25 @@ impl<'n> Engine<'n> {
             ("volumes", Some(opt)) => {
                 match opt.subcommand() {
                     ("associated-list", Some(opt)) => {
-                        call_result = self._volumes_associated_list(opt, dry_run, &mut err);
+                        call_result = self._volumes_associated_list(opt, dry_run, &mut err).await;
                     },
                     ("get", Some(opt)) => {
-                        call_result = self._volumes_get(opt, dry_run, &mut err);
+                        call_result = self._volumes_get(opt, dry_run, &mut err).await;
                     },
                     ("list", Some(opt)) => {
-                        call_result = self._volumes_list(opt, dry_run, &mut err);
+                        call_result = self._volumes_list(opt, dry_run, &mut err).await;
                     },
                     ("mybooks-list", Some(opt)) => {
-                        call_result = self._volumes_mybooks_list(opt, dry_run, &mut err);
+                        call_result = self._volumes_mybooks_list(opt, dry_run, &mut err).await;
                     },
                     ("recommended-list", Some(opt)) => {
-                        call_result = self._volumes_recommended_list(opt, dry_run, &mut err);
+                        call_result = self._volumes_recommended_list(opt, dry_run, &mut err).await;
                     },
                     ("recommended-rate", Some(opt)) => {
-                        call_result = self._volumes_recommended_rate(opt, dry_run, &mut err);
+                        call_result = self._volumes_recommended_rate(opt, dry_run, &mut err).await;
                     },
                     ("useruploaded-list", Some(opt)) => {
-                        call_result = self._volumes_useruploaded_list(opt, dry_run, &mut err);
+                        call_result = self._volumes_useruploaded_list(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("volumes".to_string()));
@@ -3879,7 +3882,7 @@ impl<'n> Engine<'n> {
     }
 
     // Please note that this call will fail if any part of the opt can't be handled
-    fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
+    async fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
             let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
@@ -3893,18 +3896,10 @@ impl<'n> Engine<'n> {
             }
         };
 
-        let auth = Authenticator::new(  &secret, DefaultAuthenticatorDelegate,
-                                        if opt.is_present("debug-auth") {
-                                            hyper::Client::with_connector(mock::TeeConnector {
-                                                    connector: hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
-                                                })
-                                        } else {
-                                            hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new()))
-                                        },
-                                        JsonTokenStorage {
-                                          program_name: "books1",
-                                          db_dir: config_dir.clone(),
-                                        }, Some(FlowType::InstalledRedirect(54324)));
+        let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+            secret,
+            yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+        ).persist_tokens_to_disk(format!("{}/books1", config_dir)).build().await.unwrap();
 
         let client =
             if opt.is_present("debug") {
@@ -3929,22 +3924,23 @@ impl<'n> Engine<'n> {
                 ]
         };
 
-        match engine._doit(true) {
+        match engine._doit(true).await {
             Err(Some(err)) => Err(err),
             Err(None)      => Ok(engine),
             Ok(_)          => unreachable!(),
         }
     }
 
-    fn doit(&self) -> Result<(), DoitError> {
-        match self._doit(false) {
+    async fn doit(&self) -> Result<(), DoitError> {
+        match self._doit(false).await {
             Ok(res) => res,
             Err(_) => unreachable!(),
         }
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut exit_status = 0i32;
     let arg_data = [
         ("bookshelves", "methods: 'get', 'list' and 'volumes-list'", vec![
@@ -5090,7 +5086,7 @@ fn main() {
             writeln!(io::stderr(), "{}", err).ok();
         },
         Ok(engine) => {
-            if let Err(doit_err) = engine.doit() {
+            if let Err(doit_err) = engine.doit().await {
                 exit_status = 1;
                 match doit_err {
                     DoitError::IoError(path, err) => {

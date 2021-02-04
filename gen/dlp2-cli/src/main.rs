@@ -4,6 +4,9 @@
 #![allow(unused_variables, unused_imports, dead_code, unused_mut)]
 
 #[macro_use]
+extern crate tokio;
+
+#[macro_use]
 extern crate clap;
 extern crate yup_oauth2 as oauth2;
 extern crate yup_hyper_mock as mock;
@@ -23,14 +26,13 @@ use google_dlp2::{api, Error};
 
 mod client;
 
-use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+use client::{InvalidOptionsError, CLIError, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
 use std::default::Default;
 use std::str::FromStr;
 
-use oauth2::{Authenticator, DefaultAuthenticatorDelegate, FlowType};
 use serde_json as json;
 use clap::ArgMatches;
 
@@ -41,14 +43,15 @@ enum DoitError {
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::DLP<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
+    hub: api::DLP<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>
+    >,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
 
 
 impl<'n> Engine<'n> {
-    fn _info_types_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _info_types_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.info_types().list();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -79,7 +82,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["location-id", "parent", "filter", "language-code"].iter().map(|v|*v));
+                                                                           v.extend(["language-code", "parent", "location-id", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -98,7 +101,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -113,7 +116,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _locations_info_types_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _locations_info_types_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.locations().info_types_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -141,7 +144,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["location-id", "filter", "language-code"].iter().map(|v|*v));
+                                                                           v.extend(["language-code", "location-id", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -160,7 +163,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -175,7 +178,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_deidentify_templates_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_deidentify_templates_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -251,7 +254,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -266,7 +269,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_deidentify_templates_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_deidentify_templates_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.organizations().deidentify_templates_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -303,7 +306,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -318,7 +321,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_deidentify_templates_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_deidentify_templates_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.organizations().deidentify_templates_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -355,7 +358,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -370,7 +373,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_deidentify_templates_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_deidentify_templates_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.organizations().deidentify_templates_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -401,7 +404,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-size", "location-id", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["location-id", "order-by", "page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -420,7 +423,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -435,7 +438,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_deidentify_templates_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_deidentify_templates_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -510,7 +513,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -525,7 +528,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_inspect_templates_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_inspect_templates_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -607,7 +610,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -622,7 +625,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_inspect_templates_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_inspect_templates_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.organizations().inspect_templates_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -659,7 +662,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -674,7 +677,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_inspect_templates_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_inspect_templates_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.organizations().inspect_templates_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -711,7 +714,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -726,7 +729,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_inspect_templates_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_inspect_templates_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.organizations().inspect_templates_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -757,7 +760,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-size", "location-id", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["location-id", "order-by", "page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -776,7 +779,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -791,7 +794,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_inspect_templates_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_inspect_templates_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -872,7 +875,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -887,7 +890,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_locations_deidentify_templates_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_locations_deidentify_templates_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -963,7 +966,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -978,7 +981,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_locations_deidentify_templates_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_locations_deidentify_templates_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.organizations().locations_deidentify_templates_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1015,7 +1018,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1030,7 +1033,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_locations_deidentify_templates_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_locations_deidentify_templates_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.organizations().locations_deidentify_templates_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1067,7 +1070,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1082,7 +1085,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_locations_deidentify_templates_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_locations_deidentify_templates_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.organizations().locations_deidentify_templates_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1113,7 +1116,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-size", "location-id", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["location-id", "order-by", "page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1132,7 +1135,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1147,7 +1150,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_locations_deidentify_templates_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_locations_deidentify_templates_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1222,7 +1225,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1237,7 +1240,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_locations_inspect_templates_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_locations_inspect_templates_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1319,7 +1322,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1334,7 +1337,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_locations_inspect_templates_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_locations_inspect_templates_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.organizations().locations_inspect_templates_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1371,7 +1374,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1386,7 +1389,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_locations_inspect_templates_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_locations_inspect_templates_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.organizations().locations_inspect_templates_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1423,7 +1426,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1438,7 +1441,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_locations_inspect_templates_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_locations_inspect_templates_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.organizations().locations_inspect_templates_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1469,7 +1472,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-size", "location-id", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["location-id", "order-by", "page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1488,7 +1491,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1503,7 +1506,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_locations_inspect_templates_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_locations_inspect_templates_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1584,7 +1587,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1599,7 +1602,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_locations_stored_info_types_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_locations_stored_info_types_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1682,7 +1685,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1697,7 +1700,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_locations_stored_info_types_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_locations_stored_info_types_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.organizations().locations_stored_info_types_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1734,7 +1737,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1749,7 +1752,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_locations_stored_info_types_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_locations_stored_info_types_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.organizations().locations_stored_info_types_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1786,7 +1789,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1801,7 +1804,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_locations_stored_info_types_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_locations_stored_info_types_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.organizations().locations_stored_info_types_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1832,7 +1835,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-size", "location-id", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["location-id", "order-by", "page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1851,7 +1854,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1866,7 +1869,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_locations_stored_info_types_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_locations_stored_info_types_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1948,7 +1951,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1963,7 +1966,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_stored_info_types_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_stored_info_types_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2046,7 +2049,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2061,7 +2064,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_stored_info_types_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_stored_info_types_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.organizations().stored_info_types_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2098,7 +2101,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2113,7 +2116,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_stored_info_types_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_stored_info_types_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.organizations().stored_info_types_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2150,7 +2153,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2165,7 +2168,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_stored_info_types_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_stored_info_types_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.organizations().stored_info_types_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2196,7 +2199,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-size", "location-id", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["location-id", "order-by", "page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2215,7 +2218,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2230,7 +2233,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _organizations_stored_info_types_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _organizations_stored_info_types_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2312,7 +2315,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2327,7 +2330,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_content_deidentify(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_content_deidentify(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2408,7 +2411,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2423,7 +2426,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_content_inspect(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_content_inspect(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2503,7 +2506,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2518,7 +2521,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_content_reidentify(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_content_reidentify(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2599,7 +2602,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2614,7 +2617,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_deidentify_templates_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_deidentify_templates_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2690,7 +2693,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2705,7 +2708,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_deidentify_templates_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_deidentify_templates_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().deidentify_templates_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2742,7 +2745,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2757,7 +2760,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_deidentify_templates_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_deidentify_templates_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().deidentify_templates_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2794,7 +2797,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2809,7 +2812,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_deidentify_templates_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_deidentify_templates_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().deidentify_templates_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2840,7 +2843,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-size", "location-id", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["location-id", "order-by", "page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2859,7 +2862,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2874,7 +2877,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_deidentify_templates_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_deidentify_templates_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2949,7 +2952,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2964,7 +2967,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_dlp_jobs_cancel(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_dlp_jobs_cancel(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3033,7 +3036,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3048,7 +3051,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_dlp_jobs_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_dlp_jobs_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3160,7 +3163,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3175,7 +3178,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_dlp_jobs_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_dlp_jobs_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().dlp_jobs_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3212,7 +3215,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3227,7 +3230,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_dlp_jobs_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_dlp_jobs_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().dlp_jobs_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3264,7 +3267,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3279,7 +3282,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_dlp_jobs_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_dlp_jobs_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().dlp_jobs_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3316,7 +3319,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "filter", "location-id", "page-size", "order-by", "type"].iter().map(|v|*v));
+                                                                           v.extend(["type", "location-id", "page-token", "order-by", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3335,7 +3338,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3350,7 +3353,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_image_redact(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_image_redact(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3429,7 +3432,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3444,7 +3447,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_inspect_templates_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_inspect_templates_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3526,7 +3529,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3541,7 +3544,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_inspect_templates_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_inspect_templates_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().inspect_templates_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3578,7 +3581,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3593,7 +3596,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_inspect_templates_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_inspect_templates_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().inspect_templates_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3630,7 +3633,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3645,7 +3648,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_inspect_templates_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_inspect_templates_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().inspect_templates_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3676,7 +3679,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-size", "location-id", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["location-id", "order-by", "page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3695,7 +3698,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3710,7 +3713,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_inspect_templates_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_inspect_templates_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3791,7 +3794,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3806,7 +3809,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_job_triggers_activate(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_job_triggers_activate(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3875,7 +3878,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3890,7 +3893,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_job_triggers_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_job_triggers_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4000,7 +4003,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4015,7 +4018,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_job_triggers_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_job_triggers_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().job_triggers_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4052,7 +4055,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4067,7 +4070,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_job_triggers_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_job_triggers_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().job_triggers_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4104,7 +4107,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4119,7 +4122,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_job_triggers_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_job_triggers_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().job_triggers_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4153,7 +4156,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "filter", "location-id", "page-size", "order-by"].iter().map(|v|*v));
+                                                                           v.extend(["location-id", "page-token", "order-by", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4172,7 +4175,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4187,7 +4190,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_job_triggers_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_job_triggers_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4296,7 +4299,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4311,7 +4314,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_content_deidentify(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_content_deidentify(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4392,7 +4395,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4407,7 +4410,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_content_inspect(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_content_inspect(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4487,7 +4490,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4502,7 +4505,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_content_reidentify(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_content_reidentify(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4583,7 +4586,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4598,7 +4601,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_deidentify_templates_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_deidentify_templates_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4674,7 +4677,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4689,7 +4692,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_deidentify_templates_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_deidentify_templates_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_deidentify_templates_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4726,7 +4729,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4741,7 +4744,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_deidentify_templates_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_deidentify_templates_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_deidentify_templates_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4778,7 +4781,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4793,7 +4796,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_deidentify_templates_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_deidentify_templates_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_deidentify_templates_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4824,7 +4827,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-size", "location-id", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["location-id", "order-by", "page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4843,7 +4846,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4858,7 +4861,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_deidentify_templates_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_deidentify_templates_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4933,7 +4936,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4948,7 +4951,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_dlp_jobs_cancel(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_dlp_jobs_cancel(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -5017,7 +5020,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5032,7 +5035,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_dlp_jobs_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_dlp_jobs_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -5144,7 +5147,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5159,7 +5162,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_dlp_jobs_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_dlp_jobs_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_dlp_jobs_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -5196,7 +5199,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5211,7 +5214,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_dlp_jobs_finish(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_dlp_jobs_finish(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -5280,7 +5283,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5295,7 +5298,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_dlp_jobs_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_dlp_jobs_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_dlp_jobs_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -5332,7 +5335,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5347,7 +5350,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_dlp_jobs_hybrid_inspect(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_dlp_jobs_hybrid_inspect(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -5429,7 +5432,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5444,7 +5447,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_dlp_jobs_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_dlp_jobs_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_dlp_jobs_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -5481,7 +5484,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "filter", "location-id", "page-size", "order-by", "type"].iter().map(|v|*v));
+                                                                           v.extend(["type", "location-id", "page-token", "order-by", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -5500,7 +5503,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5515,7 +5518,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_image_redact(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_image_redact(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -5594,7 +5597,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5609,7 +5612,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_inspect_templates_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_inspect_templates_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -5691,7 +5694,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5706,7 +5709,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_inspect_templates_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_inspect_templates_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_inspect_templates_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -5743,7 +5746,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5758,7 +5761,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_inspect_templates_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_inspect_templates_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_inspect_templates_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -5795,7 +5798,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5810,7 +5813,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_inspect_templates_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_inspect_templates_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_inspect_templates_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -5841,7 +5844,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-size", "location-id", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["location-id", "order-by", "page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -5860,7 +5863,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5875,7 +5878,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_inspect_templates_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_inspect_templates_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -5956,7 +5959,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5971,7 +5974,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_job_triggers_activate(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_job_triggers_activate(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -6040,7 +6043,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -6055,7 +6058,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_job_triggers_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_job_triggers_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -6165,7 +6168,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -6180,7 +6183,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_job_triggers_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_job_triggers_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_job_triggers_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -6217,7 +6220,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -6232,7 +6235,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_job_triggers_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_job_triggers_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_job_triggers_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -6269,7 +6272,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -6284,7 +6287,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_job_triggers_hybrid_inspect(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_job_triggers_hybrid_inspect(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -6366,7 +6369,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -6381,7 +6384,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_job_triggers_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_job_triggers_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_job_triggers_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -6415,7 +6418,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "filter", "location-id", "page-size", "order-by"].iter().map(|v|*v));
+                                                                           v.extend(["location-id", "page-token", "order-by", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -6434,7 +6437,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -6449,7 +6452,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_job_triggers_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_job_triggers_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -6558,7 +6561,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -6573,7 +6576,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_stored_info_types_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_stored_info_types_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -6656,7 +6659,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -6671,7 +6674,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_stored_info_types_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_stored_info_types_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_stored_info_types_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -6708,7 +6711,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -6723,7 +6726,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_stored_info_types_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_stored_info_types_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_stored_info_types_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -6760,7 +6763,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -6775,7 +6778,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_stored_info_types_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_stored_info_types_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_stored_info_types_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -6806,7 +6809,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-size", "location-id", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["location-id", "order-by", "page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -6825,7 +6828,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -6840,7 +6843,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_stored_info_types_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_stored_info_types_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -6922,7 +6925,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -6937,7 +6940,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_stored_info_types_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_stored_info_types_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -7020,7 +7023,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -7035,7 +7038,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_stored_info_types_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_stored_info_types_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().stored_info_types_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -7072,7 +7075,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -7087,7 +7090,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_stored_info_types_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_stored_info_types_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().stored_info_types_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -7124,7 +7127,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -7139,7 +7142,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_stored_info_types_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_stored_info_types_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().stored_info_types_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -7170,7 +7173,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-size", "location-id", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["location-id", "order-by", "page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -7189,7 +7192,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -7204,7 +7207,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_stored_info_types_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_stored_info_types_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -7286,7 +7289,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -7301,7 +7304,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
+    async fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
         let mut err = InvalidOptionsError::new();
         let mut call_result: Result<(), DoitError> = Ok(());
         let mut err_opt: Option<InvalidOptionsError> = None;
@@ -7309,7 +7312,7 @@ impl<'n> Engine<'n> {
             ("info-types", Some(opt)) => {
                 match opt.subcommand() {
                     ("list", Some(opt)) => {
-                        call_result = self._info_types_list(opt, dry_run, &mut err);
+                        call_result = self._info_types_list(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("info-types".to_string()));
@@ -7320,7 +7323,7 @@ impl<'n> Engine<'n> {
             ("locations", Some(opt)) => {
                 match opt.subcommand() {
                     ("info-types-list", Some(opt)) => {
-                        call_result = self._locations_info_types_list(opt, dry_run, &mut err);
+                        call_result = self._locations_info_types_list(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("locations".to_string()));
@@ -7331,94 +7334,94 @@ impl<'n> Engine<'n> {
             ("organizations", Some(opt)) => {
                 match opt.subcommand() {
                     ("deidentify-templates-create", Some(opt)) => {
-                        call_result = self._organizations_deidentify_templates_create(opt, dry_run, &mut err);
+                        call_result = self._organizations_deidentify_templates_create(opt, dry_run, &mut err).await;
                     },
                     ("deidentify-templates-delete", Some(opt)) => {
-                        call_result = self._organizations_deidentify_templates_delete(opt, dry_run, &mut err);
+                        call_result = self._organizations_deidentify_templates_delete(opt, dry_run, &mut err).await;
                     },
                     ("deidentify-templates-get", Some(opt)) => {
-                        call_result = self._organizations_deidentify_templates_get(opt, dry_run, &mut err);
+                        call_result = self._organizations_deidentify_templates_get(opt, dry_run, &mut err).await;
                     },
                     ("deidentify-templates-list", Some(opt)) => {
-                        call_result = self._organizations_deidentify_templates_list(opt, dry_run, &mut err);
+                        call_result = self._organizations_deidentify_templates_list(opt, dry_run, &mut err).await;
                     },
                     ("deidentify-templates-patch", Some(opt)) => {
-                        call_result = self._organizations_deidentify_templates_patch(opt, dry_run, &mut err);
+                        call_result = self._organizations_deidentify_templates_patch(opt, dry_run, &mut err).await;
                     },
                     ("inspect-templates-create", Some(opt)) => {
-                        call_result = self._organizations_inspect_templates_create(opt, dry_run, &mut err);
+                        call_result = self._organizations_inspect_templates_create(opt, dry_run, &mut err).await;
                     },
                     ("inspect-templates-delete", Some(opt)) => {
-                        call_result = self._organizations_inspect_templates_delete(opt, dry_run, &mut err);
+                        call_result = self._organizations_inspect_templates_delete(opt, dry_run, &mut err).await;
                     },
                     ("inspect-templates-get", Some(opt)) => {
-                        call_result = self._organizations_inspect_templates_get(opt, dry_run, &mut err);
+                        call_result = self._organizations_inspect_templates_get(opt, dry_run, &mut err).await;
                     },
                     ("inspect-templates-list", Some(opt)) => {
-                        call_result = self._organizations_inspect_templates_list(opt, dry_run, &mut err);
+                        call_result = self._organizations_inspect_templates_list(opt, dry_run, &mut err).await;
                     },
                     ("inspect-templates-patch", Some(opt)) => {
-                        call_result = self._organizations_inspect_templates_patch(opt, dry_run, &mut err);
+                        call_result = self._organizations_inspect_templates_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-deidentify-templates-create", Some(opt)) => {
-                        call_result = self._organizations_locations_deidentify_templates_create(opt, dry_run, &mut err);
+                        call_result = self._organizations_locations_deidentify_templates_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-deidentify-templates-delete", Some(opt)) => {
-                        call_result = self._organizations_locations_deidentify_templates_delete(opt, dry_run, &mut err);
+                        call_result = self._organizations_locations_deidentify_templates_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-deidentify-templates-get", Some(opt)) => {
-                        call_result = self._organizations_locations_deidentify_templates_get(opt, dry_run, &mut err);
+                        call_result = self._organizations_locations_deidentify_templates_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-deidentify-templates-list", Some(opt)) => {
-                        call_result = self._organizations_locations_deidentify_templates_list(opt, dry_run, &mut err);
+                        call_result = self._organizations_locations_deidentify_templates_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-deidentify-templates-patch", Some(opt)) => {
-                        call_result = self._organizations_locations_deidentify_templates_patch(opt, dry_run, &mut err);
+                        call_result = self._organizations_locations_deidentify_templates_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-inspect-templates-create", Some(opt)) => {
-                        call_result = self._organizations_locations_inspect_templates_create(opt, dry_run, &mut err);
+                        call_result = self._organizations_locations_inspect_templates_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-inspect-templates-delete", Some(opt)) => {
-                        call_result = self._organizations_locations_inspect_templates_delete(opt, dry_run, &mut err);
+                        call_result = self._organizations_locations_inspect_templates_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-inspect-templates-get", Some(opt)) => {
-                        call_result = self._organizations_locations_inspect_templates_get(opt, dry_run, &mut err);
+                        call_result = self._organizations_locations_inspect_templates_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-inspect-templates-list", Some(opt)) => {
-                        call_result = self._organizations_locations_inspect_templates_list(opt, dry_run, &mut err);
+                        call_result = self._organizations_locations_inspect_templates_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-inspect-templates-patch", Some(opt)) => {
-                        call_result = self._organizations_locations_inspect_templates_patch(opt, dry_run, &mut err);
+                        call_result = self._organizations_locations_inspect_templates_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-stored-info-types-create", Some(opt)) => {
-                        call_result = self._organizations_locations_stored_info_types_create(opt, dry_run, &mut err);
+                        call_result = self._organizations_locations_stored_info_types_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-stored-info-types-delete", Some(opt)) => {
-                        call_result = self._organizations_locations_stored_info_types_delete(opt, dry_run, &mut err);
+                        call_result = self._organizations_locations_stored_info_types_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-stored-info-types-get", Some(opt)) => {
-                        call_result = self._organizations_locations_stored_info_types_get(opt, dry_run, &mut err);
+                        call_result = self._organizations_locations_stored_info_types_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-stored-info-types-list", Some(opt)) => {
-                        call_result = self._organizations_locations_stored_info_types_list(opt, dry_run, &mut err);
+                        call_result = self._organizations_locations_stored_info_types_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-stored-info-types-patch", Some(opt)) => {
-                        call_result = self._organizations_locations_stored_info_types_patch(opt, dry_run, &mut err);
+                        call_result = self._organizations_locations_stored_info_types_patch(opt, dry_run, &mut err).await;
                     },
                     ("stored-info-types-create", Some(opt)) => {
-                        call_result = self._organizations_stored_info_types_create(opt, dry_run, &mut err);
+                        call_result = self._organizations_stored_info_types_create(opt, dry_run, &mut err).await;
                     },
                     ("stored-info-types-delete", Some(opt)) => {
-                        call_result = self._organizations_stored_info_types_delete(opt, dry_run, &mut err);
+                        call_result = self._organizations_stored_info_types_delete(opt, dry_run, &mut err).await;
                     },
                     ("stored-info-types-get", Some(opt)) => {
-                        call_result = self._organizations_stored_info_types_get(opt, dry_run, &mut err);
+                        call_result = self._organizations_stored_info_types_get(opt, dry_run, &mut err).await;
                     },
                     ("stored-info-types-list", Some(opt)) => {
-                        call_result = self._organizations_stored_info_types_list(opt, dry_run, &mut err);
+                        call_result = self._organizations_stored_info_types_list(opt, dry_run, &mut err).await;
                     },
                     ("stored-info-types-patch", Some(opt)) => {
-                        call_result = self._organizations_stored_info_types_patch(opt, dry_run, &mut err);
+                        call_result = self._organizations_stored_info_types_patch(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("organizations".to_string()));
@@ -7429,193 +7432,193 @@ impl<'n> Engine<'n> {
             ("projects", Some(opt)) => {
                 match opt.subcommand() {
                     ("content-deidentify", Some(opt)) => {
-                        call_result = self._projects_content_deidentify(opt, dry_run, &mut err);
+                        call_result = self._projects_content_deidentify(opt, dry_run, &mut err).await;
                     },
                     ("content-inspect", Some(opt)) => {
-                        call_result = self._projects_content_inspect(opt, dry_run, &mut err);
+                        call_result = self._projects_content_inspect(opt, dry_run, &mut err).await;
                     },
                     ("content-reidentify", Some(opt)) => {
-                        call_result = self._projects_content_reidentify(opt, dry_run, &mut err);
+                        call_result = self._projects_content_reidentify(opt, dry_run, &mut err).await;
                     },
                     ("deidentify-templates-create", Some(opt)) => {
-                        call_result = self._projects_deidentify_templates_create(opt, dry_run, &mut err);
+                        call_result = self._projects_deidentify_templates_create(opt, dry_run, &mut err).await;
                     },
                     ("deidentify-templates-delete", Some(opt)) => {
-                        call_result = self._projects_deidentify_templates_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_deidentify_templates_delete(opt, dry_run, &mut err).await;
                     },
                     ("deidentify-templates-get", Some(opt)) => {
-                        call_result = self._projects_deidentify_templates_get(opt, dry_run, &mut err);
+                        call_result = self._projects_deidentify_templates_get(opt, dry_run, &mut err).await;
                     },
                     ("deidentify-templates-list", Some(opt)) => {
-                        call_result = self._projects_deidentify_templates_list(opt, dry_run, &mut err);
+                        call_result = self._projects_deidentify_templates_list(opt, dry_run, &mut err).await;
                     },
                     ("deidentify-templates-patch", Some(opt)) => {
-                        call_result = self._projects_deidentify_templates_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_deidentify_templates_patch(opt, dry_run, &mut err).await;
                     },
                     ("dlp-jobs-cancel", Some(opt)) => {
-                        call_result = self._projects_dlp_jobs_cancel(opt, dry_run, &mut err);
+                        call_result = self._projects_dlp_jobs_cancel(opt, dry_run, &mut err).await;
                     },
                     ("dlp-jobs-create", Some(opt)) => {
-                        call_result = self._projects_dlp_jobs_create(opt, dry_run, &mut err);
+                        call_result = self._projects_dlp_jobs_create(opt, dry_run, &mut err).await;
                     },
                     ("dlp-jobs-delete", Some(opt)) => {
-                        call_result = self._projects_dlp_jobs_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_dlp_jobs_delete(opt, dry_run, &mut err).await;
                     },
                     ("dlp-jobs-get", Some(opt)) => {
-                        call_result = self._projects_dlp_jobs_get(opt, dry_run, &mut err);
+                        call_result = self._projects_dlp_jobs_get(opt, dry_run, &mut err).await;
                     },
                     ("dlp-jobs-list", Some(opt)) => {
-                        call_result = self._projects_dlp_jobs_list(opt, dry_run, &mut err);
+                        call_result = self._projects_dlp_jobs_list(opt, dry_run, &mut err).await;
                     },
                     ("image-redact", Some(opt)) => {
-                        call_result = self._projects_image_redact(opt, dry_run, &mut err);
+                        call_result = self._projects_image_redact(opt, dry_run, &mut err).await;
                     },
                     ("inspect-templates-create", Some(opt)) => {
-                        call_result = self._projects_inspect_templates_create(opt, dry_run, &mut err);
+                        call_result = self._projects_inspect_templates_create(opt, dry_run, &mut err).await;
                     },
                     ("inspect-templates-delete", Some(opt)) => {
-                        call_result = self._projects_inspect_templates_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_inspect_templates_delete(opt, dry_run, &mut err).await;
                     },
                     ("inspect-templates-get", Some(opt)) => {
-                        call_result = self._projects_inspect_templates_get(opt, dry_run, &mut err);
+                        call_result = self._projects_inspect_templates_get(opt, dry_run, &mut err).await;
                     },
                     ("inspect-templates-list", Some(opt)) => {
-                        call_result = self._projects_inspect_templates_list(opt, dry_run, &mut err);
+                        call_result = self._projects_inspect_templates_list(opt, dry_run, &mut err).await;
                     },
                     ("inspect-templates-patch", Some(opt)) => {
-                        call_result = self._projects_inspect_templates_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_inspect_templates_patch(opt, dry_run, &mut err).await;
                     },
                     ("job-triggers-activate", Some(opt)) => {
-                        call_result = self._projects_job_triggers_activate(opt, dry_run, &mut err);
+                        call_result = self._projects_job_triggers_activate(opt, dry_run, &mut err).await;
                     },
                     ("job-triggers-create", Some(opt)) => {
-                        call_result = self._projects_job_triggers_create(opt, dry_run, &mut err);
+                        call_result = self._projects_job_triggers_create(opt, dry_run, &mut err).await;
                     },
                     ("job-triggers-delete", Some(opt)) => {
-                        call_result = self._projects_job_triggers_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_job_triggers_delete(opt, dry_run, &mut err).await;
                     },
                     ("job-triggers-get", Some(opt)) => {
-                        call_result = self._projects_job_triggers_get(opt, dry_run, &mut err);
+                        call_result = self._projects_job_triggers_get(opt, dry_run, &mut err).await;
                     },
                     ("job-triggers-list", Some(opt)) => {
-                        call_result = self._projects_job_triggers_list(opt, dry_run, &mut err);
+                        call_result = self._projects_job_triggers_list(opt, dry_run, &mut err).await;
                     },
                     ("job-triggers-patch", Some(opt)) => {
-                        call_result = self._projects_job_triggers_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_job_triggers_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-content-deidentify", Some(opt)) => {
-                        call_result = self._projects_locations_content_deidentify(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_content_deidentify(opt, dry_run, &mut err).await;
                     },
                     ("locations-content-inspect", Some(opt)) => {
-                        call_result = self._projects_locations_content_inspect(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_content_inspect(opt, dry_run, &mut err).await;
                     },
                     ("locations-content-reidentify", Some(opt)) => {
-                        call_result = self._projects_locations_content_reidentify(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_content_reidentify(opt, dry_run, &mut err).await;
                     },
                     ("locations-deidentify-templates-create", Some(opt)) => {
-                        call_result = self._projects_locations_deidentify_templates_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_deidentify_templates_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-deidentify-templates-delete", Some(opt)) => {
-                        call_result = self._projects_locations_deidentify_templates_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_deidentify_templates_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-deidentify-templates-get", Some(opt)) => {
-                        call_result = self._projects_locations_deidentify_templates_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_deidentify_templates_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-deidentify-templates-list", Some(opt)) => {
-                        call_result = self._projects_locations_deidentify_templates_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_deidentify_templates_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-deidentify-templates-patch", Some(opt)) => {
-                        call_result = self._projects_locations_deidentify_templates_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_deidentify_templates_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-dlp-jobs-cancel", Some(opt)) => {
-                        call_result = self._projects_locations_dlp_jobs_cancel(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_dlp_jobs_cancel(opt, dry_run, &mut err).await;
                     },
                     ("locations-dlp-jobs-create", Some(opt)) => {
-                        call_result = self._projects_locations_dlp_jobs_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_dlp_jobs_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-dlp-jobs-delete", Some(opt)) => {
-                        call_result = self._projects_locations_dlp_jobs_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_dlp_jobs_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-dlp-jobs-finish", Some(opt)) => {
-                        call_result = self._projects_locations_dlp_jobs_finish(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_dlp_jobs_finish(opt, dry_run, &mut err).await;
                     },
                     ("locations-dlp-jobs-get", Some(opt)) => {
-                        call_result = self._projects_locations_dlp_jobs_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_dlp_jobs_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-dlp-jobs-hybrid-inspect", Some(opt)) => {
-                        call_result = self._projects_locations_dlp_jobs_hybrid_inspect(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_dlp_jobs_hybrid_inspect(opt, dry_run, &mut err).await;
                     },
                     ("locations-dlp-jobs-list", Some(opt)) => {
-                        call_result = self._projects_locations_dlp_jobs_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_dlp_jobs_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-image-redact", Some(opt)) => {
-                        call_result = self._projects_locations_image_redact(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_image_redact(opt, dry_run, &mut err).await;
                     },
                     ("locations-inspect-templates-create", Some(opt)) => {
-                        call_result = self._projects_locations_inspect_templates_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_inspect_templates_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-inspect-templates-delete", Some(opt)) => {
-                        call_result = self._projects_locations_inspect_templates_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_inspect_templates_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-inspect-templates-get", Some(opt)) => {
-                        call_result = self._projects_locations_inspect_templates_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_inspect_templates_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-inspect-templates-list", Some(opt)) => {
-                        call_result = self._projects_locations_inspect_templates_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_inspect_templates_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-inspect-templates-patch", Some(opt)) => {
-                        call_result = self._projects_locations_inspect_templates_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_inspect_templates_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-job-triggers-activate", Some(opt)) => {
-                        call_result = self._projects_locations_job_triggers_activate(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_job_triggers_activate(opt, dry_run, &mut err).await;
                     },
                     ("locations-job-triggers-create", Some(opt)) => {
-                        call_result = self._projects_locations_job_triggers_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_job_triggers_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-job-triggers-delete", Some(opt)) => {
-                        call_result = self._projects_locations_job_triggers_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_job_triggers_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-job-triggers-get", Some(opt)) => {
-                        call_result = self._projects_locations_job_triggers_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_job_triggers_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-job-triggers-hybrid-inspect", Some(opt)) => {
-                        call_result = self._projects_locations_job_triggers_hybrid_inspect(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_job_triggers_hybrid_inspect(opt, dry_run, &mut err).await;
                     },
                     ("locations-job-triggers-list", Some(opt)) => {
-                        call_result = self._projects_locations_job_triggers_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_job_triggers_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-job-triggers-patch", Some(opt)) => {
-                        call_result = self._projects_locations_job_triggers_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_job_triggers_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-stored-info-types-create", Some(opt)) => {
-                        call_result = self._projects_locations_stored_info_types_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_stored_info_types_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-stored-info-types-delete", Some(opt)) => {
-                        call_result = self._projects_locations_stored_info_types_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_stored_info_types_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-stored-info-types-get", Some(opt)) => {
-                        call_result = self._projects_locations_stored_info_types_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_stored_info_types_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-stored-info-types-list", Some(opt)) => {
-                        call_result = self._projects_locations_stored_info_types_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_stored_info_types_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-stored-info-types-patch", Some(opt)) => {
-                        call_result = self._projects_locations_stored_info_types_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_stored_info_types_patch(opt, dry_run, &mut err).await;
                     },
                     ("stored-info-types-create", Some(opt)) => {
-                        call_result = self._projects_stored_info_types_create(opt, dry_run, &mut err);
+                        call_result = self._projects_stored_info_types_create(opt, dry_run, &mut err).await;
                     },
                     ("stored-info-types-delete", Some(opt)) => {
-                        call_result = self._projects_stored_info_types_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_stored_info_types_delete(opt, dry_run, &mut err).await;
                     },
                     ("stored-info-types-get", Some(opt)) => {
-                        call_result = self._projects_stored_info_types_get(opt, dry_run, &mut err);
+                        call_result = self._projects_stored_info_types_get(opt, dry_run, &mut err).await;
                     },
                     ("stored-info-types-list", Some(opt)) => {
-                        call_result = self._projects_stored_info_types_list(opt, dry_run, &mut err);
+                        call_result = self._projects_stored_info_types_list(opt, dry_run, &mut err).await;
                     },
                     ("stored-info-types-patch", Some(opt)) => {
-                        call_result = self._projects_stored_info_types_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_stored_info_types_patch(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("projects".to_string()));
@@ -7640,7 +7643,7 @@ impl<'n> Engine<'n> {
     }
 
     // Please note that this call will fail if any part of the opt can't be handled
-    fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
+    async fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
             let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
@@ -7654,18 +7657,10 @@ impl<'n> Engine<'n> {
             }
         };
 
-        let auth = Authenticator::new(  &secret, DefaultAuthenticatorDelegate,
-                                        if opt.is_present("debug-auth") {
-                                            hyper::Client::with_connector(mock::TeeConnector {
-                                                    connector: hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
-                                                })
-                                        } else {
-                                            hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new()))
-                                        },
-                                        JsonTokenStorage {
-                                          program_name: "dlp2",
-                                          db_dir: config_dir.clone(),
-                                        }, Some(FlowType::InstalledRedirect(54324)));
+        let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+            secret,
+            yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+        ).persist_tokens_to_disk(format!("{}/dlp2", config_dir)).build().await.unwrap();
 
         let client =
             if opt.is_present("debug") {
@@ -7690,22 +7685,23 @@ impl<'n> Engine<'n> {
                 ]
         };
 
-        match engine._doit(true) {
+        match engine._doit(true).await {
             Err(Some(err)) => Err(err),
             Err(None)      => Ok(engine),
             Ok(_)          => unreachable!(),
         }
     }
 
-    fn doit(&self) -> Result<(), DoitError> {
-        match self._doit(false) {
+    async fn doit(&self) -> Result<(), DoitError> {
+        match self._doit(false).await {
             Ok(res) => res,
             Err(_) => unreachable!(),
         }
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut exit_status = 0i32;
     let arg_data = [
         ("info-types", "methods: 'list'", vec![
@@ -10593,7 +10589,7 @@ fn main() {
             writeln!(io::stderr(), "{}", err).ok();
         },
         Ok(engine) => {
-            if let Err(doit_err) = engine.doit() {
+            if let Err(doit_err) = engine.doit().await {
                 exit_status = 1;
                 match doit_err {
                     DoitError::IoError(path, err) => {

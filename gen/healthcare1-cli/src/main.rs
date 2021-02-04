@@ -4,6 +4,9 @@
 #![allow(unused_variables, unused_imports, dead_code, unused_mut)]
 
 #[macro_use]
+extern crate tokio;
+
+#[macro_use]
 extern crate clap;
 extern crate yup_oauth2 as oauth2;
 extern crate yup_hyper_mock as mock;
@@ -23,14 +26,13 @@ use google_healthcare1::{api, Error};
 
 mod client;
 
-use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+use client::{InvalidOptionsError, CLIError, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
 use std::default::Default;
 use std::str::FromStr;
 
-use oauth2::{Authenticator, DefaultAuthenticatorDelegate, FlowType};
 use serde_json as json;
 use clap::ArgMatches;
 
@@ -41,14 +43,15 @@ enum DoitError {
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::CloudHealthcare<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
+    hub: api::CloudHealthcare<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>
+    >,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
 
 
 impl<'n> Engine<'n> {
-    fn _projects_locations_datasets_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -123,7 +126,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -138,7 +141,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_deidentify(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_deidentify(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -213,7 +216,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -228,7 +231,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -265,7 +268,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -280,7 +283,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -356,7 +359,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -371,7 +374,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_deidentify(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_deidentify(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -447,7 +450,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -462,7 +465,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_dicom_stores_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -499,7 +502,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -514,7 +517,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_export(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_export(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -587,7 +590,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -602,7 +605,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_dicom_stores_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -639,7 +642,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -654,7 +657,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_dicom_stores_get_iam_policy(opt.value_of("resource").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -695,7 +698,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -710,7 +713,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_import(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_import(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -780,7 +783,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -795,7 +798,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_dicom_stores_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -823,7 +826,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size", "filter"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -842,7 +845,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -857,7 +860,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -933,7 +936,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -948,7 +951,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_search_for_instances(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_search_for_instances(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_dicom_stores_search_for_instances(opt.value_of("parent").unwrap_or(""), opt.value_of("dicom-web-path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -985,7 +988,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1000,7 +1003,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_search_for_series(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_search_for_series(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_dicom_stores_search_for_series(opt.value_of("parent").unwrap_or(""), opt.value_of("dicom-web-path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1037,7 +1040,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1052,7 +1055,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_search_for_studies(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_search_for_studies(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_dicom_stores_search_for_studies(opt.value_of("parent").unwrap_or(""), opt.value_of("dicom-web-path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1089,7 +1092,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1104,7 +1107,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1176,7 +1179,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1191,7 +1194,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_store_instances(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_store_instances(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1262,7 +1265,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1277,7 +1280,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_studies_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_studies_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_dicom_stores_studies_delete(opt.value_of("parent").unwrap_or(""), opt.value_of("dicom-web-path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1314,7 +1317,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1329,7 +1332,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_studies_retrieve_metadata(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_studies_retrieve_metadata(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_dicom_stores_studies_retrieve_metadata(opt.value_of("parent").unwrap_or(""), opt.value_of("dicom-web-path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1366,7 +1369,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1381,7 +1384,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_studies_retrieve_study(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_studies_retrieve_study(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_dicom_stores_studies_retrieve_study(opt.value_of("parent").unwrap_or(""), opt.value_of("dicom-web-path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1418,7 +1421,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1433,7 +1436,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_studies_search_for_instances(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_studies_search_for_instances(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_dicom_stores_studies_search_for_instances(opt.value_of("parent").unwrap_or(""), opt.value_of("dicom-web-path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1470,7 +1473,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1485,7 +1488,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_studies_search_for_series(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_studies_search_for_series(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_dicom_stores_studies_search_for_series(opt.value_of("parent").unwrap_or(""), opt.value_of("dicom-web-path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1522,7 +1525,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1537,7 +1540,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_studies_series_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_studies_series_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_dicom_stores_studies_series_delete(opt.value_of("parent").unwrap_or(""), opt.value_of("dicom-web-path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1574,7 +1577,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1589,7 +1592,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_studies_series_instances_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_studies_series_instances_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_dicom_stores_studies_series_instances_delete(opt.value_of("parent").unwrap_or(""), opt.value_of("dicom-web-path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1626,7 +1629,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1641,7 +1644,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_studies_series_instances_frames_retrieve_frames(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_studies_series_instances_frames_retrieve_frames(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_dicom_stores_studies_series_instances_frames_retrieve_frames(opt.value_of("parent").unwrap_or(""), opt.value_of("dicom-web-path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1678,7 +1681,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1693,7 +1696,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_studies_series_instances_frames_retrieve_rendered(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_studies_series_instances_frames_retrieve_rendered(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_dicom_stores_studies_series_instances_frames_retrieve_rendered(opt.value_of("parent").unwrap_or(""), opt.value_of("dicom-web-path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1730,7 +1733,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1745,7 +1748,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_studies_series_instances_retrieve_instance(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_studies_series_instances_retrieve_instance(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_dicom_stores_studies_series_instances_retrieve_instance(opt.value_of("parent").unwrap_or(""), opt.value_of("dicom-web-path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1782,7 +1785,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1797,7 +1800,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_studies_series_instances_retrieve_metadata(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_studies_series_instances_retrieve_metadata(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_dicom_stores_studies_series_instances_retrieve_metadata(opt.value_of("parent").unwrap_or(""), opt.value_of("dicom-web-path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1834,7 +1837,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1849,7 +1852,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_studies_series_instances_retrieve_rendered(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_studies_series_instances_retrieve_rendered(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_dicom_stores_studies_series_instances_retrieve_rendered(opt.value_of("parent").unwrap_or(""), opt.value_of("dicom-web-path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1886,7 +1889,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1901,7 +1904,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_studies_series_retrieve_metadata(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_studies_series_retrieve_metadata(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_dicom_stores_studies_series_retrieve_metadata(opt.value_of("parent").unwrap_or(""), opt.value_of("dicom-web-path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1938,7 +1941,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1953,7 +1956,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_studies_series_retrieve_series(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_studies_series_retrieve_series(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_dicom_stores_studies_series_retrieve_series(opt.value_of("parent").unwrap_or(""), opt.value_of("dicom-web-path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1990,7 +1993,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2005,7 +2008,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_studies_series_search_for_instances(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_studies_series_search_for_instances(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_dicom_stores_studies_series_search_for_instances(opt.value_of("parent").unwrap_or(""), opt.value_of("dicom-web-path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2042,7 +2045,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2057,7 +2060,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_studies_store_instances(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_studies_store_instances(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2128,7 +2131,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2143,7 +2146,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_dicom_stores_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_dicom_stores_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2213,7 +2216,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2228,7 +2231,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_fhir_stores_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_fhir_stores_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2308,7 +2311,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2323,7 +2326,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_fhir_stores_deidentify(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_fhir_stores_deidentify(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2399,7 +2402,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2414,7 +2417,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_fhir_stores_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_fhir_stores_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_fhir_stores_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2451,7 +2454,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2466,7 +2469,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_fhir_stores_export(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_fhir_stores_export(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2540,7 +2543,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2555,7 +2558,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_fhir_stores_fhir__patient_everything(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_fhir_stores_fhir__patient_everything(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_fhir_stores_fhir__patient_everything(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2586,7 +2589,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["-count", "-page-token", "end", "start"].iter().map(|v|*v));
+                                                                           v.extend(["-count", "end", "start", "-page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2605,7 +2608,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2620,7 +2623,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_fhir_stores_fhir__resource_purge(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_fhir_stores_fhir__resource_purge(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_fhir_stores_fhir__resource_purge(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2657,7 +2660,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2672,7 +2675,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_fhir_stores_fhir_capabilities(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_fhir_stores_fhir_capabilities(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_fhir_stores_fhir_capabilities(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2709,7 +2712,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2724,7 +2727,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_fhir_stores_fhir_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_fhir_stores_fhir_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2795,7 +2798,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2810,7 +2813,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_fhir_stores_fhir_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_fhir_stores_fhir_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_fhir_stores_fhir_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2847,7 +2850,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2862,7 +2865,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_fhir_stores_fhir_execute_bundle(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_fhir_stores_fhir_execute_bundle(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2933,7 +2936,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2948,7 +2951,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_fhir_stores_fhir_history(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_fhir_stores_fhir_history(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_fhir_stores_fhir_history(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2979,7 +2982,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["-since", "-at", "-page-token", "-count"].iter().map(|v|*v));
+                                                                           v.extend(["-since", "-count", "-at", "-page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2998,7 +3001,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3013,7 +3016,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_fhir_stores_fhir_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_fhir_stores_fhir_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3084,7 +3087,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3099,7 +3102,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_fhir_stores_fhir_read(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_fhir_stores_fhir_read(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_fhir_stores_fhir_read(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3136,7 +3139,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3151,7 +3154,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_fhir_stores_fhir_search(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_fhir_stores_fhir_search(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3221,7 +3224,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3236,7 +3239,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_fhir_stores_fhir_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_fhir_stores_fhir_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3307,7 +3310,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3322,7 +3325,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_fhir_stores_fhir_vread(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_fhir_stores_fhir_vread(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_fhir_stores_fhir_vread(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3359,7 +3362,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3374,7 +3377,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_fhir_stores_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_fhir_stores_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_fhir_stores_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3411,7 +3414,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3426,7 +3429,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_fhir_stores_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_fhir_stores_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_fhir_stores_get_iam_policy(opt.value_of("resource").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3467,7 +3470,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3482,7 +3485,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_fhir_stores_import(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_fhir_stores_import(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3553,7 +3556,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3568,7 +3571,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_fhir_stores_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_fhir_stores_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_fhir_stores_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3596,7 +3599,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size", "filter"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3615,7 +3618,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3630,7 +3633,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_fhir_stores_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_fhir_stores_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3710,7 +3713,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3725,7 +3728,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_fhir_stores_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_fhir_stores_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3797,7 +3800,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3812,7 +3815,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_fhir_stores_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_fhir_stores_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3882,7 +3885,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3897,7 +3900,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3934,7 +3937,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3949,7 +3952,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_get_iam_policy(opt.value_of("resource").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3990,7 +3993,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4005,7 +4008,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_hl7_v2_stores_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_hl7_v2_stores_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4083,7 +4086,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4098,7 +4101,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_hl7_v2_stores_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_hl7_v2_stores_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_hl7_v2_stores_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4135,7 +4138,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4150,7 +4153,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_hl7_v2_stores_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_hl7_v2_stores_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_hl7_v2_stores_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4187,7 +4190,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4202,7 +4205,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_hl7_v2_stores_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_hl7_v2_stores_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_hl7_v2_stores_get_iam_policy(opt.value_of("resource").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4243,7 +4246,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4258,7 +4261,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_hl7_v2_stores_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_hl7_v2_stores_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_hl7_v2_stores_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4286,7 +4289,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size", "filter"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4305,7 +4308,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4320,7 +4323,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_hl7_v2_stores_messages_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_hl7_v2_stores_messages_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4396,7 +4399,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4411,7 +4414,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_hl7_v2_stores_messages_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_hl7_v2_stores_messages_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_hl7_v2_stores_messages_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4448,7 +4451,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4463,7 +4466,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_hl7_v2_stores_messages_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_hl7_v2_stores_messages_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_hl7_v2_stores_messages_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4504,7 +4507,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4519,7 +4522,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_hl7_v2_stores_messages_ingest(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_hl7_v2_stores_messages_ingest(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4595,7 +4598,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4610,7 +4613,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_hl7_v2_stores_messages_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_hl7_v2_stores_messages_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_hl7_v2_stores_messages_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4644,7 +4647,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size", "view", "order-by"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "filter", "order-by", "view", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4663,7 +4666,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4678,7 +4681,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_hl7_v2_stores_messages_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_hl7_v2_stores_messages_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4758,7 +4761,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4773,7 +4776,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_hl7_v2_stores_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_hl7_v2_stores_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4851,7 +4854,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4866,7 +4869,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_hl7_v2_stores_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_hl7_v2_stores_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4938,7 +4941,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4953,7 +4956,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_hl7_v2_stores_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_hl7_v2_stores_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -5023,7 +5026,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5038,7 +5041,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -5082,7 +5085,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5097,7 +5100,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_operations_cancel(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_operations_cancel(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -5166,7 +5169,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5181,7 +5184,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_operations_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_operations_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_operations_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -5218,7 +5221,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5233,7 +5236,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_operations_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_operations_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_datasets_operations_list(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -5261,7 +5264,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size", "filter"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -5280,7 +5283,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5295,7 +5298,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -5370,7 +5373,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5385,7 +5388,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -5457,7 +5460,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5472,7 +5475,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_datasets_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_datasets_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -5542,7 +5545,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5557,7 +5560,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
+    async fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
         let mut err = InvalidOptionsError::new();
         let mut call_result: Result<(), DoitError> = Ok(());
         let mut err_opt: Option<InvalidOptionsError> = None;
@@ -5565,244 +5568,244 @@ impl<'n> Engine<'n> {
             ("projects", Some(opt)) => {
                 match opt.subcommand() {
                     ("locations-datasets-create", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-deidentify", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_deidentify(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_deidentify(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-delete", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-create", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-deidentify", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_deidentify(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_deidentify(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-delete", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-export", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_export(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_export(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-get", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-get-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_get_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_get_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-import", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_import(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_import(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-list", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-patch", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-search-for-instances", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_search_for_instances(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_search_for_instances(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-search-for-series", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_search_for_series(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_search_for_series(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-search-for-studies", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_search_for_studies(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_search_for_studies(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-set-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_set_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_set_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-store-instances", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_store_instances(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_store_instances(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-studies-delete", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_studies_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_studies_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-studies-retrieve-metadata", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_studies_retrieve_metadata(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_studies_retrieve_metadata(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-studies-retrieve-study", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_studies_retrieve_study(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_studies_retrieve_study(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-studies-search-for-instances", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_studies_search_for_instances(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_studies_search_for_instances(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-studies-search-for-series", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_studies_search_for_series(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_studies_search_for_series(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-studies-series-delete", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_studies_series_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_studies_series_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-studies-series-instances-delete", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_studies_series_instances_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_studies_series_instances_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-studies-series-instances-frames-retrieve-frames", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_studies_series_instances_frames_retrieve_frames(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_studies_series_instances_frames_retrieve_frames(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-studies-series-instances-frames-retrieve-rendered", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_studies_series_instances_frames_retrieve_rendered(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_studies_series_instances_frames_retrieve_rendered(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-studies-series-instances-retrieve-instance", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_studies_series_instances_retrieve_instance(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_studies_series_instances_retrieve_instance(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-studies-series-instances-retrieve-metadata", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_studies_series_instances_retrieve_metadata(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_studies_series_instances_retrieve_metadata(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-studies-series-instances-retrieve-rendered", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_studies_series_instances_retrieve_rendered(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_studies_series_instances_retrieve_rendered(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-studies-series-retrieve-metadata", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_studies_series_retrieve_metadata(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_studies_series_retrieve_metadata(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-studies-series-retrieve-series", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_studies_series_retrieve_series(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_studies_series_retrieve_series(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-studies-series-search-for-instances", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_studies_series_search_for_instances(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_studies_series_search_for_instances(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-studies-store-instances", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_studies_store_instances(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_studies_store_instances(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-dicom-stores-test-iam-permissions", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_dicom_stores_test_iam_permissions(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_dicom_stores_test_iam_permissions(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-fhir-stores-create", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_fhir_stores_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_fhir_stores_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-fhir-stores-deidentify", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_fhir_stores_deidentify(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_fhir_stores_deidentify(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-fhir-stores-delete", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_fhir_stores_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_fhir_stores_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-fhir-stores-export", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_fhir_stores_export(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_fhir_stores_export(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-fhir-stores-fhir--patient-everything", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_fhir_stores_fhir__patient_everything(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_fhir_stores_fhir__patient_everything(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-fhir-stores-fhir--resource-purge", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_fhir_stores_fhir__resource_purge(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_fhir_stores_fhir__resource_purge(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-fhir-stores-fhir-capabilities", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_fhir_stores_fhir_capabilities(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_fhir_stores_fhir_capabilities(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-fhir-stores-fhir-create", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_fhir_stores_fhir_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_fhir_stores_fhir_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-fhir-stores-fhir-delete", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_fhir_stores_fhir_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_fhir_stores_fhir_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-fhir-stores-fhir-execute-bundle", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_fhir_stores_fhir_execute_bundle(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_fhir_stores_fhir_execute_bundle(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-fhir-stores-fhir-history", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_fhir_stores_fhir_history(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_fhir_stores_fhir_history(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-fhir-stores-fhir-patch", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_fhir_stores_fhir_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_fhir_stores_fhir_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-fhir-stores-fhir-read", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_fhir_stores_fhir_read(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_fhir_stores_fhir_read(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-fhir-stores-fhir-search", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_fhir_stores_fhir_search(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_fhir_stores_fhir_search(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-fhir-stores-fhir-update", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_fhir_stores_fhir_update(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_fhir_stores_fhir_update(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-fhir-stores-fhir-vread", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_fhir_stores_fhir_vread(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_fhir_stores_fhir_vread(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-fhir-stores-get", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_fhir_stores_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_fhir_stores_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-fhir-stores-get-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_fhir_stores_get_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_fhir_stores_get_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-fhir-stores-import", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_fhir_stores_import(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_fhir_stores_import(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-fhir-stores-list", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_fhir_stores_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_fhir_stores_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-fhir-stores-patch", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_fhir_stores_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_fhir_stores_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-fhir-stores-set-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_fhir_stores_set_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_fhir_stores_set_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-fhir-stores-test-iam-permissions", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_fhir_stores_test_iam_permissions(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_fhir_stores_test_iam_permissions(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-get", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-get-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_get_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_get_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-hl7-v2-stores-create", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_hl7_v2_stores_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_hl7_v2_stores_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-hl7-v2-stores-delete", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_hl7_v2_stores_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_hl7_v2_stores_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-hl7-v2-stores-get", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_hl7_v2_stores_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_hl7_v2_stores_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-hl7-v2-stores-get-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_hl7_v2_stores_get_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_hl7_v2_stores_get_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-hl7-v2-stores-list", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_hl7_v2_stores_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_hl7_v2_stores_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-hl7-v2-stores-messages-create", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_hl7_v2_stores_messages_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_hl7_v2_stores_messages_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-hl7-v2-stores-messages-delete", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_hl7_v2_stores_messages_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_hl7_v2_stores_messages_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-hl7-v2-stores-messages-get", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_hl7_v2_stores_messages_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_hl7_v2_stores_messages_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-hl7-v2-stores-messages-ingest", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_hl7_v2_stores_messages_ingest(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_hl7_v2_stores_messages_ingest(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-hl7-v2-stores-messages-list", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_hl7_v2_stores_messages_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_hl7_v2_stores_messages_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-hl7-v2-stores-messages-patch", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_hl7_v2_stores_messages_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_hl7_v2_stores_messages_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-hl7-v2-stores-patch", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_hl7_v2_stores_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_hl7_v2_stores_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-hl7-v2-stores-set-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_hl7_v2_stores_set_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_hl7_v2_stores_set_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-hl7-v2-stores-test-iam-permissions", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_hl7_v2_stores_test_iam_permissions(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_hl7_v2_stores_test_iam_permissions(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-list", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-operations-cancel", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_operations_cancel(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_operations_cancel(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-operations-get", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_operations_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_operations_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-operations-list", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_operations_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_operations_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-patch", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-set-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_set_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_set_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-datasets-test-iam-permissions", Some(opt)) => {
-                        call_result = self._projects_locations_datasets_test_iam_permissions(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_datasets_test_iam_permissions(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("projects".to_string()));
@@ -5827,7 +5830,7 @@ impl<'n> Engine<'n> {
     }
 
     // Please note that this call will fail if any part of the opt can't be handled
-    fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
+    async fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
             let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
@@ -5841,18 +5844,10 @@ impl<'n> Engine<'n> {
             }
         };
 
-        let auth = Authenticator::new(  &secret, DefaultAuthenticatorDelegate,
-                                        if opt.is_present("debug-auth") {
-                                            hyper::Client::with_connector(mock::TeeConnector {
-                                                    connector: hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
-                                                })
-                                        } else {
-                                            hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new()))
-                                        },
-                                        JsonTokenStorage {
-                                          program_name: "healthcare1",
-                                          db_dir: config_dir.clone(),
-                                        }, Some(FlowType::InstalledRedirect(54324)));
+        let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+            secret,
+            yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+        ).persist_tokens_to_disk(format!("{}/healthcare1", config_dir)).build().await.unwrap();
 
         let client =
             if opt.is_present("debug") {
@@ -5877,22 +5872,23 @@ impl<'n> Engine<'n> {
                 ]
         };
 
-        match engine._doit(true) {
+        match engine._doit(true).await {
             Err(Some(err)) => Err(err),
             Err(None)      => Ok(engine),
             Ok(_)          => unreachable!(),
         }
     }
 
-    fn doit(&self) -> Result<(), DoitError> {
-        match self._doit(false) {
+    async fn doit(&self) -> Result<(), DoitError> {
+        match self._doit(false).await {
             Ok(res) => res,
             Err(_) => unreachable!(),
         }
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut exit_status = 0i32;
     let arg_data = [
         ("projects", "methods: 'locations-datasets-create', 'locations-datasets-deidentify', 'locations-datasets-delete', 'locations-datasets-dicom-stores-create', 'locations-datasets-dicom-stores-deidentify', 'locations-datasets-dicom-stores-delete', 'locations-datasets-dicom-stores-export', 'locations-datasets-dicom-stores-get', 'locations-datasets-dicom-stores-get-iam-policy', 'locations-datasets-dicom-stores-import', 'locations-datasets-dicom-stores-list', 'locations-datasets-dicom-stores-patch', 'locations-datasets-dicom-stores-search-for-instances', 'locations-datasets-dicom-stores-search-for-series', 'locations-datasets-dicom-stores-search-for-studies', 'locations-datasets-dicom-stores-set-iam-policy', 'locations-datasets-dicom-stores-store-instances', 'locations-datasets-dicom-stores-studies-delete', 'locations-datasets-dicom-stores-studies-retrieve-metadata', 'locations-datasets-dicom-stores-studies-retrieve-study', 'locations-datasets-dicom-stores-studies-search-for-instances', 'locations-datasets-dicom-stores-studies-search-for-series', 'locations-datasets-dicom-stores-studies-series-delete', 'locations-datasets-dicom-stores-studies-series-instances-delete', 'locations-datasets-dicom-stores-studies-series-instances-frames-retrieve-frames', 'locations-datasets-dicom-stores-studies-series-instances-frames-retrieve-rendered', 'locations-datasets-dicom-stores-studies-series-instances-retrieve-instance', 'locations-datasets-dicom-stores-studies-series-instances-retrieve-metadata', 'locations-datasets-dicom-stores-studies-series-instances-retrieve-rendered', 'locations-datasets-dicom-stores-studies-series-retrieve-metadata', 'locations-datasets-dicom-stores-studies-series-retrieve-series', 'locations-datasets-dicom-stores-studies-series-search-for-instances', 'locations-datasets-dicom-stores-studies-store-instances', 'locations-datasets-dicom-stores-test-iam-permissions', 'locations-datasets-fhir-stores-create', 'locations-datasets-fhir-stores-deidentify', 'locations-datasets-fhir-stores-delete', 'locations-datasets-fhir-stores-export', 'locations-datasets-fhir-stores-fhir--patient-everything', 'locations-datasets-fhir-stores-fhir--resource-purge', 'locations-datasets-fhir-stores-fhir-capabilities', 'locations-datasets-fhir-stores-fhir-create', 'locations-datasets-fhir-stores-fhir-delete', 'locations-datasets-fhir-stores-fhir-execute-bundle', 'locations-datasets-fhir-stores-fhir-history', 'locations-datasets-fhir-stores-fhir-patch', 'locations-datasets-fhir-stores-fhir-read', 'locations-datasets-fhir-stores-fhir-search', 'locations-datasets-fhir-stores-fhir-update', 'locations-datasets-fhir-stores-fhir-vread', 'locations-datasets-fhir-stores-get', 'locations-datasets-fhir-stores-get-iam-policy', 'locations-datasets-fhir-stores-import', 'locations-datasets-fhir-stores-list', 'locations-datasets-fhir-stores-patch', 'locations-datasets-fhir-stores-set-iam-policy', 'locations-datasets-fhir-stores-test-iam-permissions', 'locations-datasets-get', 'locations-datasets-get-iam-policy', 'locations-datasets-hl7-v2-stores-create', 'locations-datasets-hl7-v2-stores-delete', 'locations-datasets-hl7-v2-stores-get', 'locations-datasets-hl7-v2-stores-get-iam-policy', 'locations-datasets-hl7-v2-stores-list', 'locations-datasets-hl7-v2-stores-messages-create', 'locations-datasets-hl7-v2-stores-messages-delete', 'locations-datasets-hl7-v2-stores-messages-get', 'locations-datasets-hl7-v2-stores-messages-ingest', 'locations-datasets-hl7-v2-stores-messages-list', 'locations-datasets-hl7-v2-stores-messages-patch', 'locations-datasets-hl7-v2-stores-patch', 'locations-datasets-hl7-v2-stores-set-iam-policy', 'locations-datasets-hl7-v2-stores-test-iam-permissions', 'locations-datasets-list', 'locations-datasets-operations-cancel', 'locations-datasets-operations-get', 'locations-datasets-operations-list', 'locations-datasets-patch', 'locations-datasets-set-iam-policy' and 'locations-datasets-test-iam-permissions'", vec![
@@ -8662,7 +8658,7 @@ fn main() {
             writeln!(io::stderr(), "{}", err).ok();
         },
         Ok(engine) => {
-            if let Err(doit_err) = engine.doit() {
+            if let Err(doit_err) = engine.doit().await {
                 exit_status = 1;
                 match doit_err {
                     DoitError::IoError(path, err) => {

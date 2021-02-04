@@ -67,11 +67,11 @@ google-qpxexpress1 = "*"
 # This project intentionally uses an old version of Hyper. See
 # https://github.com/Byron/google-apis-rs/issues/173 for more
 # information.
-hyper = "^0.10"
-hyper-rustls = "^0.6"
+hyper = "^0.14"
+hyper-rustls = "^0.22"
 serde = "^1.0"
 serde_json = "^1.0"
-yup-oauth2 = "^1.0"
+yup-oauth2 = "^5.0"
 ```
 
 ## A complete example
@@ -84,7 +84,7 @@ extern crate google_qpxexpress1 as qpxexpress1;
 use qpxexpress1::api::TripsSearchRequest;
 use qpxexpress1::{Result, Error};
 use std::default::Default;
-use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+use oauth2;
 use qpxexpress1::QPXExpress;
 
 // Get an ApplicationSecret instance by some means. It contains the `client_id` and 
@@ -95,9 +95,10 @@ let secret: ApplicationSecret = Default::default();
 // Provide your own `AuthenticatorDelegate` to adjust the way it operates and get feedback about 
 // what's going on. You probably want to bring in your own `TokenStorage` to persist tokens and
 // retrieve them from storage.
-let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-                              hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-                              <MemoryStorage as Default>::default(), None);
+let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+        secret,
+        yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+    ).build().await.unwrap();
 let mut hub = QPXExpress::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 // As the method needs a request, you would usually fill it with the desired information
 // into the respective structure. Some of the parts shown here might not be applicable !

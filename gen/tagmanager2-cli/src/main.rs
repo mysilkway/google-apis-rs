@@ -4,6 +4,9 @@
 #![allow(unused_variables, unused_imports, dead_code, unused_mut)]
 
 #[macro_use]
+extern crate tokio;
+
+#[macro_use]
 extern crate clap;
 extern crate yup_oauth2 as oauth2;
 extern crate yup_hyper_mock as mock;
@@ -23,14 +26,13 @@ use google_tagmanager2::{api, Error};
 
 mod client;
 
-use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+use client::{InvalidOptionsError, CLIError, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
 use std::default::Default;
 use std::str::FromStr;
 
-use oauth2::{Authenticator, DefaultAuthenticatorDelegate, FlowType};
 use serde_json as json;
 use clap::ArgMatches;
 
@@ -41,14 +43,15 @@ enum DoitError {
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::TagManager<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
+    hub: api::TagManager<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>
+    >,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
 
 
 impl<'n> Engine<'n> {
-    fn _accounts_containers_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -127,7 +130,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -142,7 +145,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_delete(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -175,7 +178,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -186,7 +189,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_environments_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_environments_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -270,7 +273,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -285,7 +288,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_environments_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_environments_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_environments_delete(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -318,7 +321,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -329,7 +332,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_environments_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_environments_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_environments_get(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -366,7 +369,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -381,7 +384,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_environments_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_environments_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_environments_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -422,7 +425,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -437,7 +440,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_environments_reauthorize(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_environments_reauthorize(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -521,7 +524,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -536,7 +539,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_environments_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_environments_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -624,7 +627,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -639,7 +642,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_get(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -676,7 +679,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -691,7 +694,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -732,7 +735,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -747,7 +750,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -830,7 +833,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -845,7 +848,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_version_headers_latest(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_version_headers_latest(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_version_headers_latest(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -882,7 +885,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -897,7 +900,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_version_headers_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_version_headers_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_version_headers_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -941,7 +944,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -956,7 +959,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_versions_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_versions_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_versions_delete(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -989,7 +992,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1000,7 +1003,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_versions_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_versions_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_versions_get(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1041,7 +1044,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1056,7 +1059,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_versions_live(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_versions_live(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_versions_live(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1093,7 +1096,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1108,7 +1111,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_versions_publish(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_versions_publish(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_versions_publish(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1149,7 +1152,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1164,7 +1167,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_versions_set_latest(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_versions_set_latest(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_versions_set_latest(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1201,7 +1204,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1216,7 +1219,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_versions_undelete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_versions_undelete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_versions_undelete(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1253,7 +1256,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1268,7 +1271,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_versions_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_versions_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1360,7 +1363,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1375,7 +1378,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_built_in_variables_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_built_in_variables_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_built_in_variables_create(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1416,7 +1419,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1431,7 +1434,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_built_in_variables_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_built_in_variables_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_built_in_variables_delete(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1468,7 +1471,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1479,7 +1482,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_built_in_variables_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_built_in_variables_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_built_in_variables_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1520,7 +1523,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1535,7 +1538,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_built_in_variables_revert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_built_in_variables_revert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_built_in_variables_revert(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1576,7 +1579,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1591,7 +1594,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1668,7 +1671,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1683,7 +1686,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_create_version(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_create_version(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1754,7 +1757,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1769,7 +1772,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_delete(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1802,7 +1805,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1813,7 +1816,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_folders_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_folders_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1891,7 +1894,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1906,7 +1909,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_folders_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_folders_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_folders_delete(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1939,7 +1942,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1950,7 +1953,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_folders_entities(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_folders_entities(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_folders_entities(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1991,7 +1994,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2006,7 +2009,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_folders_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_folders_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_folders_get(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2043,7 +2046,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2058,7 +2061,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_folders_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_folders_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_folders_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2099,7 +2102,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2114,7 +2117,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_folders_move_entities_to_folder(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_folders_move_entities_to_folder(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2183,7 +2186,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["variable-id", "trigger-id", "tag-id"].iter().map(|v|*v));
+                                                                           v.extend(["variable-id", "tag-id", "trigger-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2198,7 +2201,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2209,7 +2212,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_folders_revert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_folders_revert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_folders_revert(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2250,7 +2253,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2265,7 +2268,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_folders_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_folders_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2347,7 +2350,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2362,7 +2365,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_get(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2399,7 +2402,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2414,7 +2417,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_get_status(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_get_status(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_get_status(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2451,7 +2454,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2466,7 +2469,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2507,7 +2510,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2522,7 +2525,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_quick_preview(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_quick_preview(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_quick_preview(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2559,7 +2562,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2574,7 +2577,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_resolve_conflict(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_resolve_conflict(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2770,7 +2773,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2781,7 +2784,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_sync(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_sync(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_sync(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2818,7 +2821,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2833,7 +2836,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_tags_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_tags_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2929,7 +2932,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2944,7 +2947,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_tags_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_tags_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_tags_delete(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2977,7 +2980,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2988,7 +2991,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_tags_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_tags_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_tags_get(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3025,7 +3028,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3040,7 +3043,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_tags_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_tags_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_tags_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3081,7 +3084,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3096,7 +3099,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_tags_revert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_tags_revert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_tags_revert(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3137,7 +3140,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3152,7 +3155,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_tags_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_tags_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3252,7 +3255,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3267,7 +3270,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_templates_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_templates_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3351,7 +3354,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3366,7 +3369,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_templates_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_templates_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_templates_delete(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3399,7 +3402,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3410,7 +3413,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_templates_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_templates_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_templates_get(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3447,7 +3450,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3462,7 +3465,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_templates_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_templates_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_templates_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3503,7 +3506,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3518,7 +3521,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_templates_revert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_templates_revert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_templates_revert(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3559,7 +3562,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3574,7 +3577,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_templates_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_templates_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3662,7 +3665,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3677,7 +3680,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_triggers_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_triggers_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3808,7 +3811,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3823,7 +3826,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_triggers_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_triggers_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_triggers_delete(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3856,7 +3859,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3867,7 +3870,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_triggers_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_triggers_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_triggers_get(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3904,7 +3907,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3919,7 +3922,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_triggers_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_triggers_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_triggers_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3960,7 +3963,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3975,7 +3978,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_triggers_revert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_triggers_revert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_triggers_revert(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4016,7 +4019,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4031,7 +4034,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_triggers_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_triggers_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4166,7 +4169,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4181,7 +4184,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4262,7 +4265,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4277,7 +4280,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_variables_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_variables_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4374,7 +4377,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4389,7 +4392,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_variables_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_variables_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_variables_delete(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4422,7 +4425,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4433,7 +4436,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_variables_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_variables_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_variables_get(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4470,7 +4473,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4485,7 +4488,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_variables_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_variables_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_variables_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4526,7 +4529,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4541,7 +4544,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_variables_revert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_variables_revert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_variables_revert(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4582,7 +4585,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4597,7 +4600,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_variables_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_variables_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4698,7 +4701,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4713,7 +4716,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_zones_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_zones_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4794,7 +4797,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4809,7 +4812,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_zones_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_zones_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_zones_delete(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4842,7 +4845,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4853,7 +4856,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_zones_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_zones_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_zones_get(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4890,7 +4893,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4905,7 +4908,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_zones_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_zones_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_zones_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4946,7 +4949,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4961,7 +4964,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_zones_revert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_zones_revert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().containers_workspaces_zones_revert(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -5002,7 +5005,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5017,7 +5020,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_containers_workspaces_zones_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_containers_workspaces_zones_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -5102,7 +5105,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5117,7 +5120,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().get(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -5154,7 +5157,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5169,7 +5172,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().list();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -5210,7 +5213,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5225,7 +5228,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -5304,7 +5307,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5319,7 +5322,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_user_permissions_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_user_permissions_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -5392,7 +5395,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5407,7 +5410,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_user_permissions_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_user_permissions_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().user_permissions_delete(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -5440,7 +5443,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5451,7 +5454,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_user_permissions_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_user_permissions_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().user_permissions_get(opt.value_of("path").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -5488,7 +5491,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5503,7 +5506,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_user_permissions_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_user_permissions_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.accounts().user_permissions_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -5544,7 +5547,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5559,7 +5562,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _accounts_user_permissions_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _accounts_user_permissions_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -5632,7 +5635,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5647,7 +5650,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
+    async fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
         let mut err = InvalidOptionsError::new();
         let mut call_result: Result<(), DoitError> = Ok(());
         let mut err_opt: Option<InvalidOptionsError> = None;
@@ -5655,244 +5658,244 @@ impl<'n> Engine<'n> {
             ("accounts", Some(opt)) => {
                 match opt.subcommand() {
                     ("containers-create", Some(opt)) => {
-                        call_result = self._accounts_containers_create(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_create(opt, dry_run, &mut err).await;
                     },
                     ("containers-delete", Some(opt)) => {
-                        call_result = self._accounts_containers_delete(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_delete(opt, dry_run, &mut err).await;
                     },
                     ("containers-environments-create", Some(opt)) => {
-                        call_result = self._accounts_containers_environments_create(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_environments_create(opt, dry_run, &mut err).await;
                     },
                     ("containers-environments-delete", Some(opt)) => {
-                        call_result = self._accounts_containers_environments_delete(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_environments_delete(opt, dry_run, &mut err).await;
                     },
                     ("containers-environments-get", Some(opt)) => {
-                        call_result = self._accounts_containers_environments_get(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_environments_get(opt, dry_run, &mut err).await;
                     },
                     ("containers-environments-list", Some(opt)) => {
-                        call_result = self._accounts_containers_environments_list(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_environments_list(opt, dry_run, &mut err).await;
                     },
                     ("containers-environments-reauthorize", Some(opt)) => {
-                        call_result = self._accounts_containers_environments_reauthorize(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_environments_reauthorize(opt, dry_run, &mut err).await;
                     },
                     ("containers-environments-update", Some(opt)) => {
-                        call_result = self._accounts_containers_environments_update(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_environments_update(opt, dry_run, &mut err).await;
                     },
                     ("containers-get", Some(opt)) => {
-                        call_result = self._accounts_containers_get(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_get(opt, dry_run, &mut err).await;
                     },
                     ("containers-list", Some(opt)) => {
-                        call_result = self._accounts_containers_list(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_list(opt, dry_run, &mut err).await;
                     },
                     ("containers-update", Some(opt)) => {
-                        call_result = self._accounts_containers_update(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_update(opt, dry_run, &mut err).await;
                     },
                     ("containers-version-headers-latest", Some(opt)) => {
-                        call_result = self._accounts_containers_version_headers_latest(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_version_headers_latest(opt, dry_run, &mut err).await;
                     },
                     ("containers-version-headers-list", Some(opt)) => {
-                        call_result = self._accounts_containers_version_headers_list(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_version_headers_list(opt, dry_run, &mut err).await;
                     },
                     ("containers-versions-delete", Some(opt)) => {
-                        call_result = self._accounts_containers_versions_delete(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_versions_delete(opt, dry_run, &mut err).await;
                     },
                     ("containers-versions-get", Some(opt)) => {
-                        call_result = self._accounts_containers_versions_get(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_versions_get(opt, dry_run, &mut err).await;
                     },
                     ("containers-versions-live", Some(opt)) => {
-                        call_result = self._accounts_containers_versions_live(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_versions_live(opt, dry_run, &mut err).await;
                     },
                     ("containers-versions-publish", Some(opt)) => {
-                        call_result = self._accounts_containers_versions_publish(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_versions_publish(opt, dry_run, &mut err).await;
                     },
                     ("containers-versions-set-latest", Some(opt)) => {
-                        call_result = self._accounts_containers_versions_set_latest(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_versions_set_latest(opt, dry_run, &mut err).await;
                     },
                     ("containers-versions-undelete", Some(opt)) => {
-                        call_result = self._accounts_containers_versions_undelete(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_versions_undelete(opt, dry_run, &mut err).await;
                     },
                     ("containers-versions-update", Some(opt)) => {
-                        call_result = self._accounts_containers_versions_update(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_versions_update(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-built-in-variables-create", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_built_in_variables_create(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_built_in_variables_create(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-built-in-variables-delete", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_built_in_variables_delete(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_built_in_variables_delete(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-built-in-variables-list", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_built_in_variables_list(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_built_in_variables_list(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-built-in-variables-revert", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_built_in_variables_revert(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_built_in_variables_revert(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-create", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_create(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_create(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-create-version", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_create_version(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_create_version(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-delete", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_delete(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_delete(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-folders-create", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_folders_create(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_folders_create(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-folders-delete", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_folders_delete(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_folders_delete(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-folders-entities", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_folders_entities(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_folders_entities(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-folders-get", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_folders_get(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_folders_get(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-folders-list", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_folders_list(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_folders_list(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-folders-move-entities-to-folder", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_folders_move_entities_to_folder(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_folders_move_entities_to_folder(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-folders-revert", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_folders_revert(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_folders_revert(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-folders-update", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_folders_update(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_folders_update(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-get", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_get(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_get(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-get-status", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_get_status(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_get_status(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-list", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_list(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_list(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-quick-preview", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_quick_preview(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_quick_preview(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-resolve-conflict", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_resolve_conflict(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_resolve_conflict(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-sync", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_sync(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_sync(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-tags-create", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_tags_create(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_tags_create(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-tags-delete", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_tags_delete(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_tags_delete(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-tags-get", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_tags_get(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_tags_get(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-tags-list", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_tags_list(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_tags_list(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-tags-revert", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_tags_revert(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_tags_revert(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-tags-update", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_tags_update(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_tags_update(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-templates-create", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_templates_create(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_templates_create(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-templates-delete", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_templates_delete(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_templates_delete(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-templates-get", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_templates_get(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_templates_get(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-templates-list", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_templates_list(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_templates_list(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-templates-revert", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_templates_revert(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_templates_revert(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-templates-update", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_templates_update(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_templates_update(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-triggers-create", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_triggers_create(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_triggers_create(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-triggers-delete", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_triggers_delete(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_triggers_delete(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-triggers-get", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_triggers_get(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_triggers_get(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-triggers-list", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_triggers_list(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_triggers_list(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-triggers-revert", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_triggers_revert(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_triggers_revert(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-triggers-update", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_triggers_update(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_triggers_update(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-update", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_update(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_update(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-variables-create", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_variables_create(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_variables_create(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-variables-delete", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_variables_delete(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_variables_delete(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-variables-get", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_variables_get(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_variables_get(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-variables-list", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_variables_list(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_variables_list(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-variables-revert", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_variables_revert(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_variables_revert(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-variables-update", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_variables_update(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_variables_update(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-zones-create", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_zones_create(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_zones_create(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-zones-delete", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_zones_delete(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_zones_delete(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-zones-get", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_zones_get(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_zones_get(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-zones-list", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_zones_list(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_zones_list(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-zones-revert", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_zones_revert(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_zones_revert(opt, dry_run, &mut err).await;
                     },
                     ("containers-workspaces-zones-update", Some(opt)) => {
-                        call_result = self._accounts_containers_workspaces_zones_update(opt, dry_run, &mut err);
+                        call_result = self._accounts_containers_workspaces_zones_update(opt, dry_run, &mut err).await;
                     },
                     ("get", Some(opt)) => {
-                        call_result = self._accounts_get(opt, dry_run, &mut err);
+                        call_result = self._accounts_get(opt, dry_run, &mut err).await;
                     },
                     ("list", Some(opt)) => {
-                        call_result = self._accounts_list(opt, dry_run, &mut err);
+                        call_result = self._accounts_list(opt, dry_run, &mut err).await;
                     },
                     ("update", Some(opt)) => {
-                        call_result = self._accounts_update(opt, dry_run, &mut err);
+                        call_result = self._accounts_update(opt, dry_run, &mut err).await;
                     },
                     ("user-permissions-create", Some(opt)) => {
-                        call_result = self._accounts_user_permissions_create(opt, dry_run, &mut err);
+                        call_result = self._accounts_user_permissions_create(opt, dry_run, &mut err).await;
                     },
                     ("user-permissions-delete", Some(opt)) => {
-                        call_result = self._accounts_user_permissions_delete(opt, dry_run, &mut err);
+                        call_result = self._accounts_user_permissions_delete(opt, dry_run, &mut err).await;
                     },
                     ("user-permissions-get", Some(opt)) => {
-                        call_result = self._accounts_user_permissions_get(opt, dry_run, &mut err);
+                        call_result = self._accounts_user_permissions_get(opt, dry_run, &mut err).await;
                     },
                     ("user-permissions-list", Some(opt)) => {
-                        call_result = self._accounts_user_permissions_list(opt, dry_run, &mut err);
+                        call_result = self._accounts_user_permissions_list(opt, dry_run, &mut err).await;
                     },
                     ("user-permissions-update", Some(opt)) => {
-                        call_result = self._accounts_user_permissions_update(opt, dry_run, &mut err);
+                        call_result = self._accounts_user_permissions_update(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("accounts".to_string()));
@@ -5917,7 +5920,7 @@ impl<'n> Engine<'n> {
     }
 
     // Please note that this call will fail if any part of the opt can't be handled
-    fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
+    async fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
             let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
@@ -5931,18 +5934,10 @@ impl<'n> Engine<'n> {
             }
         };
 
-        let auth = Authenticator::new(  &secret, DefaultAuthenticatorDelegate,
-                                        if opt.is_present("debug-auth") {
-                                            hyper::Client::with_connector(mock::TeeConnector {
-                                                    connector: hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
-                                                })
-                                        } else {
-                                            hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new()))
-                                        },
-                                        JsonTokenStorage {
-                                          program_name: "tagmanager2",
-                                          db_dir: config_dir.clone(),
-                                        }, Some(FlowType::InstalledRedirect(54324)));
+        let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+            secret,
+            yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+        ).persist_tokens_to_disk(format!("{}/tagmanager2", config_dir)).build().await.unwrap();
 
         let client =
             if opt.is_present("debug") {
@@ -5967,22 +5962,23 @@ impl<'n> Engine<'n> {
                 ]
         };
 
-        match engine._doit(true) {
+        match engine._doit(true).await {
             Err(Some(err)) => Err(err),
             Err(None)      => Ok(engine),
             Ok(_)          => unreachable!(),
         }
     }
 
-    fn doit(&self) -> Result<(), DoitError> {
-        match self._doit(false) {
+    async fn doit(&self) -> Result<(), DoitError> {
+        match self._doit(false).await {
             Ok(res) => res,
             Err(_) => unreachable!(),
         }
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut exit_status = 0i32;
     let arg_data = [
         ("accounts", "methods: 'containers-create', 'containers-delete', 'containers-environments-create', 'containers-environments-delete', 'containers-environments-get', 'containers-environments-list', 'containers-environments-reauthorize', 'containers-environments-update', 'containers-get', 'containers-list', 'containers-update', 'containers-version-headers-latest', 'containers-version-headers-list', 'containers-versions-delete', 'containers-versions-get', 'containers-versions-live', 'containers-versions-publish', 'containers-versions-set-latest', 'containers-versions-undelete', 'containers-versions-update', 'containers-workspaces-built-in-variables-create', 'containers-workspaces-built-in-variables-delete', 'containers-workspaces-built-in-variables-list', 'containers-workspaces-built-in-variables-revert', 'containers-workspaces-create', 'containers-workspaces-create-version', 'containers-workspaces-delete', 'containers-workspaces-folders-create', 'containers-workspaces-folders-delete', 'containers-workspaces-folders-entities', 'containers-workspaces-folders-get', 'containers-workspaces-folders-list', 'containers-workspaces-folders-move-entities-to-folder', 'containers-workspaces-folders-revert', 'containers-workspaces-folders-update', 'containers-workspaces-get', 'containers-workspaces-get-status', 'containers-workspaces-list', 'containers-workspaces-quick-preview', 'containers-workspaces-resolve-conflict', 'containers-workspaces-sync', 'containers-workspaces-tags-create', 'containers-workspaces-tags-delete', 'containers-workspaces-tags-get', 'containers-workspaces-tags-list', 'containers-workspaces-tags-revert', 'containers-workspaces-tags-update', 'containers-workspaces-templates-create', 'containers-workspaces-templates-delete', 'containers-workspaces-templates-get', 'containers-workspaces-templates-list', 'containers-workspaces-templates-revert', 'containers-workspaces-templates-update', 'containers-workspaces-triggers-create', 'containers-workspaces-triggers-delete', 'containers-workspaces-triggers-get', 'containers-workspaces-triggers-list', 'containers-workspaces-triggers-revert', 'containers-workspaces-triggers-update', 'containers-workspaces-update', 'containers-workspaces-variables-create', 'containers-workspaces-variables-delete', 'containers-workspaces-variables-get', 'containers-workspaces-variables-list', 'containers-workspaces-variables-revert', 'containers-workspaces-variables-update', 'containers-workspaces-zones-create', 'containers-workspaces-zones-delete', 'containers-workspaces-zones-get', 'containers-workspaces-zones-list', 'containers-workspaces-zones-revert', 'containers-workspaces-zones-update', 'get', 'list', 'update', 'user-permissions-create', 'user-permissions-delete', 'user-permissions-get', 'user-permissions-list' and 'user-permissions-update'", vec![
@@ -8041,7 +8037,7 @@ fn main() {
             writeln!(io::stderr(), "{}", err).ok();
         },
         Ok(engine) => {
-            if let Err(doit_err) = engine.doit() {
+            if let Err(doit_err) = engine.doit().await {
                 exit_status = 1;
                 match doit_err {
                     DoitError::IoError(path, err) => {

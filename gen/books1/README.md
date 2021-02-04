@@ -101,11 +101,11 @@ google-books1 = "*"
 # This project intentionally uses an old version of Hyper. See
 # https://github.com/Byron/google-apis-rs/issues/173 for more
 # information.
-hyper = "^0.10"
-hyper-rustls = "^0.6"
+hyper = "^0.14"
+hyper-rustls = "^0.22"
 serde = "^1.0"
 serde_json = "^1.0"
-yup-oauth2 = "^1.0"
+yup-oauth2 = "^5.0"
 ```
 
 ## A complete example
@@ -117,7 +117,7 @@ extern crate yup_oauth2 as oauth2;
 extern crate google_books1 as books1;
 use books1::{Result, Error};
 use std::default::Default;
-use oauth2::{Authenticator, DefaultAuthenticatorDelegate, ApplicationSecret, MemoryStorage};
+use oauth2;
 use books1::Books;
 
 // Get an ApplicationSecret instance by some means. It contains the `client_id` and 
@@ -128,9 +128,10 @@ let secret: ApplicationSecret = Default::default();
 // Provide your own `AuthenticatorDelegate` to adjust the way it operates and get feedback about 
 // what's going on. You probably want to bring in your own `TokenStorage` to persist tokens and
 // retrieve them from storage.
-let auth = Authenticator::new(&secret, DefaultAuthenticatorDelegate,
-                              hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())),
-                              <MemoryStorage as Default>::default(), None);
+let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+        secret,
+        yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+    ).build().await.unwrap();
 let mut hub = Books::new(hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())), auth);
 // You can configure optional parameters by calling the respective setters at will, and
 // execute the final call using `doit()`.

@@ -4,6 +4,9 @@
 #![allow(unused_variables, unused_imports, dead_code, unused_mut)]
 
 #[macro_use]
+extern crate tokio;
+
+#[macro_use]
 extern crate clap;
 extern crate yup_oauth2 as oauth2;
 extern crate yup_hyper_mock as mock;
@@ -23,14 +26,13 @@ use google_gmail1::{api, Error};
 
 mod client;
 
-use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+use client::{InvalidOptionsError, CLIError, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
 use std::default::Default;
 use std::str::FromStr;
 
-use oauth2::{Authenticator, DefaultAuthenticatorDelegate, FlowType};
 use serde_json as json;
 use clap::ArgMatches;
 
@@ -41,14 +43,15 @@ enum DoitError {
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Gmail<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
+    hub: api::Gmail<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>
+    >,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
 
 
 impl<'n> Engine<'n> {
-    fn _users_drafts_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_drafts_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -151,7 +154,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_drafts_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_drafts_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().drafts_delete(opt.value_of("user-id").unwrap_or(""), opt.value_of("id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -184,7 +187,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -195,7 +198,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_drafts_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_drafts_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().drafts_get(opt.value_of("user-id").unwrap_or(""), opt.value_of("id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -236,7 +239,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -251,7 +254,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_drafts_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_drafts_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().drafts_list(opt.value_of("user-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -301,7 +304,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -316,7 +319,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_drafts_send(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_drafts_send(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -419,7 +422,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_drafts_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_drafts_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -522,7 +525,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_get_profile(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_get_profile(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().get_profile(opt.value_of("user-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -559,7 +562,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -574,7 +577,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_history_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_history_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().history_list(opt.value_of("user-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -608,7 +611,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["start-history-id", "label-id", "max-results", "page-token", "history-types"].iter().map(|v|*v));
+                                                                           v.extend(["start-history-id", "max-results", "page-token", "history-types", "label-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -627,7 +630,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -642,7 +645,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_labels_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_labels_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -722,7 +725,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -737,7 +740,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_labels_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_labels_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().labels_delete(opt.value_of("user-id").unwrap_or(""), opt.value_of("id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -770,7 +773,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -781,7 +784,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_labels_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_labels_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().labels_get(opt.value_of("user-id").unwrap_or(""), opt.value_of("id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -818,7 +821,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -833,7 +836,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_labels_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_labels_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().labels_list(opt.value_of("user-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -870,7 +873,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -885,7 +888,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_labels_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_labels_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -965,7 +968,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -980,7 +983,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_labels_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_labels_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1060,7 +1063,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1075,7 +1078,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_messages_attachments_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_messages_attachments_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().messages_attachments_get(opt.value_of("user-id").unwrap_or(""), opt.value_of("message-id").unwrap_or(""), opt.value_of("id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1112,7 +1115,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1127,7 +1130,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_messages_batch_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_messages_batch_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1193,7 +1196,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1204,7 +1207,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_messages_batch_modify(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_messages_batch_modify(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1272,7 +1275,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1283,7 +1286,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_messages_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_messages_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().messages_delete(opt.value_of("user-id").unwrap_or(""), opt.value_of("id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1316,7 +1319,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1327,7 +1330,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_messages_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_messages_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().messages_get(opt.value_of("user-id").unwrap_or(""), opt.value_of("id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1352,7 +1355,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["metadata-headers", "format"].iter().map(|v|*v));
+                                                                           v.extend(["format", "metadata-headers"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1371,7 +1374,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1386,7 +1389,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_messages_import(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_messages_import(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1463,7 +1466,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["internal-date-source", "process-for-calendar", "never-mark-spam", "deleted"].iter().map(|v|*v));
+                                                                           v.extend(["never-mark-spam", "process-for-calendar", "internal-date-source", "deleted"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1501,7 +1504,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_messages_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_messages_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1610,7 +1613,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_messages_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_messages_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().messages_list(opt.value_of("user-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1663,7 +1666,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1678,7 +1681,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_messages_modify(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_messages_modify(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1749,7 +1752,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1764,7 +1767,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_messages_send(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_messages_send(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1866,7 +1869,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_messages_trash(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_messages_trash(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().messages_trash(opt.value_of("user-id").unwrap_or(""), opt.value_of("id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1903,7 +1906,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1918,7 +1921,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_messages_untrash(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_messages_untrash(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().messages_untrash(opt.value_of("user-id").unwrap_or(""), opt.value_of("id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1955,7 +1958,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1970,7 +1973,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_delegates_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_delegates_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2041,7 +2044,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2056,7 +2059,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_delegates_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_delegates_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().settings_delegates_delete(opt.value_of("user-id").unwrap_or(""), opt.value_of("delegate-email").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2089,7 +2092,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2100,7 +2103,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_delegates_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_delegates_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().settings_delegates_get(opt.value_of("user-id").unwrap_or(""), opt.value_of("delegate-email").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2137,7 +2140,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2152,7 +2155,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_delegates_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_delegates_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().settings_delegates_list(opt.value_of("user-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2189,7 +2192,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2204,7 +2207,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_filters_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_filters_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2286,7 +2289,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2301,7 +2304,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_filters_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_filters_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().settings_filters_delete(opt.value_of("user-id").unwrap_or(""), opt.value_of("id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2334,7 +2337,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2345,7 +2348,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_filters_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_filters_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().settings_filters_get(opt.value_of("user-id").unwrap_or(""), opt.value_of("id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2382,7 +2385,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2397,7 +2400,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_filters_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_filters_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().settings_filters_list(opt.value_of("user-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2434,7 +2437,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2449,7 +2452,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_forwarding_addresses_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_forwarding_addresses_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2520,7 +2523,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2535,7 +2538,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_forwarding_addresses_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_forwarding_addresses_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().settings_forwarding_addresses_delete(opt.value_of("user-id").unwrap_or(""), opt.value_of("forwarding-email").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2568,7 +2571,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2579,7 +2582,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_forwarding_addresses_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_forwarding_addresses_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().settings_forwarding_addresses_get(opt.value_of("user-id").unwrap_or(""), opt.value_of("forwarding-email").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2616,7 +2619,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2631,7 +2634,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_forwarding_addresses_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_forwarding_addresses_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().settings_forwarding_addresses_list(opt.value_of("user-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2668,7 +2671,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2683,7 +2686,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_get_auto_forwarding(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_get_auto_forwarding(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().settings_get_auto_forwarding(opt.value_of("user-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2720,7 +2723,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2735,7 +2738,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_get_imap(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_get_imap(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().settings_get_imap(opt.value_of("user-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2772,7 +2775,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2787,7 +2790,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_get_language(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_get_language(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().settings_get_language(opt.value_of("user-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2824,7 +2827,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2839,7 +2842,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_get_pop(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_get_pop(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().settings_get_pop(opt.value_of("user-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2876,7 +2879,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2891,7 +2894,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_get_vacation(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_get_vacation(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().settings_get_vacation(opt.value_of("user-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2928,7 +2931,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2943,7 +2946,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_send_as_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_send_as_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3025,7 +3028,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3040,7 +3043,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_send_as_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_send_as_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().settings_send_as_delete(opt.value_of("user-id").unwrap_or(""), opt.value_of("send-as-email").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3073,7 +3076,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3084,7 +3087,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_send_as_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_send_as_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().settings_send_as_get(opt.value_of("user-id").unwrap_or(""), opt.value_of("send-as-email").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3121,7 +3124,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3136,7 +3139,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_send_as_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_send_as_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().settings_send_as_list(opt.value_of("user-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3173,7 +3176,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3188,7 +3191,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_send_as_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_send_as_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3270,7 +3273,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3285,7 +3288,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_send_as_smime_info_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_send_as_smime_info_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().settings_send_as_smime_info_delete(opt.value_of("user-id").unwrap_or(""), opt.value_of("send-as-email").unwrap_or(""), opt.value_of("id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3318,7 +3321,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3329,7 +3332,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_send_as_smime_info_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_send_as_smime_info_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().settings_send_as_smime_info_get(opt.value_of("user-id").unwrap_or(""), opt.value_of("send-as-email").unwrap_or(""), opt.value_of("id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3366,7 +3369,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3381,7 +3384,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_send_as_smime_info_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_send_as_smime_info_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3457,7 +3460,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3472,7 +3475,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_send_as_smime_info_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_send_as_smime_info_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().settings_send_as_smime_info_list(opt.value_of("user-id").unwrap_or(""), opt.value_of("send-as-email").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3509,7 +3512,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3524,7 +3527,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_send_as_smime_info_set_default(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_send_as_smime_info_set_default(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().settings_send_as_smime_info_set_default(opt.value_of("user-id").unwrap_or(""), opt.value_of("send-as-email").unwrap_or(""), opt.value_of("id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3557,7 +3560,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3568,7 +3571,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_send_as_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_send_as_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3650,7 +3653,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3665,7 +3668,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_send_as_verify(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_send_as_verify(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().settings_send_as_verify(opt.value_of("user-id").unwrap_or(""), opt.value_of("send-as-email").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3698,7 +3701,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3709,7 +3712,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_update_auto_forwarding(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_update_auto_forwarding(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3781,7 +3784,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3796,7 +3799,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_update_imap(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_update_imap(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3869,7 +3872,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3884,7 +3887,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_update_language(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_update_language(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3954,7 +3957,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3969,7 +3972,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_update_pop(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_update_pop(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4040,7 +4043,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4055,7 +4058,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_settings_update_vacation(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_settings_update_vacation(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4132,7 +4135,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4147,7 +4150,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_stop(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_stop(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().stop(opt.value_of("user-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4180,7 +4183,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4191,7 +4194,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_threads_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_threads_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().threads_delete(opt.value_of("user-id").unwrap_or(""), opt.value_of("id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4224,7 +4227,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4235,7 +4238,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_threads_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_threads_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().threads_get(opt.value_of("user-id").unwrap_or(""), opt.value_of("id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4260,7 +4263,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["metadata-headers", "format"].iter().map(|v|*v));
+                                                                           v.extend(["format", "metadata-headers"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4279,7 +4282,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4294,7 +4297,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_threads_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_threads_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().threads_list(opt.value_of("user-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4347,7 +4350,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4362,7 +4365,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_threads_modify(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_threads_modify(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4433,7 +4436,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4448,7 +4451,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_threads_trash(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_threads_trash(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().threads_trash(opt.value_of("user-id").unwrap_or(""), opt.value_of("id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4485,7 +4488,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4500,7 +4503,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_threads_untrash(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_threads_untrash(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().threads_untrash(opt.value_of("user-id").unwrap_or(""), opt.value_of("id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4537,7 +4540,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4552,7 +4555,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_watch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_watch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4624,7 +4627,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4639,7 +4642,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
+    async fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
         let mut err = InvalidOptionsError::new();
         let mut call_result: Result<(), DoitError> = Ok(());
         let mut err_opt: Option<InvalidOptionsError> = None;
@@ -4647,208 +4650,208 @@ impl<'n> Engine<'n> {
             ("users", Some(opt)) => {
                 match opt.subcommand() {
                     ("drafts-create", Some(opt)) => {
-                        call_result = self._users_drafts_create(opt, dry_run, &mut err);
+                        call_result = self._users_drafts_create(opt, dry_run, &mut err).await;
                     },
                     ("drafts-delete", Some(opt)) => {
-                        call_result = self._users_drafts_delete(opt, dry_run, &mut err);
+                        call_result = self._users_drafts_delete(opt, dry_run, &mut err).await;
                     },
                     ("drafts-get", Some(opt)) => {
-                        call_result = self._users_drafts_get(opt, dry_run, &mut err);
+                        call_result = self._users_drafts_get(opt, dry_run, &mut err).await;
                     },
                     ("drafts-list", Some(opt)) => {
-                        call_result = self._users_drafts_list(opt, dry_run, &mut err);
+                        call_result = self._users_drafts_list(opt, dry_run, &mut err).await;
                     },
                     ("drafts-send", Some(opt)) => {
-                        call_result = self._users_drafts_send(opt, dry_run, &mut err);
+                        call_result = self._users_drafts_send(opt, dry_run, &mut err).await;
                     },
                     ("drafts-update", Some(opt)) => {
-                        call_result = self._users_drafts_update(opt, dry_run, &mut err);
+                        call_result = self._users_drafts_update(opt, dry_run, &mut err).await;
                     },
                     ("get-profile", Some(opt)) => {
-                        call_result = self._users_get_profile(opt, dry_run, &mut err);
+                        call_result = self._users_get_profile(opt, dry_run, &mut err).await;
                     },
                     ("history-list", Some(opt)) => {
-                        call_result = self._users_history_list(opt, dry_run, &mut err);
+                        call_result = self._users_history_list(opt, dry_run, &mut err).await;
                     },
                     ("labels-create", Some(opt)) => {
-                        call_result = self._users_labels_create(opt, dry_run, &mut err);
+                        call_result = self._users_labels_create(opt, dry_run, &mut err).await;
                     },
                     ("labels-delete", Some(opt)) => {
-                        call_result = self._users_labels_delete(opt, dry_run, &mut err);
+                        call_result = self._users_labels_delete(opt, dry_run, &mut err).await;
                     },
                     ("labels-get", Some(opt)) => {
-                        call_result = self._users_labels_get(opt, dry_run, &mut err);
+                        call_result = self._users_labels_get(opt, dry_run, &mut err).await;
                     },
                     ("labels-list", Some(opt)) => {
-                        call_result = self._users_labels_list(opt, dry_run, &mut err);
+                        call_result = self._users_labels_list(opt, dry_run, &mut err).await;
                     },
                     ("labels-patch", Some(opt)) => {
-                        call_result = self._users_labels_patch(opt, dry_run, &mut err);
+                        call_result = self._users_labels_patch(opt, dry_run, &mut err).await;
                     },
                     ("labels-update", Some(opt)) => {
-                        call_result = self._users_labels_update(opt, dry_run, &mut err);
+                        call_result = self._users_labels_update(opt, dry_run, &mut err).await;
                     },
                     ("messages-attachments-get", Some(opt)) => {
-                        call_result = self._users_messages_attachments_get(opt, dry_run, &mut err);
+                        call_result = self._users_messages_attachments_get(opt, dry_run, &mut err).await;
                     },
                     ("messages-batch-delete", Some(opt)) => {
-                        call_result = self._users_messages_batch_delete(opt, dry_run, &mut err);
+                        call_result = self._users_messages_batch_delete(opt, dry_run, &mut err).await;
                     },
                     ("messages-batch-modify", Some(opt)) => {
-                        call_result = self._users_messages_batch_modify(opt, dry_run, &mut err);
+                        call_result = self._users_messages_batch_modify(opt, dry_run, &mut err).await;
                     },
                     ("messages-delete", Some(opt)) => {
-                        call_result = self._users_messages_delete(opt, dry_run, &mut err);
+                        call_result = self._users_messages_delete(opt, dry_run, &mut err).await;
                     },
                     ("messages-get", Some(opt)) => {
-                        call_result = self._users_messages_get(opt, dry_run, &mut err);
+                        call_result = self._users_messages_get(opt, dry_run, &mut err).await;
                     },
                     ("messages-import", Some(opt)) => {
-                        call_result = self._users_messages_import(opt, dry_run, &mut err);
+                        call_result = self._users_messages_import(opt, dry_run, &mut err).await;
                     },
                     ("messages-insert", Some(opt)) => {
-                        call_result = self._users_messages_insert(opt, dry_run, &mut err);
+                        call_result = self._users_messages_insert(opt, dry_run, &mut err).await;
                     },
                     ("messages-list", Some(opt)) => {
-                        call_result = self._users_messages_list(opt, dry_run, &mut err);
+                        call_result = self._users_messages_list(opt, dry_run, &mut err).await;
                     },
                     ("messages-modify", Some(opt)) => {
-                        call_result = self._users_messages_modify(opt, dry_run, &mut err);
+                        call_result = self._users_messages_modify(opt, dry_run, &mut err).await;
                     },
                     ("messages-send", Some(opt)) => {
-                        call_result = self._users_messages_send(opt, dry_run, &mut err);
+                        call_result = self._users_messages_send(opt, dry_run, &mut err).await;
                     },
                     ("messages-trash", Some(opt)) => {
-                        call_result = self._users_messages_trash(opt, dry_run, &mut err);
+                        call_result = self._users_messages_trash(opt, dry_run, &mut err).await;
                     },
                     ("messages-untrash", Some(opt)) => {
-                        call_result = self._users_messages_untrash(opt, dry_run, &mut err);
+                        call_result = self._users_messages_untrash(opt, dry_run, &mut err).await;
                     },
                     ("settings-delegates-create", Some(opt)) => {
-                        call_result = self._users_settings_delegates_create(opt, dry_run, &mut err);
+                        call_result = self._users_settings_delegates_create(opt, dry_run, &mut err).await;
                     },
                     ("settings-delegates-delete", Some(opt)) => {
-                        call_result = self._users_settings_delegates_delete(opt, dry_run, &mut err);
+                        call_result = self._users_settings_delegates_delete(opt, dry_run, &mut err).await;
                     },
                     ("settings-delegates-get", Some(opt)) => {
-                        call_result = self._users_settings_delegates_get(opt, dry_run, &mut err);
+                        call_result = self._users_settings_delegates_get(opt, dry_run, &mut err).await;
                     },
                     ("settings-delegates-list", Some(opt)) => {
-                        call_result = self._users_settings_delegates_list(opt, dry_run, &mut err);
+                        call_result = self._users_settings_delegates_list(opt, dry_run, &mut err).await;
                     },
                     ("settings-filters-create", Some(opt)) => {
-                        call_result = self._users_settings_filters_create(opt, dry_run, &mut err);
+                        call_result = self._users_settings_filters_create(opt, dry_run, &mut err).await;
                     },
                     ("settings-filters-delete", Some(opt)) => {
-                        call_result = self._users_settings_filters_delete(opt, dry_run, &mut err);
+                        call_result = self._users_settings_filters_delete(opt, dry_run, &mut err).await;
                     },
                     ("settings-filters-get", Some(opt)) => {
-                        call_result = self._users_settings_filters_get(opt, dry_run, &mut err);
+                        call_result = self._users_settings_filters_get(opt, dry_run, &mut err).await;
                     },
                     ("settings-filters-list", Some(opt)) => {
-                        call_result = self._users_settings_filters_list(opt, dry_run, &mut err);
+                        call_result = self._users_settings_filters_list(opt, dry_run, &mut err).await;
                     },
                     ("settings-forwarding-addresses-create", Some(opt)) => {
-                        call_result = self._users_settings_forwarding_addresses_create(opt, dry_run, &mut err);
+                        call_result = self._users_settings_forwarding_addresses_create(opt, dry_run, &mut err).await;
                     },
                     ("settings-forwarding-addresses-delete", Some(opt)) => {
-                        call_result = self._users_settings_forwarding_addresses_delete(opt, dry_run, &mut err);
+                        call_result = self._users_settings_forwarding_addresses_delete(opt, dry_run, &mut err).await;
                     },
                     ("settings-forwarding-addresses-get", Some(opt)) => {
-                        call_result = self._users_settings_forwarding_addresses_get(opt, dry_run, &mut err);
+                        call_result = self._users_settings_forwarding_addresses_get(opt, dry_run, &mut err).await;
                     },
                     ("settings-forwarding-addresses-list", Some(opt)) => {
-                        call_result = self._users_settings_forwarding_addresses_list(opt, dry_run, &mut err);
+                        call_result = self._users_settings_forwarding_addresses_list(opt, dry_run, &mut err).await;
                     },
                     ("settings-get-auto-forwarding", Some(opt)) => {
-                        call_result = self._users_settings_get_auto_forwarding(opt, dry_run, &mut err);
+                        call_result = self._users_settings_get_auto_forwarding(opt, dry_run, &mut err).await;
                     },
                     ("settings-get-imap", Some(opt)) => {
-                        call_result = self._users_settings_get_imap(opt, dry_run, &mut err);
+                        call_result = self._users_settings_get_imap(opt, dry_run, &mut err).await;
                     },
                     ("settings-get-language", Some(opt)) => {
-                        call_result = self._users_settings_get_language(opt, dry_run, &mut err);
+                        call_result = self._users_settings_get_language(opt, dry_run, &mut err).await;
                     },
                     ("settings-get-pop", Some(opt)) => {
-                        call_result = self._users_settings_get_pop(opt, dry_run, &mut err);
+                        call_result = self._users_settings_get_pop(opt, dry_run, &mut err).await;
                     },
                     ("settings-get-vacation", Some(opt)) => {
-                        call_result = self._users_settings_get_vacation(opt, dry_run, &mut err);
+                        call_result = self._users_settings_get_vacation(opt, dry_run, &mut err).await;
                     },
                     ("settings-send-as-create", Some(opt)) => {
-                        call_result = self._users_settings_send_as_create(opt, dry_run, &mut err);
+                        call_result = self._users_settings_send_as_create(opt, dry_run, &mut err).await;
                     },
                     ("settings-send-as-delete", Some(opt)) => {
-                        call_result = self._users_settings_send_as_delete(opt, dry_run, &mut err);
+                        call_result = self._users_settings_send_as_delete(opt, dry_run, &mut err).await;
                     },
                     ("settings-send-as-get", Some(opt)) => {
-                        call_result = self._users_settings_send_as_get(opt, dry_run, &mut err);
+                        call_result = self._users_settings_send_as_get(opt, dry_run, &mut err).await;
                     },
                     ("settings-send-as-list", Some(opt)) => {
-                        call_result = self._users_settings_send_as_list(opt, dry_run, &mut err);
+                        call_result = self._users_settings_send_as_list(opt, dry_run, &mut err).await;
                     },
                     ("settings-send-as-patch", Some(opt)) => {
-                        call_result = self._users_settings_send_as_patch(opt, dry_run, &mut err);
+                        call_result = self._users_settings_send_as_patch(opt, dry_run, &mut err).await;
                     },
                     ("settings-send-as-smime-info-delete", Some(opt)) => {
-                        call_result = self._users_settings_send_as_smime_info_delete(opt, dry_run, &mut err);
+                        call_result = self._users_settings_send_as_smime_info_delete(opt, dry_run, &mut err).await;
                     },
                     ("settings-send-as-smime-info-get", Some(opt)) => {
-                        call_result = self._users_settings_send_as_smime_info_get(opt, dry_run, &mut err);
+                        call_result = self._users_settings_send_as_smime_info_get(opt, dry_run, &mut err).await;
                     },
                     ("settings-send-as-smime-info-insert", Some(opt)) => {
-                        call_result = self._users_settings_send_as_smime_info_insert(opt, dry_run, &mut err);
+                        call_result = self._users_settings_send_as_smime_info_insert(opt, dry_run, &mut err).await;
                     },
                     ("settings-send-as-smime-info-list", Some(opt)) => {
-                        call_result = self._users_settings_send_as_smime_info_list(opt, dry_run, &mut err);
+                        call_result = self._users_settings_send_as_smime_info_list(opt, dry_run, &mut err).await;
                     },
                     ("settings-send-as-smime-info-set-default", Some(opt)) => {
-                        call_result = self._users_settings_send_as_smime_info_set_default(opt, dry_run, &mut err);
+                        call_result = self._users_settings_send_as_smime_info_set_default(opt, dry_run, &mut err).await;
                     },
                     ("settings-send-as-update", Some(opt)) => {
-                        call_result = self._users_settings_send_as_update(opt, dry_run, &mut err);
+                        call_result = self._users_settings_send_as_update(opt, dry_run, &mut err).await;
                     },
                     ("settings-send-as-verify", Some(opt)) => {
-                        call_result = self._users_settings_send_as_verify(opt, dry_run, &mut err);
+                        call_result = self._users_settings_send_as_verify(opt, dry_run, &mut err).await;
                     },
                     ("settings-update-auto-forwarding", Some(opt)) => {
-                        call_result = self._users_settings_update_auto_forwarding(opt, dry_run, &mut err);
+                        call_result = self._users_settings_update_auto_forwarding(opt, dry_run, &mut err).await;
                     },
                     ("settings-update-imap", Some(opt)) => {
-                        call_result = self._users_settings_update_imap(opt, dry_run, &mut err);
+                        call_result = self._users_settings_update_imap(opt, dry_run, &mut err).await;
                     },
                     ("settings-update-language", Some(opt)) => {
-                        call_result = self._users_settings_update_language(opt, dry_run, &mut err);
+                        call_result = self._users_settings_update_language(opt, dry_run, &mut err).await;
                     },
                     ("settings-update-pop", Some(opt)) => {
-                        call_result = self._users_settings_update_pop(opt, dry_run, &mut err);
+                        call_result = self._users_settings_update_pop(opt, dry_run, &mut err).await;
                     },
                     ("settings-update-vacation", Some(opt)) => {
-                        call_result = self._users_settings_update_vacation(opt, dry_run, &mut err);
+                        call_result = self._users_settings_update_vacation(opt, dry_run, &mut err).await;
                     },
                     ("stop", Some(opt)) => {
-                        call_result = self._users_stop(opt, dry_run, &mut err);
+                        call_result = self._users_stop(opt, dry_run, &mut err).await;
                     },
                     ("threads-delete", Some(opt)) => {
-                        call_result = self._users_threads_delete(opt, dry_run, &mut err);
+                        call_result = self._users_threads_delete(opt, dry_run, &mut err).await;
                     },
                     ("threads-get", Some(opt)) => {
-                        call_result = self._users_threads_get(opt, dry_run, &mut err);
+                        call_result = self._users_threads_get(opt, dry_run, &mut err).await;
                     },
                     ("threads-list", Some(opt)) => {
-                        call_result = self._users_threads_list(opt, dry_run, &mut err);
+                        call_result = self._users_threads_list(opt, dry_run, &mut err).await;
                     },
                     ("threads-modify", Some(opt)) => {
-                        call_result = self._users_threads_modify(opt, dry_run, &mut err);
+                        call_result = self._users_threads_modify(opt, dry_run, &mut err).await;
                     },
                     ("threads-trash", Some(opt)) => {
-                        call_result = self._users_threads_trash(opt, dry_run, &mut err);
+                        call_result = self._users_threads_trash(opt, dry_run, &mut err).await;
                     },
                     ("threads-untrash", Some(opt)) => {
-                        call_result = self._users_threads_untrash(opt, dry_run, &mut err);
+                        call_result = self._users_threads_untrash(opt, dry_run, &mut err).await;
                     },
                     ("watch", Some(opt)) => {
-                        call_result = self._users_watch(opt, dry_run, &mut err);
+                        call_result = self._users_watch(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("users".to_string()));
@@ -4873,7 +4876,7 @@ impl<'n> Engine<'n> {
     }
 
     // Please note that this call will fail if any part of the opt can't be handled
-    fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
+    async fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
             let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
@@ -4887,18 +4890,10 @@ impl<'n> Engine<'n> {
             }
         };
 
-        let auth = Authenticator::new(  &secret, DefaultAuthenticatorDelegate,
-                                        if opt.is_present("debug-auth") {
-                                            hyper::Client::with_connector(mock::TeeConnector {
-                                                    connector: hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
-                                                })
-                                        } else {
-                                            hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new()))
-                                        },
-                                        JsonTokenStorage {
-                                          program_name: "gmail1",
-                                          db_dir: config_dir.clone(),
-                                        }, Some(FlowType::InstalledRedirect(54324)));
+        let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+            secret,
+            yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+        ).persist_tokens_to_disk(format!("{}/gmail1", config_dir)).build().await.unwrap();
 
         let client =
             if opt.is_present("debug") {
@@ -4923,22 +4918,23 @@ impl<'n> Engine<'n> {
                 ]
         };
 
-        match engine._doit(true) {
+        match engine._doit(true).await {
             Err(Some(err)) => Err(err),
             Err(None)      => Ok(engine),
             Ok(_)          => unreachable!(),
         }
     }
 
-    fn doit(&self) -> Result<(), DoitError> {
-        match self._doit(false) {
+    async fn doit(&self) -> Result<(), DoitError> {
+        match self._doit(false).await {
             Ok(res) => res,
             Err(_) => unreachable!(),
         }
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut exit_status = 0i32;
     let upload_value_names = ["mode", "file"];
     let arg_data = [
@@ -7034,7 +7030,7 @@ fn main() {
             writeln!(io::stderr(), "{}", err).ok();
         },
         Ok(engine) => {
-            if let Err(doit_err) = engine.doit() {
+            if let Err(doit_err) = engine.doit().await {
                 exit_status = 1;
                 match doit_err {
                     DoitError::IoError(path, err) => {

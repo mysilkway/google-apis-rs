@@ -4,6 +4,9 @@
 #![allow(unused_variables, unused_imports, dead_code, unused_mut)]
 
 #[macro_use]
+extern crate tokio;
+
+#[macro_use]
 extern crate clap;
 extern crate yup_oauth2 as oauth2;
 extern crate yup_hyper_mock as mock;
@@ -23,14 +26,13 @@ use google_run1::{api, Error};
 
 mod client;
 
-use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+use client::{InvalidOptionsError, CLIError, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
 use std::default::Default;
 use std::str::FromStr;
 
-use oauth2::{Authenticator, DefaultAuthenticatorDelegate, FlowType};
 use serde_json as json;
 use clap::ArgMatches;
 
@@ -41,14 +43,15 @@ enum DoitError {
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::CloudRun<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
+    hub: api::CloudRun<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>
+    >,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
 
 
 impl<'n> Engine<'n> {
-    fn _api_v1_namespaces_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _api_v1_namespaces_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.api().v1_namespaces_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -85,7 +88,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -100,7 +103,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _api_v1_namespaces_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _api_v1_namespaces_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -189,7 +192,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -204,7 +207,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _api_v1_namespaces_secrets_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _api_v1_namespaces_secrets_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -290,7 +293,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -305,7 +308,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _api_v1_namespaces_secrets_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _api_v1_namespaces_secrets_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.api().v1_namespaces_secrets_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -342,7 +345,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -357,7 +360,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _api_v1_namespaces_secrets_replace_secret(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _api_v1_namespaces_secrets_replace_secret(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -443,7 +446,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -458,7 +461,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _namespaces_authorizeddomains_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _namespaces_authorizeddomains_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.namespaces().authorizeddomains_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -483,7 +486,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -502,7 +505,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -517,7 +520,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _namespaces_configurations_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _namespaces_configurations_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.namespaces().configurations_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -554,7 +557,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -569,7 +572,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _namespaces_configurations_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _namespaces_configurations_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.namespaces().configurations_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -609,7 +612,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["continue", "resource-version", "label-selector", "field-selector", "watch", "include-uninitialized", "limit"].iter().map(|v|*v));
+                                                                           v.extend(["field-selector", "watch", "limit", "continue", "resource-version", "label-selector", "include-uninitialized"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -628,7 +631,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -643,7 +646,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _namespaces_domainmappings_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _namespaces_domainmappings_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -734,7 +737,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -749,7 +752,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _namespaces_domainmappings_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _namespaces_domainmappings_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.namespaces().domainmappings_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -777,7 +780,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["propagation-policy", "api-version", "kind"].iter().map(|v|*v));
+                                                                           v.extend(["propagation-policy", "kind", "api-version"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -796,7 +799,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -811,7 +814,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _namespaces_domainmappings_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _namespaces_domainmappings_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.namespaces().domainmappings_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -848,7 +851,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -863,7 +866,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _namespaces_domainmappings_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _namespaces_domainmappings_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.namespaces().domainmappings_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -903,7 +906,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["continue", "resource-version", "label-selector", "field-selector", "watch", "include-uninitialized", "limit"].iter().map(|v|*v));
+                                                                           v.extend(["field-selector", "watch", "limit", "continue", "resource-version", "label-selector", "include-uninitialized"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -922,7 +925,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -937,7 +940,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _namespaces_revisions_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _namespaces_revisions_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.namespaces().revisions_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -965,7 +968,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["propagation-policy", "api-version", "kind"].iter().map(|v|*v));
+                                                                           v.extend(["propagation-policy", "kind", "api-version"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -984,7 +987,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -999,7 +1002,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _namespaces_revisions_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _namespaces_revisions_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.namespaces().revisions_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1036,7 +1039,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1051,7 +1054,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _namespaces_revisions_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _namespaces_revisions_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.namespaces().revisions_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1091,7 +1094,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["continue", "resource-version", "label-selector", "field-selector", "watch", "include-uninitialized", "limit"].iter().map(|v|*v));
+                                                                           v.extend(["field-selector", "watch", "limit", "continue", "resource-version", "label-selector", "include-uninitialized"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1110,7 +1113,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1125,7 +1128,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _namespaces_routes_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _namespaces_routes_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.namespaces().routes_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1162,7 +1165,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1177,7 +1180,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _namespaces_routes_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _namespaces_routes_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.namespaces().routes_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1217,7 +1220,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["continue", "resource-version", "label-selector", "field-selector", "watch", "include-uninitialized", "limit"].iter().map(|v|*v));
+                                                                           v.extend(["field-selector", "watch", "limit", "continue", "resource-version", "label-selector", "include-uninitialized"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1236,7 +1239,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1251,7 +1254,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _namespaces_services_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _namespaces_services_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1358,7 +1361,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1373,7 +1376,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _namespaces_services_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _namespaces_services_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.namespaces().services_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1401,7 +1404,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["propagation-policy", "api-version", "kind"].iter().map(|v|*v));
+                                                                           v.extend(["propagation-policy", "kind", "api-version"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1420,7 +1423,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1435,7 +1438,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _namespaces_services_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _namespaces_services_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.namespaces().services_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1472,7 +1475,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1487,7 +1490,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _namespaces_services_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _namespaces_services_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.namespaces().services_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1527,7 +1530,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["continue", "resource-version", "label-selector", "field-selector", "watch", "include-uninitialized", "limit"].iter().map(|v|*v));
+                                                                           v.extend(["field-selector", "watch", "limit", "continue", "resource-version", "label-selector", "include-uninitialized"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1546,7 +1549,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1561,7 +1564,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _namespaces_services_replace_service(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _namespaces_services_replace_service(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1668,7 +1671,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1683,7 +1686,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_authorizeddomains_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_authorizeddomains_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_authorizeddomains_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1708,7 +1711,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1727,7 +1730,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1742,7 +1745,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_configurations_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_configurations_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_configurations_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1779,7 +1782,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1794,7 +1797,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_configurations_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_configurations_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_configurations_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1834,7 +1837,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["continue", "resource-version", "label-selector", "field-selector", "watch", "include-uninitialized", "limit"].iter().map(|v|*v));
+                                                                           v.extend(["field-selector", "watch", "limit", "continue", "resource-version", "label-selector", "include-uninitialized"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1853,7 +1856,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1868,7 +1871,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_domainmappings_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_domainmappings_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1959,7 +1962,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1974,7 +1977,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_domainmappings_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_domainmappings_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_domainmappings_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2002,7 +2005,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["propagation-policy", "api-version", "kind"].iter().map(|v|*v));
+                                                                           v.extend(["propagation-policy", "kind", "api-version"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2021,7 +2024,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2036,7 +2039,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_domainmappings_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_domainmappings_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_domainmappings_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2073,7 +2076,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2088,7 +2091,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_domainmappings_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_domainmappings_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_domainmappings_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2128,7 +2131,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["continue", "resource-version", "label-selector", "field-selector", "watch", "include-uninitialized", "limit"].iter().map(|v|*v));
+                                                                           v.extend(["field-selector", "watch", "limit", "continue", "resource-version", "label-selector", "include-uninitialized"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2147,7 +2150,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2162,7 +2165,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_list(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2190,7 +2193,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size", "filter"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2209,7 +2212,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2224,7 +2227,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_namespaces_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_namespaces_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_namespaces_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2261,7 +2264,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2276,7 +2279,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_namespaces_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_namespaces_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2365,7 +2368,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2380,7 +2383,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_revisions_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_revisions_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_revisions_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2408,7 +2411,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["propagation-policy", "api-version", "kind"].iter().map(|v|*v));
+                                                                           v.extend(["propagation-policy", "kind", "api-version"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2427,7 +2430,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2442,7 +2445,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_revisions_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_revisions_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_revisions_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2479,7 +2482,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2494,7 +2497,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_revisions_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_revisions_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_revisions_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2534,7 +2537,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["continue", "resource-version", "label-selector", "field-selector", "watch", "include-uninitialized", "limit"].iter().map(|v|*v));
+                                                                           v.extend(["field-selector", "watch", "limit", "continue", "resource-version", "label-selector", "include-uninitialized"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2553,7 +2556,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2568,7 +2571,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_routes_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_routes_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_routes_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2605,7 +2608,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2620,7 +2623,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_routes_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_routes_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_routes_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2660,7 +2663,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["continue", "resource-version", "label-selector", "field-selector", "watch", "include-uninitialized", "limit"].iter().map(|v|*v));
+                                                                           v.extend(["field-selector", "watch", "limit", "continue", "resource-version", "label-selector", "include-uninitialized"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2679,7 +2682,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2694,7 +2697,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_secrets_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_secrets_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2780,7 +2783,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2795,7 +2798,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_secrets_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_secrets_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_secrets_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2832,7 +2835,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2847,7 +2850,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_secrets_replace_secret(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_secrets_replace_secret(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2933,7 +2936,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2948,7 +2951,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_services_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_services_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3055,7 +3058,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3070,7 +3073,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_services_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_services_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_services_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3098,7 +3101,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["propagation-policy", "api-version", "kind"].iter().map(|v|*v));
+                                                                           v.extend(["propagation-policy", "kind", "api-version"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3117,7 +3120,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3132,7 +3135,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_services_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_services_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_services_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3169,7 +3172,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3184,7 +3187,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_services_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_services_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_services_get_iam_policy(opt.value_of("resource").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3225,7 +3228,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3240,7 +3243,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_services_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_services_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_services_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3280,7 +3283,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["continue", "resource-version", "label-selector", "field-selector", "watch", "include-uninitialized", "limit"].iter().map(|v|*v));
+                                                                           v.extend(["field-selector", "watch", "limit", "continue", "resource-version", "label-selector", "include-uninitialized"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3299,7 +3302,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3314,7 +3317,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_services_replace_service(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_services_replace_service(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3421,7 +3424,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3436,7 +3439,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_services_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_services_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3508,7 +3511,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3523,7 +3526,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_services_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_services_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3593,7 +3596,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3608,7 +3611,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
+    async fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
         let mut err = InvalidOptionsError::new();
         let mut call_result: Result<(), DoitError> = Ok(());
         let mut err_opt: Option<InvalidOptionsError> = None;
@@ -3616,19 +3619,19 @@ impl<'n> Engine<'n> {
             ("api", Some(opt)) => {
                 match opt.subcommand() {
                     ("v1-namespaces-get", Some(opt)) => {
-                        call_result = self._api_v1_namespaces_get(opt, dry_run, &mut err);
+                        call_result = self._api_v1_namespaces_get(opt, dry_run, &mut err).await;
                     },
                     ("v1-namespaces-patch", Some(opt)) => {
-                        call_result = self._api_v1_namespaces_patch(opt, dry_run, &mut err);
+                        call_result = self._api_v1_namespaces_patch(opt, dry_run, &mut err).await;
                     },
                     ("v1-namespaces-secrets-create", Some(opt)) => {
-                        call_result = self._api_v1_namespaces_secrets_create(opt, dry_run, &mut err);
+                        call_result = self._api_v1_namespaces_secrets_create(opt, dry_run, &mut err).await;
                     },
                     ("v1-namespaces-secrets-get", Some(opt)) => {
-                        call_result = self._api_v1_namespaces_secrets_get(opt, dry_run, &mut err);
+                        call_result = self._api_v1_namespaces_secrets_get(opt, dry_run, &mut err).await;
                     },
                     ("v1-namespaces-secrets-replace-secret", Some(opt)) => {
-                        call_result = self._api_v1_namespaces_secrets_replace_secret(opt, dry_run, &mut err);
+                        call_result = self._api_v1_namespaces_secrets_replace_secret(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("api".to_string()));
@@ -3639,55 +3642,55 @@ impl<'n> Engine<'n> {
             ("namespaces", Some(opt)) => {
                 match opt.subcommand() {
                     ("authorizeddomains-list", Some(opt)) => {
-                        call_result = self._namespaces_authorizeddomains_list(opt, dry_run, &mut err);
+                        call_result = self._namespaces_authorizeddomains_list(opt, dry_run, &mut err).await;
                     },
                     ("configurations-get", Some(opt)) => {
-                        call_result = self._namespaces_configurations_get(opt, dry_run, &mut err);
+                        call_result = self._namespaces_configurations_get(opt, dry_run, &mut err).await;
                     },
                     ("configurations-list", Some(opt)) => {
-                        call_result = self._namespaces_configurations_list(opt, dry_run, &mut err);
+                        call_result = self._namespaces_configurations_list(opt, dry_run, &mut err).await;
                     },
                     ("domainmappings-create", Some(opt)) => {
-                        call_result = self._namespaces_domainmappings_create(opt, dry_run, &mut err);
+                        call_result = self._namespaces_domainmappings_create(opt, dry_run, &mut err).await;
                     },
                     ("domainmappings-delete", Some(opt)) => {
-                        call_result = self._namespaces_domainmappings_delete(opt, dry_run, &mut err);
+                        call_result = self._namespaces_domainmappings_delete(opt, dry_run, &mut err).await;
                     },
                     ("domainmappings-get", Some(opt)) => {
-                        call_result = self._namespaces_domainmappings_get(opt, dry_run, &mut err);
+                        call_result = self._namespaces_domainmappings_get(opt, dry_run, &mut err).await;
                     },
                     ("domainmappings-list", Some(opt)) => {
-                        call_result = self._namespaces_domainmappings_list(opt, dry_run, &mut err);
+                        call_result = self._namespaces_domainmappings_list(opt, dry_run, &mut err).await;
                     },
                     ("revisions-delete", Some(opt)) => {
-                        call_result = self._namespaces_revisions_delete(opt, dry_run, &mut err);
+                        call_result = self._namespaces_revisions_delete(opt, dry_run, &mut err).await;
                     },
                     ("revisions-get", Some(opt)) => {
-                        call_result = self._namespaces_revisions_get(opt, dry_run, &mut err);
+                        call_result = self._namespaces_revisions_get(opt, dry_run, &mut err).await;
                     },
                     ("revisions-list", Some(opt)) => {
-                        call_result = self._namespaces_revisions_list(opt, dry_run, &mut err);
+                        call_result = self._namespaces_revisions_list(opt, dry_run, &mut err).await;
                     },
                     ("routes-get", Some(opt)) => {
-                        call_result = self._namespaces_routes_get(opt, dry_run, &mut err);
+                        call_result = self._namespaces_routes_get(opt, dry_run, &mut err).await;
                     },
                     ("routes-list", Some(opt)) => {
-                        call_result = self._namespaces_routes_list(opt, dry_run, &mut err);
+                        call_result = self._namespaces_routes_list(opt, dry_run, &mut err).await;
                     },
                     ("services-create", Some(opt)) => {
-                        call_result = self._namespaces_services_create(opt, dry_run, &mut err);
+                        call_result = self._namespaces_services_create(opt, dry_run, &mut err).await;
                     },
                     ("services-delete", Some(opt)) => {
-                        call_result = self._namespaces_services_delete(opt, dry_run, &mut err);
+                        call_result = self._namespaces_services_delete(opt, dry_run, &mut err).await;
                     },
                     ("services-get", Some(opt)) => {
-                        call_result = self._namespaces_services_get(opt, dry_run, &mut err);
+                        call_result = self._namespaces_services_get(opt, dry_run, &mut err).await;
                     },
                     ("services-list", Some(opt)) => {
-                        call_result = self._namespaces_services_list(opt, dry_run, &mut err);
+                        call_result = self._namespaces_services_list(opt, dry_run, &mut err).await;
                     },
                     ("services-replace-service", Some(opt)) => {
-                        call_result = self._namespaces_services_replace_service(opt, dry_run, &mut err);
+                        call_result = self._namespaces_services_replace_service(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("namespaces".to_string()));
@@ -3698,82 +3701,82 @@ impl<'n> Engine<'n> {
             ("projects", Some(opt)) => {
                 match opt.subcommand() {
                     ("locations-authorizeddomains-list", Some(opt)) => {
-                        call_result = self._projects_locations_authorizeddomains_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_authorizeddomains_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-configurations-get", Some(opt)) => {
-                        call_result = self._projects_locations_configurations_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_configurations_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-configurations-list", Some(opt)) => {
-                        call_result = self._projects_locations_configurations_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_configurations_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-domainmappings-create", Some(opt)) => {
-                        call_result = self._projects_locations_domainmappings_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_domainmappings_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-domainmappings-delete", Some(opt)) => {
-                        call_result = self._projects_locations_domainmappings_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_domainmappings_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-domainmappings-get", Some(opt)) => {
-                        call_result = self._projects_locations_domainmappings_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_domainmappings_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-domainmappings-list", Some(opt)) => {
-                        call_result = self._projects_locations_domainmappings_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_domainmappings_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-list", Some(opt)) => {
-                        call_result = self._projects_locations_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-namespaces-get", Some(opt)) => {
-                        call_result = self._projects_locations_namespaces_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_namespaces_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-namespaces-patch", Some(opt)) => {
-                        call_result = self._projects_locations_namespaces_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_namespaces_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-revisions-delete", Some(opt)) => {
-                        call_result = self._projects_locations_revisions_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_revisions_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-revisions-get", Some(opt)) => {
-                        call_result = self._projects_locations_revisions_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_revisions_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-revisions-list", Some(opt)) => {
-                        call_result = self._projects_locations_revisions_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_revisions_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-routes-get", Some(opt)) => {
-                        call_result = self._projects_locations_routes_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_routes_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-routes-list", Some(opt)) => {
-                        call_result = self._projects_locations_routes_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_routes_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-secrets-create", Some(opt)) => {
-                        call_result = self._projects_locations_secrets_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_secrets_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-secrets-get", Some(opt)) => {
-                        call_result = self._projects_locations_secrets_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_secrets_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-secrets-replace-secret", Some(opt)) => {
-                        call_result = self._projects_locations_secrets_replace_secret(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_secrets_replace_secret(opt, dry_run, &mut err).await;
                     },
                     ("locations-services-create", Some(opt)) => {
-                        call_result = self._projects_locations_services_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_services_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-services-delete", Some(opt)) => {
-                        call_result = self._projects_locations_services_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_services_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-services-get", Some(opt)) => {
-                        call_result = self._projects_locations_services_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_services_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-services-get-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_services_get_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_services_get_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-services-list", Some(opt)) => {
-                        call_result = self._projects_locations_services_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_services_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-services-replace-service", Some(opt)) => {
-                        call_result = self._projects_locations_services_replace_service(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_services_replace_service(opt, dry_run, &mut err).await;
                     },
                     ("locations-services-set-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_services_set_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_services_set_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-services-test-iam-permissions", Some(opt)) => {
-                        call_result = self._projects_locations_services_test_iam_permissions(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_services_test_iam_permissions(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("projects".to_string()));
@@ -3798,7 +3801,7 @@ impl<'n> Engine<'n> {
     }
 
     // Please note that this call will fail if any part of the opt can't be handled
-    fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
+    async fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
             let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
@@ -3812,18 +3815,10 @@ impl<'n> Engine<'n> {
             }
         };
 
-        let auth = Authenticator::new(  &secret, DefaultAuthenticatorDelegate,
-                                        if opt.is_present("debug-auth") {
-                                            hyper::Client::with_connector(mock::TeeConnector {
-                                                    connector: hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
-                                                })
-                                        } else {
-                                            hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new()))
-                                        },
-                                        JsonTokenStorage {
-                                          program_name: "run1",
-                                          db_dir: config_dir.clone(),
-                                        }, Some(FlowType::InstalledRedirect(54324)));
+        let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+            secret,
+            yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+        ).persist_tokens_to_disk(format!("{}/run1", config_dir)).build().await.unwrap();
 
         let client =
             if opt.is_present("debug") {
@@ -3848,22 +3843,23 @@ impl<'n> Engine<'n> {
                 ]
         };
 
-        match engine._doit(true) {
+        match engine._doit(true).await {
             Err(Some(err)) => Err(err),
             Err(None)      => Ok(engine),
             Ok(_)          => unreachable!(),
         }
     }
 
-    fn doit(&self) -> Result<(), DoitError> {
-        match self._doit(false) {
+    async fn doit(&self) -> Result<(), DoitError> {
+        match self._doit(false).await {
             Ok(res) => res,
             Err(_) => unreachable!(),
         }
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut exit_status = 0i32;
     let arg_data = [
         ("api", "methods: 'v1-namespaces-get', 'v1-namespaces-patch', 'v1-namespaces-secrets-create', 'v1-namespaces-secrets-get' and 'v1-namespaces-secrets-replace-secret'", vec![
@@ -5206,7 +5202,7 @@ fn main() {
             writeln!(io::stderr(), "{}", err).ok();
         },
         Ok(engine) => {
-            if let Err(doit_err) = engine.doit() {
+            if let Err(doit_err) = engine.doit().await {
                 exit_status = 1;
                 match doit_err {
                     DoitError::IoError(path, err) => {

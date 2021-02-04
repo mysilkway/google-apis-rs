@@ -4,6 +4,9 @@
 #![allow(unused_variables, unused_imports, dead_code, unused_mut)]
 
 #[macro_use]
+extern crate tokio;
+
+#[macro_use]
 extern crate clap;
 extern crate yup_oauth2 as oauth2;
 extern crate yup_hyper_mock as mock;
@@ -23,14 +26,13 @@ use google_container1::{api, Error};
 
 mod client;
 
-use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+use client::{InvalidOptionsError, CLIError, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
 use std::default::Default;
 use std::str::FromStr;
 
-use oauth2::{Authenticator, DefaultAuthenticatorDelegate, FlowType};
 use serde_json as json;
 use clap::ArgMatches;
 
@@ -41,14 +43,15 @@ enum DoitError {
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Container<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
+    hub: api::Container<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>
+    >,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
 
 
 impl<'n> Engine<'n> {
-    fn _projects_aggregated_usable_subnetworks_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_aggregated_usable_subnetworks_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().aggregated_usable_subnetworks_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -76,7 +79,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-size", "page-token", "filter"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "filter", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -95,7 +98,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -110,7 +113,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_complete_ip_rotation(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_complete_ip_rotation(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -183,7 +186,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -198,7 +201,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -385,7 +388,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -400,7 +403,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_clusters_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -428,7 +431,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["cluster-id", "project-id", "zone"].iter().map(|v|*v));
+                                                                           v.extend(["zone", "cluster-id", "project-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -447,7 +450,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -462,7 +465,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_clusters_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -490,7 +493,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["cluster-id", "project-id", "zone"].iter().map(|v|*v));
+                                                                           v.extend(["zone", "cluster-id", "project-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -509,7 +512,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -524,7 +527,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_get_jwks(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_get_jwks(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_clusters_get_jwks(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -558,7 +561,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -573,7 +576,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_clusters_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -598,7 +601,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["project-id", "zone"].iter().map(|v|*v));
+                                                                           v.extend(["zone", "project-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -617,7 +620,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -632,7 +635,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_node_pools_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_node_pools_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -745,7 +748,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -760,7 +763,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_node_pools_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_node_pools_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_clusters_node_pools_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -791,7 +794,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["node-pool-id", "cluster-id", "project-id", "zone"].iter().map(|v|*v));
+                                                                           v.extend(["zone", "cluster-id", "node-pool-id", "project-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -810,7 +813,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -825,7 +828,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_node_pools_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_node_pools_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_clusters_node_pools_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -856,7 +859,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["node-pool-id", "cluster-id", "project-id", "zone"].iter().map(|v|*v));
+                                                                           v.extend(["zone", "cluster-id", "node-pool-id", "project-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -875,7 +878,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -890,7 +893,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_node_pools_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_node_pools_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_clusters_node_pools_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -918,7 +921,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["cluster-id", "project-id", "zone"].iter().map(|v|*v));
+                                                                           v.extend(["zone", "cluster-id", "project-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -937,7 +940,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -952,7 +955,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_node_pools_rollback(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_node_pools_rollback(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1026,7 +1029,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1041,7 +1044,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_node_pools_set_autoscaling(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_node_pools_set_autoscaling(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1119,7 +1122,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1134,7 +1137,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_node_pools_set_management(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_node_pools_set_management(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1212,7 +1215,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1227,7 +1230,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_node_pools_set_size(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_node_pools_set_size(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1302,7 +1305,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1317,7 +1320,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_node_pools_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_node_pools_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1397,7 +1400,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1412,7 +1415,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_set_addons(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_set_addons(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1491,7 +1494,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1506,7 +1509,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_set_legacy_abac(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_set_legacy_abac(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1580,7 +1583,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1595,7 +1598,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_set_locations(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_set_locations(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1669,7 +1672,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1684,7 +1687,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_set_logging(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_set_logging(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1758,7 +1761,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1773,7 +1776,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_set_maintenance_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_set_maintenance_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1852,7 +1855,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1867,7 +1870,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_set_master_auth(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_set_master_auth(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1947,7 +1950,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1962,7 +1965,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_set_monitoring(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_set_monitoring(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2036,7 +2039,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2051,7 +2054,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_set_network_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_set_network_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2126,7 +2129,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2141,7 +2144,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_set_resource_labels(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_set_resource_labels(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2216,7 +2219,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2231,7 +2234,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_start_ip_rotation(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_start_ip_rotation(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2305,7 +2308,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2320,7 +2323,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2432,7 +2435,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2447,7 +2450,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_update_master(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_update_master(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2521,7 +2524,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2536,7 +2539,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_clusters_well_known_get_openid_configuration(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_clusters_well_known_get_openid_configuration(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_clusters_well_known_get_openid_configuration(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2570,7 +2573,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2585,7 +2588,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_get_server_config(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_get_server_config(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_get_server_config(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2610,7 +2613,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["project-id", "zone"].iter().map(|v|*v));
+                                                                           v.extend(["zone", "project-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2629,7 +2632,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2644,7 +2647,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_operations_cancel(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_operations_cancel(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2717,7 +2720,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2732,7 +2735,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_operations_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_operations_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_operations_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2760,7 +2763,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["operation-id", "project-id", "zone"].iter().map(|v|*v));
+                                                                           v.extend(["zone", "project-id", "operation-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2779,7 +2782,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2794,7 +2797,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_operations_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_operations_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_operations_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2819,7 +2822,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["project-id", "zone"].iter().map(|v|*v));
+                                                                           v.extend(["zone", "project-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2838,7 +2841,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2853,7 +2856,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_addons(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_addons(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2932,7 +2935,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2947,7 +2950,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_complete_ip_rotation(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_complete_ip_rotation(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3020,7 +3023,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3035,7 +3038,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3222,7 +3225,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3237,7 +3240,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().zones_clusters_delete(opt.value_of("project-id").unwrap_or(""), opt.value_of("zone").unwrap_or(""), opt.value_of("cluster-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3278,7 +3281,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3293,7 +3296,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().zones_clusters_get(opt.value_of("project-id").unwrap_or(""), opt.value_of("zone").unwrap_or(""), opt.value_of("cluster-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3334,7 +3337,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3349,7 +3352,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_legacy_abac(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_legacy_abac(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3423,7 +3426,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3438,7 +3441,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().zones_clusters_list(opt.value_of("project-id").unwrap_or(""), opt.value_of("zone").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3479,7 +3482,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3494,7 +3497,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_locations(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_locations(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3568,7 +3571,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3583,7 +3586,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_logging(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_logging(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3657,7 +3660,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3672,7 +3675,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_master(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_master(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3746,7 +3749,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3761,7 +3764,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_monitoring(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_monitoring(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3835,7 +3838,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3850,7 +3853,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_node_pools_autoscaling(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_node_pools_autoscaling(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3928,7 +3931,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3943,7 +3946,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_node_pools_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_node_pools_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4056,7 +4059,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4071,7 +4074,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_node_pools_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_node_pools_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().zones_clusters_node_pools_delete(opt.value_of("project-id").unwrap_or(""), opt.value_of("zone").unwrap_or(""), opt.value_of("cluster-id").unwrap_or(""), opt.value_of("node-pool-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4112,7 +4115,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4127,7 +4130,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_node_pools_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_node_pools_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().zones_clusters_node_pools_get(opt.value_of("project-id").unwrap_or(""), opt.value_of("zone").unwrap_or(""), opt.value_of("cluster-id").unwrap_or(""), opt.value_of("node-pool-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4168,7 +4171,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4183,7 +4186,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_node_pools_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_node_pools_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().zones_clusters_node_pools_list(opt.value_of("project-id").unwrap_or(""), opt.value_of("zone").unwrap_or(""), opt.value_of("cluster-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4224,7 +4227,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4239,7 +4242,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_node_pools_rollback(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_node_pools_rollback(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4313,7 +4316,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4328,7 +4331,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_node_pools_set_management(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_node_pools_set_management(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4406,7 +4409,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4421,7 +4424,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_node_pools_set_size(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_node_pools_set_size(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4496,7 +4499,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4511,7 +4514,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_node_pools_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_node_pools_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4591,7 +4594,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4606,7 +4609,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_resource_labels(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_resource_labels(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4681,7 +4684,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4696,7 +4699,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_set_maintenance_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_set_maintenance_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4775,7 +4778,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4790,7 +4793,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_set_master_auth(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_set_master_auth(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4870,7 +4873,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4885,7 +4888,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_set_network_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_set_network_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4960,7 +4963,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4975,7 +4978,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_start_ip_rotation(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_start_ip_rotation(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -5049,7 +5052,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5064,7 +5067,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_clusters_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_clusters_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -5176,7 +5179,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5191,7 +5194,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_get_serverconfig(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_get_serverconfig(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().zones_get_serverconfig(opt.value_of("project-id").unwrap_or(""), opt.value_of("zone").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -5232,7 +5235,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5247,7 +5250,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_operations_cancel(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_operations_cancel(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -5320,7 +5323,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5335,7 +5338,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_operations_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_operations_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().zones_operations_get(opt.value_of("project-id").unwrap_or(""), opt.value_of("zone").unwrap_or(""), opt.value_of("operation-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -5376,7 +5379,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5391,7 +5394,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_zones_operations_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_zones_operations_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().zones_operations_list(opt.value_of("project-id").unwrap_or(""), opt.value_of("zone").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -5432,7 +5435,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -5447,7 +5450,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
+    async fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
         let mut err = InvalidOptionsError::new();
         let mut call_result: Result<(), DoitError> = Ok(());
         let mut err_opt: Option<InvalidOptionsError> = None;
@@ -5455,193 +5458,193 @@ impl<'n> Engine<'n> {
             ("projects", Some(opt)) => {
                 match opt.subcommand() {
                     ("aggregated-usable-subnetworks-list", Some(opt)) => {
-                        call_result = self._projects_aggregated_usable_subnetworks_list(opt, dry_run, &mut err);
+                        call_result = self._projects_aggregated_usable_subnetworks_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-complete-ip-rotation", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_complete_ip_rotation(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_complete_ip_rotation(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-create", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-delete", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-get", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-get-jwks", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_get_jwks(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_get_jwks(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-list", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-node-pools-create", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_node_pools_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_node_pools_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-node-pools-delete", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_node_pools_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_node_pools_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-node-pools-get", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_node_pools_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_node_pools_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-node-pools-list", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_node_pools_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_node_pools_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-node-pools-rollback", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_node_pools_rollback(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_node_pools_rollback(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-node-pools-set-autoscaling", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_node_pools_set_autoscaling(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_node_pools_set_autoscaling(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-node-pools-set-management", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_node_pools_set_management(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_node_pools_set_management(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-node-pools-set-size", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_node_pools_set_size(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_node_pools_set_size(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-node-pools-update", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_node_pools_update(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_node_pools_update(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-set-addons", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_set_addons(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_set_addons(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-set-legacy-abac", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_set_legacy_abac(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_set_legacy_abac(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-set-locations", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_set_locations(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_set_locations(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-set-logging", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_set_logging(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_set_logging(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-set-maintenance-policy", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_set_maintenance_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_set_maintenance_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-set-master-auth", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_set_master_auth(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_set_master_auth(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-set-monitoring", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_set_monitoring(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_set_monitoring(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-set-network-policy", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_set_network_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_set_network_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-set-resource-labels", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_set_resource_labels(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_set_resource_labels(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-start-ip-rotation", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_start_ip_rotation(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_start_ip_rotation(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-update", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_update(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_update(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-update-master", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_update_master(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_update_master(opt, dry_run, &mut err).await;
                     },
                     ("locations-clusters-well-known-get-openid-configuration", Some(opt)) => {
-                        call_result = self._projects_locations_clusters_well_known_get_openid_configuration(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_clusters_well_known_get_openid_configuration(opt, dry_run, &mut err).await;
                     },
                     ("locations-get-server-config", Some(opt)) => {
-                        call_result = self._projects_locations_get_server_config(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_get_server_config(opt, dry_run, &mut err).await;
                     },
                     ("locations-operations-cancel", Some(opt)) => {
-                        call_result = self._projects_locations_operations_cancel(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_operations_cancel(opt, dry_run, &mut err).await;
                     },
                     ("locations-operations-get", Some(opt)) => {
-                        call_result = self._projects_locations_operations_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_operations_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-operations-list", Some(opt)) => {
-                        call_result = self._projects_locations_operations_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_operations_list(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-addons", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_addons(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_addons(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-complete-ip-rotation", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_complete_ip_rotation(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_complete_ip_rotation(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-create", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_create(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_create(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-delete", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_delete(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-get", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_get(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_get(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-legacy-abac", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_legacy_abac(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_legacy_abac(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-list", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_list(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_list(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-locations", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_locations(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_locations(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-logging", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_logging(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_logging(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-master", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_master(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_master(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-monitoring", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_monitoring(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_monitoring(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-node-pools-autoscaling", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_node_pools_autoscaling(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_node_pools_autoscaling(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-node-pools-create", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_node_pools_create(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_node_pools_create(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-node-pools-delete", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_node_pools_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_node_pools_delete(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-node-pools-get", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_node_pools_get(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_node_pools_get(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-node-pools-list", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_node_pools_list(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_node_pools_list(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-node-pools-rollback", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_node_pools_rollback(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_node_pools_rollback(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-node-pools-set-management", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_node_pools_set_management(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_node_pools_set_management(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-node-pools-set-size", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_node_pools_set_size(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_node_pools_set_size(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-node-pools-update", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_node_pools_update(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_node_pools_update(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-resource-labels", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_resource_labels(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_resource_labels(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-set-maintenance-policy", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_set_maintenance_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_set_maintenance_policy(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-set-master-auth", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_set_master_auth(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_set_master_auth(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-set-network-policy", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_set_network_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_set_network_policy(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-start-ip-rotation", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_start_ip_rotation(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_start_ip_rotation(opt, dry_run, &mut err).await;
                     },
                     ("zones-clusters-update", Some(opt)) => {
-                        call_result = self._projects_zones_clusters_update(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_clusters_update(opt, dry_run, &mut err).await;
                     },
                     ("zones-get-serverconfig", Some(opt)) => {
-                        call_result = self._projects_zones_get_serverconfig(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_get_serverconfig(opt, dry_run, &mut err).await;
                     },
                     ("zones-operations-cancel", Some(opt)) => {
-                        call_result = self._projects_zones_operations_cancel(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_operations_cancel(opt, dry_run, &mut err).await;
                     },
                     ("zones-operations-get", Some(opt)) => {
-                        call_result = self._projects_zones_operations_get(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_operations_get(opt, dry_run, &mut err).await;
                     },
                     ("zones-operations-list", Some(opt)) => {
-                        call_result = self._projects_zones_operations_list(opt, dry_run, &mut err);
+                        call_result = self._projects_zones_operations_list(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("projects".to_string()));
@@ -5666,7 +5669,7 @@ impl<'n> Engine<'n> {
     }
 
     // Please note that this call will fail if any part of the opt can't be handled
-    fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
+    async fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
             let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
@@ -5680,18 +5683,10 @@ impl<'n> Engine<'n> {
             }
         };
 
-        let auth = Authenticator::new(  &secret, DefaultAuthenticatorDelegate,
-                                        if opt.is_present("debug-auth") {
-                                            hyper::Client::with_connector(mock::TeeConnector {
-                                                    connector: hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
-                                                })
-                                        } else {
-                                            hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new()))
-                                        },
-                                        JsonTokenStorage {
-                                          program_name: "container1",
-                                          db_dir: config_dir.clone(),
-                                        }, Some(FlowType::InstalledRedirect(54324)));
+        let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+            secret,
+            yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+        ).persist_tokens_to_disk(format!("{}/container1", config_dir)).build().await.unwrap();
 
         let client =
             if opt.is_present("debug") {
@@ -5716,22 +5711,23 @@ impl<'n> Engine<'n> {
                 ]
         };
 
-        match engine._doit(true) {
+        match engine._doit(true).await {
             Err(Some(err)) => Err(err),
             Err(None)      => Ok(engine),
             Ok(_)          => unreachable!(),
         }
     }
 
-    fn doit(&self) -> Result<(), DoitError> {
-        match self._doit(false) {
+    async fn doit(&self) -> Result<(), DoitError> {
+        match self._doit(false).await {
             Ok(res) => res,
             Err(_) => unreachable!(),
         }
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut exit_status = 0i32;
     let arg_data = [
         ("projects", "methods: 'aggregated-usable-subnetworks-list', 'locations-clusters-complete-ip-rotation', 'locations-clusters-create', 'locations-clusters-delete', 'locations-clusters-get', 'locations-clusters-get-jwks', 'locations-clusters-list', 'locations-clusters-node-pools-create', 'locations-clusters-node-pools-delete', 'locations-clusters-node-pools-get', 'locations-clusters-node-pools-list', 'locations-clusters-node-pools-rollback', 'locations-clusters-node-pools-set-autoscaling', 'locations-clusters-node-pools-set-management', 'locations-clusters-node-pools-set-size', 'locations-clusters-node-pools-update', 'locations-clusters-set-addons', 'locations-clusters-set-legacy-abac', 'locations-clusters-set-locations', 'locations-clusters-set-logging', 'locations-clusters-set-maintenance-policy', 'locations-clusters-set-master-auth', 'locations-clusters-set-monitoring', 'locations-clusters-set-network-policy', 'locations-clusters-set-resource-labels', 'locations-clusters-start-ip-rotation', 'locations-clusters-update', 'locations-clusters-update-master', 'locations-clusters-well-known-get-openid-configuration', 'locations-get-server-config', 'locations-operations-cancel', 'locations-operations-get', 'locations-operations-list', 'zones-clusters-addons', 'zones-clusters-complete-ip-rotation', 'zones-clusters-create', 'zones-clusters-delete', 'zones-clusters-get', 'zones-clusters-legacy-abac', 'zones-clusters-list', 'zones-clusters-locations', 'zones-clusters-logging', 'zones-clusters-master', 'zones-clusters-monitoring', 'zones-clusters-node-pools-autoscaling', 'zones-clusters-node-pools-create', 'zones-clusters-node-pools-delete', 'zones-clusters-node-pools-get', 'zones-clusters-node-pools-list', 'zones-clusters-node-pools-rollback', 'zones-clusters-node-pools-set-management', 'zones-clusters-node-pools-set-size', 'zones-clusters-node-pools-update', 'zones-clusters-resource-labels', 'zones-clusters-set-maintenance-policy', 'zones-clusters-set-master-auth', 'zones-clusters-set-network-policy', 'zones-clusters-start-ip-rotation', 'zones-clusters-update', 'zones-get-serverconfig', 'zones-operations-cancel', 'zones-operations-get' and 'zones-operations-list'", vec![
@@ -8120,7 +8116,7 @@ fn main() {
             writeln!(io::stderr(), "{}", err).ok();
         },
         Ok(engine) => {
-            if let Err(doit_err) = engine.doit() {
+            if let Err(doit_err) = engine.doit().await {
                 exit_status = 1;
                 match doit_err {
                     DoitError::IoError(path, err) => {

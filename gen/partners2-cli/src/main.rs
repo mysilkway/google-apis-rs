@@ -4,6 +4,9 @@
 #![allow(unused_variables, unused_imports, dead_code, unused_mut)]
 
 #[macro_use]
+extern crate tokio;
+
+#[macro_use]
 extern crate clap;
 extern crate yup_oauth2 as oauth2;
 extern crate yup_hyper_mock as mock;
@@ -23,14 +26,13 @@ use google_partners2::{api, Error};
 
 mod client;
 
-use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+use client::{InvalidOptionsError, CLIError, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
 use std::default::Default;
 use std::str::FromStr;
 
-use oauth2::{Authenticator, DefaultAuthenticatorDelegate, FlowType};
 use serde_json as json;
 use clap::ArgMatches;
 
@@ -41,14 +43,15 @@ enum DoitError {
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Partners<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
+    hub: api::Partners<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>
+    >,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
 
 
 impl<'n> Engine<'n> {
-    fn _analytics_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _analytics_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.analytics().list();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -94,7 +97,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size", "request-metadata-locale", "request-metadata-experiment-ids", "request-metadata-traffic-source-traffic-source-id", "request-metadata-user-overrides-ip-address", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id", "request-metadata-partners-session-id"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "page-size", "request-metadata-traffic-source-traffic-source-id", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id", "request-metadata-experiment-ids", "request-metadata-partners-session-id", "request-metadata-user-overrides-ip-address", "request-metadata-locale"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -110,7 +113,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -125,7 +128,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _client_messages_log(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _client_messages_log(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -201,7 +204,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -216,7 +219,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _companies_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _companies_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.companies().get(opt.value_of("company-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -268,7 +271,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "address", "request-metadata-locale", "request-metadata-partners-session-id", "request-metadata-experiment-ids", "request-metadata-traffic-source-traffic-source-id", "currency-code", "request-metadata-user-overrides-ip-address", "request-metadata-user-overrides-user-id", "view", "request-metadata-traffic-source-traffic-sub-id"].iter().map(|v|*v));
+                                                                           v.extend(["request-metadata-traffic-source-traffic-source-id", "currency-code", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id", "request-metadata-experiment-ids", "view", "request-metadata-partners-session-id", "address", "request-metadata-user-overrides-ip-address", "order-by", "request-metadata-locale"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -284,7 +287,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -299,7 +302,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _companies_leads_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _companies_leads_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -391,7 +394,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -406,7 +409,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _companies_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _companies_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.companies().list();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -500,7 +503,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "address", "gps-motivations", "min-monthly-budget-nanos", "language-codes", "request-metadata-user-overrides-ip-address", "request-metadata-partners-session-id", "specializations", "max-monthly-budget-units", "industries", "page-size", "website-url", "max-monthly-budget-nanos", "min-monthly-budget-currency-code", "view", "request-metadata-locale", "company-name", "max-monthly-budget-currency-code", "services", "request-metadata-traffic-source-traffic-sub-id", "page-token", "min-monthly-budget-units", "request-metadata-experiment-ids", "request-metadata-traffic-source-traffic-source-id", "request-metadata-user-overrides-user-id"].iter().map(|v|*v));
+                                                                           v.extend(["language-codes", "request-metadata-experiment-ids", "view", "request-metadata-user-overrides-ip-address", "website-url", "request-metadata-traffic-source-traffic-source-id", "company-name", "specializations", "min-monthly-budget-nanos", "services", "request-metadata-locale", "min-monthly-budget-currency-code", "page-size", "max-monthly-budget-currency-code", "request-metadata-partners-session-id", "address", "max-monthly-budget-units", "page-token", "max-monthly-budget-nanos", "industries", "min-monthly-budget-units", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id", "gps-motivations", "order-by"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -516,7 +519,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -531,7 +534,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _leads_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _leads_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.leads().list();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -580,7 +583,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "order-by", "page-size", "request-metadata-locale", "request-metadata-experiment-ids", "request-metadata-traffic-source-traffic-source-id", "request-metadata-user-overrides-ip-address", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id", "request-metadata-partners-session-id"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "page-size", "request-metadata-traffic-source-traffic-source-id", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id", "request-metadata-experiment-ids", "request-metadata-partners-session-id", "request-metadata-user-overrides-ip-address", "order-by", "request-metadata-locale"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -596,7 +599,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -611,7 +614,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _methods_get_partnersstatus(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _methods_get_partnersstatus(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.methods().get_partnersstatus();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -651,7 +654,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["request-metadata-locale", "request-metadata-experiment-ids", "request-metadata-traffic-source-traffic-source-id", "request-metadata-user-overrides-ip-address", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id", "request-metadata-partners-session-id"].iter().map(|v|*v));
+                                                                           v.extend(["request-metadata-traffic-source-traffic-source-id", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id", "request-metadata-experiment-ids", "request-metadata-partners-session-id", "request-metadata-user-overrides-ip-address", "request-metadata-locale"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -667,7 +670,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -682,7 +685,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _methods_update_companies(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _methods_update_companies(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -792,7 +795,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["update-mask", "request-metadata-locale", "request-metadata-partners-session-id", "request-metadata-experiment-ids", "request-metadata-traffic-source-traffic-source-id", "request-metadata-user-overrides-ip-address", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id"].iter().map(|v|*v));
+                                                                           v.extend(["request-metadata-traffic-source-traffic-source-id", "update-mask", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id", "request-metadata-experiment-ids", "request-metadata-partners-session-id", "request-metadata-user-overrides-ip-address", "request-metadata-locale"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -808,7 +811,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -823,7 +826,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _methods_update_leads(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _methods_update_leads(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -915,7 +918,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["update-mask", "request-metadata-locale", "request-metadata-partners-session-id", "request-metadata-experiment-ids", "request-metadata-traffic-source-traffic-source-id", "request-metadata-user-overrides-ip-address", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id"].iter().map(|v|*v));
+                                                                           v.extend(["request-metadata-traffic-source-traffic-source-id", "update-mask", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id", "request-metadata-experiment-ids", "request-metadata-partners-session-id", "request-metadata-user-overrides-ip-address", "request-metadata-locale"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -931,7 +934,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -946,7 +949,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _offers_history_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _offers_history_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.offers().history_list();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -998,7 +1001,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "order-by", "page-size", "request-metadata-locale", "entire-company", "request-metadata-experiment-ids", "request-metadata-traffic-source-traffic-source-id", "request-metadata-user-overrides-ip-address", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id", "request-metadata-partners-session-id"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "page-size", "request-metadata-traffic-source-traffic-source-id", "entire-company", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id", "request-metadata-experiment-ids", "request-metadata-partners-session-id", "request-metadata-user-overrides-ip-address", "order-by", "request-metadata-locale"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1014,7 +1017,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1029,7 +1032,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _offers_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _offers_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.offers().list();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1069,7 +1072,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["request-metadata-locale", "request-metadata-experiment-ids", "request-metadata-traffic-source-traffic-source-id", "request-metadata-user-overrides-ip-address", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id", "request-metadata-partners-session-id"].iter().map(|v|*v));
+                                                                           v.extend(["request-metadata-traffic-source-traffic-source-id", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id", "request-metadata-experiment-ids", "request-metadata-partners-session-id", "request-metadata-user-overrides-ip-address", "request-metadata-locale"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1085,7 +1088,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1100,7 +1103,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _user_events_log(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _user_events_log(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1194,7 +1197,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1209,7 +1212,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _user_states_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _user_states_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.user_states().list();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1249,7 +1252,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["request-metadata-locale", "request-metadata-experiment-ids", "request-metadata-traffic-source-traffic-source-id", "request-metadata-user-overrides-ip-address", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id", "request-metadata-partners-session-id"].iter().map(|v|*v));
+                                                                           v.extend(["request-metadata-traffic-source-traffic-source-id", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id", "request-metadata-experiment-ids", "request-metadata-partners-session-id", "request-metadata-user-overrides-ip-address", "request-metadata-locale"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1265,7 +1268,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1280,7 +1283,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_create_company_relation(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_create_company_relation(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1380,7 +1383,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["request-metadata-locale", "request-metadata-experiment-ids", "request-metadata-traffic-source-traffic-source-id", "request-metadata-user-overrides-ip-address", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id", "request-metadata-partners-session-id"].iter().map(|v|*v));
+                                                                           v.extend(["request-metadata-traffic-source-traffic-source-id", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id", "request-metadata-experiment-ids", "request-metadata-partners-session-id", "request-metadata-user-overrides-ip-address", "request-metadata-locale"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1396,7 +1399,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1411,7 +1414,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_delete_company_relation(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_delete_company_relation(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().delete_company_relation(opt.value_of("user-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1451,7 +1454,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["request-metadata-locale", "request-metadata-experiment-ids", "request-metadata-traffic-source-traffic-source-id", "request-metadata-user-overrides-ip-address", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id", "request-metadata-partners-session-id"].iter().map(|v|*v));
+                                                                           v.extend(["request-metadata-traffic-source-traffic-source-id", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id", "request-metadata-experiment-ids", "request-metadata-partners-session-id", "request-metadata-user-overrides-ip-address", "request-metadata-locale"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1467,7 +1470,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1482,7 +1485,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.users().get(opt.value_of("user-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1525,7 +1528,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["user-view", "request-metadata-locale", "request-metadata-partners-session-id", "request-metadata-experiment-ids", "request-metadata-traffic-source-traffic-source-id", "request-metadata-user-overrides-ip-address", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id"].iter().map(|v|*v));
+                                                                           v.extend(["user-view", "request-metadata-traffic-source-traffic-source-id", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id", "request-metadata-experiment-ids", "request-metadata-partners-session-id", "request-metadata-user-overrides-ip-address", "request-metadata-locale"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1541,7 +1544,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1556,7 +1559,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _users_update_profile(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _users_update_profile(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1657,7 +1660,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["request-metadata-locale", "request-metadata-experiment-ids", "request-metadata-traffic-source-traffic-source-id", "request-metadata-user-overrides-ip-address", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id", "request-metadata-partners-session-id"].iter().map(|v|*v));
+                                                                           v.extend(["request-metadata-traffic-source-traffic-source-id", "request-metadata-user-overrides-user-id", "request-metadata-traffic-source-traffic-sub-id", "request-metadata-experiment-ids", "request-metadata-partners-session-id", "request-metadata-user-overrides-ip-address", "request-metadata-locale"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1673,7 +1676,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1688,7 +1691,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
+    async fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
         let mut err = InvalidOptionsError::new();
         let mut call_result: Result<(), DoitError> = Ok(());
         let mut err_opt: Option<InvalidOptionsError> = None;
@@ -1696,7 +1699,7 @@ impl<'n> Engine<'n> {
             ("analytics", Some(opt)) => {
                 match opt.subcommand() {
                     ("list", Some(opt)) => {
-                        call_result = self._analytics_list(opt, dry_run, &mut err);
+                        call_result = self._analytics_list(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("analytics".to_string()));
@@ -1707,7 +1710,7 @@ impl<'n> Engine<'n> {
             ("client-messages", Some(opt)) => {
                 match opt.subcommand() {
                     ("log", Some(opt)) => {
-                        call_result = self._client_messages_log(opt, dry_run, &mut err);
+                        call_result = self._client_messages_log(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("client-messages".to_string()));
@@ -1718,13 +1721,13 @@ impl<'n> Engine<'n> {
             ("companies", Some(opt)) => {
                 match opt.subcommand() {
                     ("get", Some(opt)) => {
-                        call_result = self._companies_get(opt, dry_run, &mut err);
+                        call_result = self._companies_get(opt, dry_run, &mut err).await;
                     },
                     ("leads-create", Some(opt)) => {
-                        call_result = self._companies_leads_create(opt, dry_run, &mut err);
+                        call_result = self._companies_leads_create(opt, dry_run, &mut err).await;
                     },
                     ("list", Some(opt)) => {
-                        call_result = self._companies_list(opt, dry_run, &mut err);
+                        call_result = self._companies_list(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("companies".to_string()));
@@ -1735,7 +1738,7 @@ impl<'n> Engine<'n> {
             ("leads", Some(opt)) => {
                 match opt.subcommand() {
                     ("list", Some(opt)) => {
-                        call_result = self._leads_list(opt, dry_run, &mut err);
+                        call_result = self._leads_list(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("leads".to_string()));
@@ -1746,13 +1749,13 @@ impl<'n> Engine<'n> {
             ("methods", Some(opt)) => {
                 match opt.subcommand() {
                     ("get-partnersstatus", Some(opt)) => {
-                        call_result = self._methods_get_partnersstatus(opt, dry_run, &mut err);
+                        call_result = self._methods_get_partnersstatus(opt, dry_run, &mut err).await;
                     },
                     ("update-companies", Some(opt)) => {
-                        call_result = self._methods_update_companies(opt, dry_run, &mut err);
+                        call_result = self._methods_update_companies(opt, dry_run, &mut err).await;
                     },
                     ("update-leads", Some(opt)) => {
-                        call_result = self._methods_update_leads(opt, dry_run, &mut err);
+                        call_result = self._methods_update_leads(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("methods".to_string()));
@@ -1763,10 +1766,10 @@ impl<'n> Engine<'n> {
             ("offers", Some(opt)) => {
                 match opt.subcommand() {
                     ("history-list", Some(opt)) => {
-                        call_result = self._offers_history_list(opt, dry_run, &mut err);
+                        call_result = self._offers_history_list(opt, dry_run, &mut err).await;
                     },
                     ("list", Some(opt)) => {
-                        call_result = self._offers_list(opt, dry_run, &mut err);
+                        call_result = self._offers_list(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("offers".to_string()));
@@ -1777,7 +1780,7 @@ impl<'n> Engine<'n> {
             ("user-events", Some(opt)) => {
                 match opt.subcommand() {
                     ("log", Some(opt)) => {
-                        call_result = self._user_events_log(opt, dry_run, &mut err);
+                        call_result = self._user_events_log(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("user-events".to_string()));
@@ -1788,7 +1791,7 @@ impl<'n> Engine<'n> {
             ("user-states", Some(opt)) => {
                 match opt.subcommand() {
                     ("list", Some(opt)) => {
-                        call_result = self._user_states_list(opt, dry_run, &mut err);
+                        call_result = self._user_states_list(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("user-states".to_string()));
@@ -1799,16 +1802,16 @@ impl<'n> Engine<'n> {
             ("users", Some(opt)) => {
                 match opt.subcommand() {
                     ("create-company-relation", Some(opt)) => {
-                        call_result = self._users_create_company_relation(opt, dry_run, &mut err);
+                        call_result = self._users_create_company_relation(opt, dry_run, &mut err).await;
                     },
                     ("delete-company-relation", Some(opt)) => {
-                        call_result = self._users_delete_company_relation(opt, dry_run, &mut err);
+                        call_result = self._users_delete_company_relation(opt, dry_run, &mut err).await;
                     },
                     ("get", Some(opt)) => {
-                        call_result = self._users_get(opt, dry_run, &mut err);
+                        call_result = self._users_get(opt, dry_run, &mut err).await;
                     },
                     ("update-profile", Some(opt)) => {
-                        call_result = self._users_update_profile(opt, dry_run, &mut err);
+                        call_result = self._users_update_profile(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("users".to_string()));
@@ -1833,7 +1836,7 @@ impl<'n> Engine<'n> {
     }
 
     // Please note that this call will fail if any part of the opt can't be handled
-    fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
+    async fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
             let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
@@ -1847,18 +1850,10 @@ impl<'n> Engine<'n> {
             }
         };
 
-        let auth = Authenticator::new(  &secret, DefaultAuthenticatorDelegate,
-                                        if opt.is_present("debug-auth") {
-                                            hyper::Client::with_connector(mock::TeeConnector {
-                                                    connector: hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
-                                                })
-                                        } else {
-                                            hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new()))
-                                        },
-                                        JsonTokenStorage {
-                                          program_name: "partners2",
-                                          db_dir: config_dir.clone(),
-                                        }, Some(FlowType::InstalledRedirect(54324)));
+        let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+            secret,
+            yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+        ).persist_tokens_to_disk(format!("{}/partners2", config_dir)).build().await.unwrap();
 
         let client =
             if opt.is_present("debug") {
@@ -1883,22 +1878,23 @@ impl<'n> Engine<'n> {
                 ]
         };
 
-        match engine._doit(true) {
+        match engine._doit(true).await {
             Err(Some(err)) => Err(err),
             Err(None)      => Ok(engine),
             Ok(_)          => unreachable!(),
         }
     }
 
-    fn doit(&self) -> Result<(), DoitError> {
-        match self._doit(false) {
+    async fn doit(&self) -> Result<(), DoitError> {
+        match self._doit(false).await {
             Ok(res) => res,
             Err(_) => unreachable!(),
         }
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut exit_status = 0i32;
     let arg_data = [
         ("analytics", "methods: 'list'", vec![
@@ -2355,7 +2351,7 @@ fn main() {
             writeln!(io::stderr(), "{}", err).ok();
         },
         Ok(engine) => {
-            if let Err(doit_err) = engine.doit() {
+            if let Err(doit_err) = engine.doit().await {
                 exit_status = 1;
                 match doit_err {
                     DoitError::IoError(path, err) => {

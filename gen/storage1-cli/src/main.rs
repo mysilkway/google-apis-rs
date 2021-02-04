@@ -4,6 +4,9 @@
 #![allow(unused_variables, unused_imports, dead_code, unused_mut)]
 
 #[macro_use]
+extern crate tokio;
+
+#[macro_use]
 extern crate clap;
 extern crate yup_oauth2 as oauth2;
 extern crate yup_hyper_mock as mock;
@@ -23,14 +26,13 @@ use google_storage1::{api, Error};
 
 mod client;
 
-use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+use client::{InvalidOptionsError, CLIError, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
 use std::default::Default;
 use std::str::FromStr;
 
-use oauth2::{Authenticator, DefaultAuthenticatorDelegate, FlowType};
 use serde_json as json;
 use clap::ArgMatches;
 
@@ -41,14 +43,15 @@ enum DoitError {
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::Storage<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
+    hub: api::Storage<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>
+    >,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
 
 
 impl<'n> Engine<'n> {
-    fn _bucket_access_controls_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _bucket_access_controls_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.bucket_access_controls().delete(opt.value_of("bucket").unwrap_or(""), opt.value_of("entity").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -73,7 +76,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -88,7 +91,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -99,7 +102,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _bucket_access_controls_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _bucket_access_controls_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.bucket_access_controls().get(opt.value_of("bucket").unwrap_or(""), opt.value_of("entity").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -124,7 +127,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -143,7 +146,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -158,7 +161,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _bucket_access_controls_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _bucket_access_controls_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -227,7 +230,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -246,7 +249,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -261,7 +264,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _bucket_access_controls_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _bucket_access_controls_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.bucket_access_controls().list(opt.value_of("bucket").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -286,7 +289,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -305,7 +308,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -320,7 +323,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _bucket_access_controls_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _bucket_access_controls_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -389,7 +392,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -408,7 +411,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -423,7 +426,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _bucket_access_controls_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _bucket_access_controls_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -492,7 +495,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -511,7 +514,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -526,7 +529,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _buckets_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _buckets_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.buckets().delete(opt.value_of("bucket").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -557,7 +560,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["if-metageneration-match", "provisional-user-project", "if-metageneration-not-match", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "if-metageneration-not-match", "if-metageneration-match", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -572,7 +575,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -583,7 +586,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _buckets_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _buckets_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.buckets().get(opt.value_of("bucket").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -617,7 +620,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["if-metageneration-not-match", "projection", "if-metageneration-match", "provisional-user-project", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "projection", "if-metageneration-not-match", "if-metageneration-match", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -636,7 +639,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -651,7 +654,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _buckets_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _buckets_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.buckets().get_iam_policy(opt.value_of("bucket").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -679,7 +682,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["options-requested-policy-version", "provisional-user-project", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "options-requested-policy-version", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -698,7 +701,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -713,7 +716,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _buckets_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _buckets_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -811,7 +814,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["projection", "predefined-acl", "provisional-user-project", "predefined-default-object-acl", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["predefined-default-object-acl", "user-project", "projection", "predefined-acl", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -830,7 +833,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -845,7 +848,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _buckets_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _buckets_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.buckets().list(opt.value_of("project").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -882,7 +885,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "projection", "max-results", "provisional-user-project", "prefix", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "prefix", "user-project", "max-results", "projection", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -901,7 +904,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -916,7 +919,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _buckets_lock_retention_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _buckets_lock_retention_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.buckets().lock_retention_policy(opt.value_of("bucket").unwrap_or(""), opt.value_of("if-metageneration-match").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -941,7 +944,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -960,7 +963,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -975,7 +978,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _buckets_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _buckets_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1079,7 +1082,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["if-metageneration-not-match", "projection", "predefined-acl", "if-metageneration-match", "provisional-user-project", "predefined-default-object-acl", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["if-metageneration-match", "predefined-default-object-acl", "user-project", "projection", "if-metageneration-not-match", "predefined-acl", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1098,7 +1101,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1113,7 +1116,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _buckets_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _buckets_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1174,7 +1177,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1193,7 +1196,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1208,7 +1211,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _buckets_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _buckets_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.buckets().test_iam_permissions(opt.value_of("bucket").unwrap_or(""), &opt.values_of("permissions").map(|i|i.collect()).unwrap_or(Vec::new()).iter().map(|&v| v.to_string()).collect::<Vec<String>>());
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1233,7 +1236,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1252,7 +1255,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1267,7 +1270,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _buckets_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _buckets_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1371,7 +1374,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["if-metageneration-not-match", "projection", "predefined-acl", "if-metageneration-match", "provisional-user-project", "predefined-default-object-acl", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["if-metageneration-match", "predefined-default-object-acl", "user-project", "projection", "if-metageneration-not-match", "predefined-acl", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1390,7 +1393,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1405,7 +1408,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _channels_stop(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _channels_stop(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1480,7 +1483,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1491,7 +1494,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _default_object_access_controls_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _default_object_access_controls_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.default_object_access_controls().delete(opt.value_of("bucket").unwrap_or(""), opt.value_of("entity").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1516,7 +1519,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1531,7 +1534,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1542,7 +1545,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _default_object_access_controls_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _default_object_access_controls_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.default_object_access_controls().get(opt.value_of("bucket").unwrap_or(""), opt.value_of("entity").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1567,7 +1570,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1586,7 +1589,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1601,7 +1604,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _default_object_access_controls_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _default_object_access_controls_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1672,7 +1675,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1691,7 +1694,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1706,7 +1709,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _default_object_access_controls_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _default_object_access_controls_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.default_object_access_controls().list(opt.value_of("bucket").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1737,7 +1740,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["if-metageneration-match", "provisional-user-project", "if-metageneration-not-match", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "if-metageneration-not-match", "if-metageneration-match", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1756,7 +1759,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1771,7 +1774,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _default_object_access_controls_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _default_object_access_controls_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1842,7 +1845,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1861,7 +1864,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1876,7 +1879,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _default_object_access_controls_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _default_object_access_controls_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1947,7 +1950,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1966,7 +1969,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1981,7 +1984,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _notifications_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _notifications_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.notifications().delete(opt.value_of("bucket").unwrap_or(""), opt.value_of("notification").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2006,7 +2009,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2021,7 +2024,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2032,7 +2035,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _notifications_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _notifications_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.notifications().get(opt.value_of("bucket").unwrap_or(""), opt.value_of("notification").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2057,7 +2060,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2076,7 +2079,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2091,7 +2094,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _notifications_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _notifications_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2157,7 +2160,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2176,7 +2179,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2191,7 +2194,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _notifications_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _notifications_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.notifications().list(opt.value_of("bucket").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2216,7 +2219,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2235,7 +2238,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2250,7 +2253,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _object_access_controls_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _object_access_controls_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.object_access_controls().delete(opt.value_of("bucket").unwrap_or(""), opt.value_of("object").unwrap_or(""), opt.value_of("entity").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2278,7 +2281,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "generation", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "generation", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2293,7 +2296,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2304,7 +2307,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _object_access_controls_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _object_access_controls_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.object_access_controls().get(opt.value_of("bucket").unwrap_or(""), opt.value_of("object").unwrap_or(""), opt.value_of("entity").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2332,7 +2335,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "generation", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "generation", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2351,7 +2354,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2366,7 +2369,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _object_access_controls_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _object_access_controls_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2440,7 +2443,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "generation", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "generation", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2459,7 +2462,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2474,7 +2477,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _object_access_controls_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _object_access_controls_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.object_access_controls().list(opt.value_of("bucket").unwrap_or(""), opt.value_of("object").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2502,7 +2505,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "generation", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "generation", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2521,7 +2524,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2536,7 +2539,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _object_access_controls_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _object_access_controls_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2610,7 +2613,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "generation", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "generation", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2629,7 +2632,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2644,7 +2647,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _object_access_controls_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _object_access_controls_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2718,7 +2721,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "generation", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "generation", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2737,7 +2740,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2752,7 +2755,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _objects_compose(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _objects_compose(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2855,7 +2858,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["if-generation-match", "if-metageneration-match", "provisional-user-project", "kms-key-name", "destination-predefined-acl", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["kms-key-name", "user-project", "if-generation-match", "destination-predefined-acl", "if-metageneration-match", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2874,7 +2877,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2889,7 +2892,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _objects_copy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _objects_copy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3015,7 +3018,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["if-source-metageneration-match", "source-generation", "if-metageneration-not-match", "projection", "if-generation-match", "destination-kms-key-name", "if-source-generation-match", "if-source-generation-not-match", "if-metageneration-match", "provisional-user-project", "if-generation-not-match", "if-source-metageneration-not-match", "destination-predefined-acl", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["if-metageneration-match", "if-source-metageneration-not-match", "if-source-metageneration-match", "user-project", "if-generation-match", "destination-predefined-acl", "destination-kms-key-name", "if-generation-not-match", "if-source-generation-not-match", "source-generation", "if-source-generation-match", "if-metageneration-not-match", "projection", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3034,7 +3037,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3049,7 +3052,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _objects_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _objects_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.objects().delete(opt.value_of("bucket").unwrap_or(""), opt.value_of("object").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3089,7 +3092,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["if-metageneration-not-match", "if-generation-match", "if-metageneration-match", "provisional-user-project", "if-generation-not-match", "generation", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["generation", "user-project", "if-generation-match", "if-generation-not-match", "if-metageneration-not-match", "if-metageneration-match", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3104,7 +3107,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3115,7 +3118,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _objects_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _objects_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut download_mode = false;
         let mut call = self.hub.objects().get(opt.value_of("bucket").unwrap_or(""), opt.value_of("object").unwrap_or(""));
@@ -3162,7 +3165,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["if-metageneration-not-match", "projection", "if-generation-match", "if-metageneration-match", "provisional-user-project", "if-generation-not-match", "generation", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["generation", "user-project", "if-generation-match", "if-generation-not-match", "projection", "if-metageneration-not-match", "if-metageneration-match", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3181,7 +3184,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3201,7 +3204,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _objects_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _objects_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.objects().get_iam_policy(opt.value_of("bucket").unwrap_or(""), opt.value_of("object").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3229,7 +3232,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "generation", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "generation", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3248,7 +3251,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3263,7 +3266,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _objects_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _objects_insert(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3380,7 +3383,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["if-metageneration-not-match", "projection", "if-generation-match", "name", "predefined-acl", "content-encoding", "if-metageneration-match", "provisional-user-project", "if-generation-not-match", "kms-key-name", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["if-metageneration-match", "content-encoding", "name", "kms-key-name", "user-project", "if-generation-match", "if-generation-not-match", "projection", "if-metageneration-not-match", "predefined-acl", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3418,7 +3421,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _objects_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _objects_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.objects().list(opt.value_of("bucket").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3470,7 +3473,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["versions", "page-token", "end-offset", "include-trailing-delimiter", "projection", "max-results", "provisional-user-project", "delimiter", "prefix", "start-offset", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["end-offset", "start-offset", "page-token", "include-trailing-delimiter", "user-project", "prefix", "versions", "delimiter", "max-results", "projection", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3489,7 +3492,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3504,7 +3507,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _objects_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _objects_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3615,7 +3618,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["if-metageneration-not-match", "projection", "if-generation-match", "predefined-acl", "if-metageneration-match", "provisional-user-project", "if-generation-not-match", "generation", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["if-metageneration-match", "generation", "user-project", "if-generation-match", "if-generation-not-match", "projection", "if-metageneration-not-match", "predefined-acl", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3634,7 +3637,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3649,7 +3652,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _objects_rewrite(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _objects_rewrite(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3781,7 +3784,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["if-source-metageneration-match", "source-generation", "if-metageneration-not-match", "projection", "if-generation-match", "rewrite-token", "if-source-generation-match", "max-bytes-rewritten-per-call", "if-source-generation-not-match", "destination-kms-key-name", "if-metageneration-match", "provisional-user-project", "if-generation-not-match", "if-source-metageneration-not-match", "destination-predefined-acl", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["if-metageneration-match", "max-bytes-rewritten-per-call", "if-source-metageneration-not-match", "rewrite-token", "if-source-metageneration-match", "user-project", "if-generation-match", "destination-predefined-acl", "destination-kms-key-name", "if-generation-not-match", "if-source-generation-not-match", "source-generation", "if-source-generation-match", "if-metageneration-not-match", "projection", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3800,7 +3803,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3815,7 +3818,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _objects_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _objects_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3879,7 +3882,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "generation", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "generation", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3898,7 +3901,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3913,7 +3916,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _objects_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _objects_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.objects().test_iam_permissions(opt.value_of("bucket").unwrap_or(""), opt.value_of("object").unwrap_or(""), &opt.values_of("permissions").map(|i|i.collect()).unwrap_or(Vec::new()).iter().map(|&v| v.to_string()).collect::<Vec<String>>());
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3941,7 +3944,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "generation", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "generation", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3960,7 +3963,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3975,7 +3978,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _objects_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _objects_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4086,7 +4089,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["if-metageneration-not-match", "projection", "if-generation-match", "predefined-acl", "if-metageneration-match", "provisional-user-project", "if-generation-not-match", "generation", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["if-metageneration-match", "generation", "user-project", "if-generation-match", "if-generation-not-match", "projection", "if-metageneration-not-match", "predefined-acl", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4105,7 +4108,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4120,7 +4123,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _objects_watch_all(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _objects_watch_all(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4214,7 +4217,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["versions", "page-token", "end-offset", "include-trailing-delimiter", "projection", "max-results", "provisional-user-project", "delimiter", "prefix", "start-offset", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["end-offset", "start-offset", "page-token", "include-trailing-delimiter", "user-project", "prefix", "versions", "delimiter", "max-results", "projection", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4233,7 +4236,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4248,7 +4251,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_hmac_keys_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_hmac_keys_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().hmac_keys_create(opt.value_of("project-id").unwrap_or(""), opt.value_of("service-account-email").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4289,7 +4292,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4304,7 +4307,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_hmac_keys_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_hmac_keys_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().hmac_keys_delete(opt.value_of("project-id").unwrap_or(""), opt.value_of("access-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4341,7 +4344,7 @@ impl<'n> Engine<'n> {
                 call = call.add_scope(scope);
             }
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4352,7 +4355,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_hmac_keys_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_hmac_keys_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().hmac_keys_get(opt.value_of("project-id").unwrap_or(""), opt.value_of("access-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4393,7 +4396,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4408,7 +4411,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_hmac_keys_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_hmac_keys_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().hmac_keys_list(opt.value_of("project-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4442,7 +4445,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "show-deleted-keys", "max-results", "service-account-email", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "show-deleted-keys", "user-project", "service-account-email", "max-results"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4461,7 +4464,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4476,7 +4479,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_hmac_keys_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_hmac_keys_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4559,7 +4562,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4574,7 +4577,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_service_account_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_service_account_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().service_account_get(opt.value_of("project-id").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -4599,7 +4602,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["provisional-user-project", "user-project"].iter().map(|v|*v));
+                                                                           v.extend(["user-project", "provisional-user-project"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4618,7 +4621,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4633,7 +4636,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
+    async fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
         let mut err = InvalidOptionsError::new();
         let mut call_result: Result<(), DoitError> = Ok(());
         let mut err_opt: Option<InvalidOptionsError> = None;
@@ -4641,22 +4644,22 @@ impl<'n> Engine<'n> {
             ("bucket-access-controls", Some(opt)) => {
                 match opt.subcommand() {
                     ("delete", Some(opt)) => {
-                        call_result = self._bucket_access_controls_delete(opt, dry_run, &mut err);
+                        call_result = self._bucket_access_controls_delete(opt, dry_run, &mut err).await;
                     },
                     ("get", Some(opt)) => {
-                        call_result = self._bucket_access_controls_get(opt, dry_run, &mut err);
+                        call_result = self._bucket_access_controls_get(opt, dry_run, &mut err).await;
                     },
                     ("insert", Some(opt)) => {
-                        call_result = self._bucket_access_controls_insert(opt, dry_run, &mut err);
+                        call_result = self._bucket_access_controls_insert(opt, dry_run, &mut err).await;
                     },
                     ("list", Some(opt)) => {
-                        call_result = self._bucket_access_controls_list(opt, dry_run, &mut err);
+                        call_result = self._bucket_access_controls_list(opt, dry_run, &mut err).await;
                     },
                     ("patch", Some(opt)) => {
-                        call_result = self._bucket_access_controls_patch(opt, dry_run, &mut err);
+                        call_result = self._bucket_access_controls_patch(opt, dry_run, &mut err).await;
                     },
                     ("update", Some(opt)) => {
-                        call_result = self._bucket_access_controls_update(opt, dry_run, &mut err);
+                        call_result = self._bucket_access_controls_update(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("bucket-access-controls".to_string()));
@@ -4667,34 +4670,34 @@ impl<'n> Engine<'n> {
             ("buckets", Some(opt)) => {
                 match opt.subcommand() {
                     ("delete", Some(opt)) => {
-                        call_result = self._buckets_delete(opt, dry_run, &mut err);
+                        call_result = self._buckets_delete(opt, dry_run, &mut err).await;
                     },
                     ("get", Some(opt)) => {
-                        call_result = self._buckets_get(opt, dry_run, &mut err);
+                        call_result = self._buckets_get(opt, dry_run, &mut err).await;
                     },
                     ("get-iam-policy", Some(opt)) => {
-                        call_result = self._buckets_get_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._buckets_get_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("insert", Some(opt)) => {
-                        call_result = self._buckets_insert(opt, dry_run, &mut err);
+                        call_result = self._buckets_insert(opt, dry_run, &mut err).await;
                     },
                     ("list", Some(opt)) => {
-                        call_result = self._buckets_list(opt, dry_run, &mut err);
+                        call_result = self._buckets_list(opt, dry_run, &mut err).await;
                     },
                     ("lock-retention-policy", Some(opt)) => {
-                        call_result = self._buckets_lock_retention_policy(opt, dry_run, &mut err);
+                        call_result = self._buckets_lock_retention_policy(opt, dry_run, &mut err).await;
                     },
                     ("patch", Some(opt)) => {
-                        call_result = self._buckets_patch(opt, dry_run, &mut err);
+                        call_result = self._buckets_patch(opt, dry_run, &mut err).await;
                     },
                     ("set-iam-policy", Some(opt)) => {
-                        call_result = self._buckets_set_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._buckets_set_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("test-iam-permissions", Some(opt)) => {
-                        call_result = self._buckets_test_iam_permissions(opt, dry_run, &mut err);
+                        call_result = self._buckets_test_iam_permissions(opt, dry_run, &mut err).await;
                     },
                     ("update", Some(opt)) => {
-                        call_result = self._buckets_update(opt, dry_run, &mut err);
+                        call_result = self._buckets_update(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("buckets".to_string()));
@@ -4705,7 +4708,7 @@ impl<'n> Engine<'n> {
             ("channels", Some(opt)) => {
                 match opt.subcommand() {
                     ("stop", Some(opt)) => {
-                        call_result = self._channels_stop(opt, dry_run, &mut err);
+                        call_result = self._channels_stop(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("channels".to_string()));
@@ -4716,22 +4719,22 @@ impl<'n> Engine<'n> {
             ("default-object-access-controls", Some(opt)) => {
                 match opt.subcommand() {
                     ("delete", Some(opt)) => {
-                        call_result = self._default_object_access_controls_delete(opt, dry_run, &mut err);
+                        call_result = self._default_object_access_controls_delete(opt, dry_run, &mut err).await;
                     },
                     ("get", Some(opt)) => {
-                        call_result = self._default_object_access_controls_get(opt, dry_run, &mut err);
+                        call_result = self._default_object_access_controls_get(opt, dry_run, &mut err).await;
                     },
                     ("insert", Some(opt)) => {
-                        call_result = self._default_object_access_controls_insert(opt, dry_run, &mut err);
+                        call_result = self._default_object_access_controls_insert(opt, dry_run, &mut err).await;
                     },
                     ("list", Some(opt)) => {
-                        call_result = self._default_object_access_controls_list(opt, dry_run, &mut err);
+                        call_result = self._default_object_access_controls_list(opt, dry_run, &mut err).await;
                     },
                     ("patch", Some(opt)) => {
-                        call_result = self._default_object_access_controls_patch(opt, dry_run, &mut err);
+                        call_result = self._default_object_access_controls_patch(opt, dry_run, &mut err).await;
                     },
                     ("update", Some(opt)) => {
-                        call_result = self._default_object_access_controls_update(opt, dry_run, &mut err);
+                        call_result = self._default_object_access_controls_update(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("default-object-access-controls".to_string()));
@@ -4742,16 +4745,16 @@ impl<'n> Engine<'n> {
             ("notifications", Some(opt)) => {
                 match opt.subcommand() {
                     ("delete", Some(opt)) => {
-                        call_result = self._notifications_delete(opt, dry_run, &mut err);
+                        call_result = self._notifications_delete(opt, dry_run, &mut err).await;
                     },
                     ("get", Some(opt)) => {
-                        call_result = self._notifications_get(opt, dry_run, &mut err);
+                        call_result = self._notifications_get(opt, dry_run, &mut err).await;
                     },
                     ("insert", Some(opt)) => {
-                        call_result = self._notifications_insert(opt, dry_run, &mut err);
+                        call_result = self._notifications_insert(opt, dry_run, &mut err).await;
                     },
                     ("list", Some(opt)) => {
-                        call_result = self._notifications_list(opt, dry_run, &mut err);
+                        call_result = self._notifications_list(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("notifications".to_string()));
@@ -4762,22 +4765,22 @@ impl<'n> Engine<'n> {
             ("object-access-controls", Some(opt)) => {
                 match opt.subcommand() {
                     ("delete", Some(opt)) => {
-                        call_result = self._object_access_controls_delete(opt, dry_run, &mut err);
+                        call_result = self._object_access_controls_delete(opt, dry_run, &mut err).await;
                     },
                     ("get", Some(opt)) => {
-                        call_result = self._object_access_controls_get(opt, dry_run, &mut err);
+                        call_result = self._object_access_controls_get(opt, dry_run, &mut err).await;
                     },
                     ("insert", Some(opt)) => {
-                        call_result = self._object_access_controls_insert(opt, dry_run, &mut err);
+                        call_result = self._object_access_controls_insert(opt, dry_run, &mut err).await;
                     },
                     ("list", Some(opt)) => {
-                        call_result = self._object_access_controls_list(opt, dry_run, &mut err);
+                        call_result = self._object_access_controls_list(opt, dry_run, &mut err).await;
                     },
                     ("patch", Some(opt)) => {
-                        call_result = self._object_access_controls_patch(opt, dry_run, &mut err);
+                        call_result = self._object_access_controls_patch(opt, dry_run, &mut err).await;
                     },
                     ("update", Some(opt)) => {
-                        call_result = self._object_access_controls_update(opt, dry_run, &mut err);
+                        call_result = self._object_access_controls_update(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("object-access-controls".to_string()));
@@ -4788,43 +4791,43 @@ impl<'n> Engine<'n> {
             ("objects", Some(opt)) => {
                 match opt.subcommand() {
                     ("compose", Some(opt)) => {
-                        call_result = self._objects_compose(opt, dry_run, &mut err);
+                        call_result = self._objects_compose(opt, dry_run, &mut err).await;
                     },
                     ("copy", Some(opt)) => {
-                        call_result = self._objects_copy(opt, dry_run, &mut err);
+                        call_result = self._objects_copy(opt, dry_run, &mut err).await;
                     },
                     ("delete", Some(opt)) => {
-                        call_result = self._objects_delete(opt, dry_run, &mut err);
+                        call_result = self._objects_delete(opt, dry_run, &mut err).await;
                     },
                     ("get", Some(opt)) => {
-                        call_result = self._objects_get(opt, dry_run, &mut err);
+                        call_result = self._objects_get(opt, dry_run, &mut err).await;
                     },
                     ("get-iam-policy", Some(opt)) => {
-                        call_result = self._objects_get_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._objects_get_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("insert", Some(opt)) => {
-                        call_result = self._objects_insert(opt, dry_run, &mut err);
+                        call_result = self._objects_insert(opt, dry_run, &mut err).await;
                     },
                     ("list", Some(opt)) => {
-                        call_result = self._objects_list(opt, dry_run, &mut err);
+                        call_result = self._objects_list(opt, dry_run, &mut err).await;
                     },
                     ("patch", Some(opt)) => {
-                        call_result = self._objects_patch(opt, dry_run, &mut err);
+                        call_result = self._objects_patch(opt, dry_run, &mut err).await;
                     },
                     ("rewrite", Some(opt)) => {
-                        call_result = self._objects_rewrite(opt, dry_run, &mut err);
+                        call_result = self._objects_rewrite(opt, dry_run, &mut err).await;
                     },
                     ("set-iam-policy", Some(opt)) => {
-                        call_result = self._objects_set_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._objects_set_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("test-iam-permissions", Some(opt)) => {
-                        call_result = self._objects_test_iam_permissions(opt, dry_run, &mut err);
+                        call_result = self._objects_test_iam_permissions(opt, dry_run, &mut err).await;
                     },
                     ("update", Some(opt)) => {
-                        call_result = self._objects_update(opt, dry_run, &mut err);
+                        call_result = self._objects_update(opt, dry_run, &mut err).await;
                     },
                     ("watch-all", Some(opt)) => {
-                        call_result = self._objects_watch_all(opt, dry_run, &mut err);
+                        call_result = self._objects_watch_all(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("objects".to_string()));
@@ -4835,22 +4838,22 @@ impl<'n> Engine<'n> {
             ("projects", Some(opt)) => {
                 match opt.subcommand() {
                     ("hmac-keys-create", Some(opt)) => {
-                        call_result = self._projects_hmac_keys_create(opt, dry_run, &mut err);
+                        call_result = self._projects_hmac_keys_create(opt, dry_run, &mut err).await;
                     },
                     ("hmac-keys-delete", Some(opt)) => {
-                        call_result = self._projects_hmac_keys_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_hmac_keys_delete(opt, dry_run, &mut err).await;
                     },
                     ("hmac-keys-get", Some(opt)) => {
-                        call_result = self._projects_hmac_keys_get(opt, dry_run, &mut err);
+                        call_result = self._projects_hmac_keys_get(opt, dry_run, &mut err).await;
                     },
                     ("hmac-keys-list", Some(opt)) => {
-                        call_result = self._projects_hmac_keys_list(opt, dry_run, &mut err);
+                        call_result = self._projects_hmac_keys_list(opt, dry_run, &mut err).await;
                     },
                     ("hmac-keys-update", Some(opt)) => {
-                        call_result = self._projects_hmac_keys_update(opt, dry_run, &mut err);
+                        call_result = self._projects_hmac_keys_update(opt, dry_run, &mut err).await;
                     },
                     ("service-account-get", Some(opt)) => {
-                        call_result = self._projects_service_account_get(opt, dry_run, &mut err);
+                        call_result = self._projects_service_account_get(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("projects".to_string()));
@@ -4875,7 +4878,7 @@ impl<'n> Engine<'n> {
     }
 
     // Please note that this call will fail if any part of the opt can't be handled
-    fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
+    async fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
             let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
@@ -4889,18 +4892,10 @@ impl<'n> Engine<'n> {
             }
         };
 
-        let auth = Authenticator::new(  &secret, DefaultAuthenticatorDelegate,
-                                        if opt.is_present("debug-auth") {
-                                            hyper::Client::with_connector(mock::TeeConnector {
-                                                    connector: hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
-                                                })
-                                        } else {
-                                            hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new()))
-                                        },
-                                        JsonTokenStorage {
-                                          program_name: "storage1",
-                                          db_dir: config_dir.clone(),
-                                        }, Some(FlowType::InstalledRedirect(54324)));
+        let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+            secret,
+            yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+        ).persist_tokens_to_disk(format!("{}/storage1", config_dir)).build().await.unwrap();
 
         let client =
             if opt.is_present("debug") {
@@ -4922,22 +4917,23 @@ impl<'n> Engine<'n> {
                 ]
         };
 
-        match engine._doit(true) {
+        match engine._doit(true).await {
             Err(Some(err)) => Err(err),
             Err(None)      => Ok(engine),
             Ok(_)          => unreachable!(),
         }
     }
 
-    fn doit(&self) -> Result<(), DoitError> {
-        match self._doit(false) {
+    async fn doit(&self) -> Result<(), DoitError> {
+        match self._doit(false).await {
             Ok(res) => res,
             Err(_) => unreachable!(),
         }
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut exit_status = 0i32;
     let upload_value_names = ["mode", "file"];
     let arg_data = [
@@ -6540,7 +6536,7 @@ fn main() {
             writeln!(io::stderr(), "{}", err).ok();
         },
         Ok(engine) => {
-            if let Err(doit_err) = engine.doit() {
+            if let Err(doit_err) = engine.doit().await {
                 exit_status = 1;
                 match doit_err {
                     DoitError::IoError(path, err) => {

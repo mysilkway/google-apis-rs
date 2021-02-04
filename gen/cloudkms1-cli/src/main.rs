@@ -4,6 +4,9 @@
 #![allow(unused_variables, unused_imports, dead_code, unused_mut)]
 
 #[macro_use]
+extern crate tokio;
+
+#[macro_use]
 extern crate clap;
 extern crate yup_oauth2 as oauth2;
 extern crate yup_hyper_mock as mock;
@@ -23,14 +26,13 @@ use google_cloudkms1::{api, Error};
 
 mod client;
 
-use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+use client::{InvalidOptionsError, CLIError, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
 use std::default::Default;
 use std::str::FromStr;
 
-use oauth2::{Authenticator, DefaultAuthenticatorDelegate, FlowType};
 use serde_json as json;
 use clap::ArgMatches;
 
@@ -41,14 +43,15 @@ enum DoitError {
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::CloudKMS<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
+    hub: api::CloudKMS<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>
+    >,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
 
 
 impl<'n> Engine<'n> {
-    fn _projects_locations_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -85,7 +88,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -100,7 +103,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -175,7 +178,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -190,7 +193,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_crypto_keys_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_crypto_keys_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -269,7 +272,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["crypto-key-id", "skip-initial-version-creation"].iter().map(|v|*v));
+                                                                           v.extend(["skip-initial-version-creation", "crypto-key-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -288,7 +291,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -303,7 +306,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_crypto_keys_crypto_key_versions_asymmetric_decrypt(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_crypto_keys_crypto_key_versions_asymmetric_decrypt(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -374,7 +377,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -389,7 +392,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_crypto_keys_crypto_key_versions_asymmetric_sign(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_crypto_keys_crypto_key_versions_asymmetric_sign(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -462,7 +465,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -477,7 +480,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_crypto_keys_crypto_key_versions_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_crypto_keys_crypto_key_versions_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -560,7 +563,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -575,7 +578,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_crypto_keys_crypto_key_versions_destroy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_crypto_keys_crypto_key_versions_destroy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -644,7 +647,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -659,7 +662,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_crypto_keys_crypto_key_versions_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_crypto_keys_crypto_key_versions_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_key_rings_crypto_keys_crypto_key_versions_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -696,7 +699,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -711,7 +714,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_crypto_keys_crypto_key_versions_get_public_key(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_crypto_keys_crypto_key_versions_get_public_key(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_key_rings_crypto_keys_crypto_key_versions_get_public_key(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -748,7 +751,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -763,7 +766,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_crypto_keys_crypto_key_versions_import(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_crypto_keys_crypto_key_versions_import(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -835,7 +838,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -850,7 +853,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_crypto_keys_crypto_key_versions_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_crypto_keys_crypto_key_versions_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_key_rings_crypto_keys_crypto_key_versions_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -884,7 +887,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["view", "page-token", "page-size", "order-by", "filter"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "order-by", "filter", "view", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -903,7 +906,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -918,7 +921,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_crypto_keys_crypto_key_versions_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_crypto_keys_crypto_key_versions_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1005,7 +1008,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1020,7 +1023,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_crypto_keys_crypto_key_versions_restore(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_crypto_keys_crypto_key_versions_restore(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1089,7 +1092,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1104,7 +1107,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_crypto_keys_decrypt(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_crypto_keys_decrypt(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1177,7 +1180,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1192,7 +1195,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_crypto_keys_encrypt(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_crypto_keys_encrypt(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1265,7 +1268,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1280,7 +1283,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_crypto_keys_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_crypto_keys_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_key_rings_crypto_keys_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1317,7 +1320,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1332,7 +1335,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_crypto_keys_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_crypto_keys_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_key_rings_crypto_keys_get_iam_policy(opt.value_of("resource").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1373,7 +1376,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1388,7 +1391,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_crypto_keys_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_crypto_keys_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_key_rings_crypto_keys_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1422,7 +1425,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size", "order-by", "version-view", "filter"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "order-by", "filter", "version-view", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1441,7 +1444,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1456,7 +1459,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_crypto_keys_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_crypto_keys_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1551,7 +1554,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1566,7 +1569,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_crypto_keys_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_crypto_keys_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1638,7 +1641,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1653,7 +1656,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_crypto_keys_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_crypto_keys_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1723,7 +1726,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1738,7 +1741,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_crypto_keys_update_primary_version(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_crypto_keys_update_primary_version(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1808,7 +1811,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1823,7 +1826,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_key_rings_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1860,7 +1863,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1875,7 +1878,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_key_rings_get_iam_policy(opt.value_of("resource").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1916,7 +1919,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1931,7 +1934,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_import_jobs_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_import_jobs_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2015,7 +2018,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2030,7 +2033,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_import_jobs_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_import_jobs_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_key_rings_import_jobs_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2067,7 +2070,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2082,7 +2085,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_import_jobs_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_import_jobs_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_key_rings_import_jobs_get_iam_policy(opt.value_of("resource").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2123,7 +2126,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2138,7 +2141,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_import_jobs_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_import_jobs_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_key_rings_import_jobs_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2169,7 +2172,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "page-size", "filter"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "page-size", "order-by", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2188,7 +2191,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2203,7 +2206,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_import_jobs_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_import_jobs_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2275,7 +2278,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2290,7 +2293,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_import_jobs_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_import_jobs_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2360,7 +2363,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2375,7 +2378,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_key_rings_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2406,7 +2409,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["order-by", "page-token", "page-size", "filter"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "page-size", "order-by", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2425,7 +2428,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2440,7 +2443,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2512,7 +2515,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2527,7 +2530,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_key_rings_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_key_rings_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2597,7 +2600,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2612,7 +2615,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_list(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2640,7 +2643,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filter", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "page-size", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2659,7 +2662,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2674,7 +2677,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
+    async fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
         let mut err = InvalidOptionsError::new();
         let mut call_result: Result<(), DoitError> = Ok(());
         let mut err_opt: Option<InvalidOptionsError> = None;
@@ -2682,106 +2685,106 @@ impl<'n> Engine<'n> {
             ("projects", Some(opt)) => {
                 match opt.subcommand() {
                     ("locations-get", Some(opt)) => {
-                        call_result = self._projects_locations_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-create", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-crypto-keys-create", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_crypto_keys_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_crypto_keys_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-crypto-keys-crypto-key-versions-asymmetric-decrypt", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_crypto_keys_crypto_key_versions_asymmetric_decrypt(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_crypto_keys_crypto_key_versions_asymmetric_decrypt(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-crypto-keys-crypto-key-versions-asymmetric-sign", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_crypto_keys_crypto_key_versions_asymmetric_sign(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_crypto_keys_crypto_key_versions_asymmetric_sign(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-crypto-keys-crypto-key-versions-create", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_crypto_keys_crypto_key_versions_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_crypto_keys_crypto_key_versions_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-crypto-keys-crypto-key-versions-destroy", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_crypto_keys_crypto_key_versions_destroy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_crypto_keys_crypto_key_versions_destroy(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-crypto-keys-crypto-key-versions-get", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_crypto_keys_crypto_key_versions_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_crypto_keys_crypto_key_versions_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-crypto-keys-crypto-key-versions-get-public-key", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_crypto_keys_crypto_key_versions_get_public_key(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_crypto_keys_crypto_key_versions_get_public_key(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-crypto-keys-crypto-key-versions-import", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_crypto_keys_crypto_key_versions_import(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_crypto_keys_crypto_key_versions_import(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-crypto-keys-crypto-key-versions-list", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_crypto_keys_crypto_key_versions_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_crypto_keys_crypto_key_versions_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-crypto-keys-crypto-key-versions-patch", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_crypto_keys_crypto_key_versions_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_crypto_keys_crypto_key_versions_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-crypto-keys-crypto-key-versions-restore", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_crypto_keys_crypto_key_versions_restore(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_crypto_keys_crypto_key_versions_restore(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-crypto-keys-decrypt", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_crypto_keys_decrypt(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_crypto_keys_decrypt(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-crypto-keys-encrypt", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_crypto_keys_encrypt(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_crypto_keys_encrypt(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-crypto-keys-get", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_crypto_keys_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_crypto_keys_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-crypto-keys-get-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_crypto_keys_get_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_crypto_keys_get_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-crypto-keys-list", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_crypto_keys_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_crypto_keys_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-crypto-keys-patch", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_crypto_keys_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_crypto_keys_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-crypto-keys-set-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_crypto_keys_set_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_crypto_keys_set_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-crypto-keys-test-iam-permissions", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_crypto_keys_test_iam_permissions(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_crypto_keys_test_iam_permissions(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-crypto-keys-update-primary-version", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_crypto_keys_update_primary_version(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_crypto_keys_update_primary_version(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-get", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-get-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_get_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_get_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-import-jobs-create", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_import_jobs_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_import_jobs_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-import-jobs-get", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_import_jobs_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_import_jobs_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-import-jobs-get-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_import_jobs_get_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_import_jobs_get_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-import-jobs-list", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_import_jobs_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_import_jobs_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-import-jobs-set-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_import_jobs_set_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_import_jobs_set_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-import-jobs-test-iam-permissions", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_import_jobs_test_iam_permissions(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_import_jobs_test_iam_permissions(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-list", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-set-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_set_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_set_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-key-rings-test-iam-permissions", Some(opt)) => {
-                        call_result = self._projects_locations_key_rings_test_iam_permissions(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_key_rings_test_iam_permissions(opt, dry_run, &mut err).await;
                     },
                     ("locations-list", Some(opt)) => {
-                        call_result = self._projects_locations_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_list(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("projects".to_string()));
@@ -2806,7 +2809,7 @@ impl<'n> Engine<'n> {
     }
 
     // Please note that this call will fail if any part of the opt can't be handled
-    fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
+    async fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
             let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
@@ -2820,18 +2823,10 @@ impl<'n> Engine<'n> {
             }
         };
 
-        let auth = Authenticator::new(  &secret, DefaultAuthenticatorDelegate,
-                                        if opt.is_present("debug-auth") {
-                                            hyper::Client::with_connector(mock::TeeConnector {
-                                                    connector: hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
-                                                })
-                                        } else {
-                                            hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new()))
-                                        },
-                                        JsonTokenStorage {
-                                          program_name: "cloudkms1",
-                                          db_dir: config_dir.clone(),
-                                        }, Some(FlowType::InstalledRedirect(54324)));
+        let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+            secret,
+            yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+        ).persist_tokens_to_disk(format!("{}/cloudkms1", config_dir)).build().await.unwrap();
 
         let client =
             if opt.is_present("debug") {
@@ -2856,22 +2851,23 @@ impl<'n> Engine<'n> {
                 ]
         };
 
-        match engine._doit(true) {
+        match engine._doit(true).await {
             Err(Some(err)) => Err(err),
             Err(None)      => Ok(engine),
             Ok(_)          => unreachable!(),
         }
     }
 
-    fn doit(&self) -> Result<(), DoitError> {
-        match self._doit(false) {
+    async fn doit(&self) -> Result<(), DoitError> {
+        match self._doit(false).await {
             Ok(res) => res,
             Err(_) => unreachable!(),
         }
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut exit_status = 0i32;
     let arg_data = [
         ("projects", "methods: 'locations-get', 'locations-key-rings-create', 'locations-key-rings-crypto-keys-create', 'locations-key-rings-crypto-keys-crypto-key-versions-asymmetric-decrypt', 'locations-key-rings-crypto-keys-crypto-key-versions-asymmetric-sign', 'locations-key-rings-crypto-keys-crypto-key-versions-create', 'locations-key-rings-crypto-keys-crypto-key-versions-destroy', 'locations-key-rings-crypto-keys-crypto-key-versions-get', 'locations-key-rings-crypto-keys-crypto-key-versions-get-public-key', 'locations-key-rings-crypto-keys-crypto-key-versions-import', 'locations-key-rings-crypto-keys-crypto-key-versions-list', 'locations-key-rings-crypto-keys-crypto-key-versions-patch', 'locations-key-rings-crypto-keys-crypto-key-versions-restore', 'locations-key-rings-crypto-keys-decrypt', 'locations-key-rings-crypto-keys-encrypt', 'locations-key-rings-crypto-keys-get', 'locations-key-rings-crypto-keys-get-iam-policy', 'locations-key-rings-crypto-keys-list', 'locations-key-rings-crypto-keys-patch', 'locations-key-rings-crypto-keys-set-iam-policy', 'locations-key-rings-crypto-keys-test-iam-permissions', 'locations-key-rings-crypto-keys-update-primary-version', 'locations-key-rings-get', 'locations-key-rings-get-iam-policy', 'locations-key-rings-import-jobs-create', 'locations-key-rings-import-jobs-get', 'locations-key-rings-import-jobs-get-iam-policy', 'locations-key-rings-import-jobs-list', 'locations-key-rings-import-jobs-set-iam-policy', 'locations-key-rings-import-jobs-test-iam-permissions', 'locations-key-rings-list', 'locations-key-rings-set-iam-policy', 'locations-key-rings-test-iam-permissions' and 'locations-list'", vec![
@@ -3934,7 +3930,7 @@ fn main() {
             writeln!(io::stderr(), "{}", err).ok();
         },
         Ok(engine) => {
-            if let Err(doit_err) = engine.doit() {
+            if let Err(doit_err) = engine.doit().await {
                 exit_status = 1;
                 match doit_err {
                     DoitError::IoError(path, err) => {

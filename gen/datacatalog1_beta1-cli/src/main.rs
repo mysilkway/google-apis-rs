@@ -4,6 +4,9 @@
 #![allow(unused_variables, unused_imports, dead_code, unused_mut)]
 
 #[macro_use]
+extern crate tokio;
+
+#[macro_use]
 extern crate clap;
 extern crate yup_oauth2 as oauth2;
 extern crate yup_hyper_mock as mock;
@@ -23,14 +26,13 @@ use google_datacatalog1_beta1::{api, Error};
 
 mod client;
 
-use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+use client::{InvalidOptionsError, CLIError, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
 use std::default::Default;
 use std::str::FromStr;
 
-use oauth2::{Authenticator, DefaultAuthenticatorDelegate, FlowType};
 use serde_json as json;
 use clap::ArgMatches;
 
@@ -41,14 +43,15 @@ enum DoitError {
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::DataCatalog<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
+    hub: api::DataCatalog<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>
+    >,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
 
 
 impl<'n> Engine<'n> {
-    fn _catalog_search(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _catalog_search(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -125,7 +128,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -140,7 +143,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _entries_lookup(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _entries_lookup(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.entries().lookup();
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -165,7 +168,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["sql-resource", "linked-resource"].iter().map(|v|*v));
+                                                                           v.extend(["linked-resource", "sql-resource"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -184,7 +187,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -199,7 +202,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_entry_groups_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_entry_groups_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -278,7 +281,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -293,7 +296,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_entry_groups_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_entry_groups_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_entry_groups_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -334,7 +337,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -349,7 +352,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_entry_groups_entries_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_entry_groups_entries_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -440,7 +443,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -455,7 +458,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_entry_groups_entries_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_entry_groups_entries_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_entry_groups_entries_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -492,7 +495,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -507,7 +510,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_entry_groups_entries_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_entry_groups_entries_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_entry_groups_entries_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -544,7 +547,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -559,7 +562,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_entry_groups_entries_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_entry_groups_entries_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -629,7 +632,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -644,7 +647,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_entry_groups_entries_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_entry_groups_entries_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_entry_groups_entries_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -672,7 +675,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "page-size", "read-mask"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token", "read-mask"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -691,7 +694,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -706,7 +709,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_entry_groups_entries_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_entry_groups_entries_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -797,7 +800,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -812,7 +815,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_entry_groups_entries_tags_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_entry_groups_entries_tags_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -885,7 +888,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -900,7 +903,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_entry_groups_entries_tags_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_entry_groups_entries_tags_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_entry_groups_entries_tags_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -937,7 +940,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -952,7 +955,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_entry_groups_entries_tags_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_entry_groups_entries_tags_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_entry_groups_entries_tags_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -977,7 +980,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -996,7 +999,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1011,7 +1014,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_entry_groups_entries_tags_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_entry_groups_entries_tags_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1088,7 +1091,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1103,7 +1106,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_entry_groups_entries_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_entry_groups_entries_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1173,7 +1176,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1188,7 +1191,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_entry_groups_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_entry_groups_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_entry_groups_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1229,7 +1232,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1244,7 +1247,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_entry_groups_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_entry_groups_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1314,7 +1317,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1329,7 +1332,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_entry_groups_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_entry_groups_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_entry_groups_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1354,7 +1357,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1373,7 +1376,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1388,7 +1391,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_entry_groups_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_entry_groups_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1467,7 +1470,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1482,7 +1485,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_entry_groups_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_entry_groups_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1553,7 +1556,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1568,7 +1571,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_entry_groups_tags_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_entry_groups_tags_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1641,7 +1644,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1656,7 +1659,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_entry_groups_tags_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_entry_groups_tags_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_entry_groups_tags_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1693,7 +1696,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1708,7 +1711,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_entry_groups_tags_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_entry_groups_tags_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_entry_groups_tags_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1733,7 +1736,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1752,7 +1755,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1767,7 +1770,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_entry_groups_tags_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_entry_groups_tags_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1844,7 +1847,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1859,7 +1862,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_entry_groups_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_entry_groups_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1929,7 +1932,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1944,7 +1947,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_tag_templates_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_tag_templates_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2019,7 +2022,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2034,7 +2037,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_tag_templates_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_tag_templates_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_tag_templates_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2075,7 +2078,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2090,7 +2093,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_tag_templates_fields_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_tag_templates_fields_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2168,7 +2171,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2183,7 +2186,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_tag_templates_fields_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_tag_templates_fields_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_tag_templates_fields_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2224,7 +2227,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2239,7 +2242,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_tag_templates_fields_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_tag_templates_fields_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2317,7 +2320,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2332,7 +2335,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_tag_templates_fields_rename(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_tag_templates_fields_rename(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2402,7 +2405,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2417,7 +2420,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_tag_templates_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_tag_templates_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_tag_templates_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2454,7 +2457,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2469,7 +2472,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_tag_templates_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_tag_templates_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2539,7 +2542,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2554,7 +2557,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_tag_templates_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_tag_templates_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2629,7 +2632,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2644,7 +2647,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_tag_templates_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_tag_templates_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2715,7 +2718,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2730,7 +2733,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_tag_templates_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_tag_templates_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2800,7 +2803,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2815,7 +2818,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_taxonomies_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_taxonomies_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2888,7 +2891,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2903,7 +2906,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_taxonomies_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_taxonomies_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_taxonomies_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2940,7 +2943,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2955,7 +2958,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_taxonomies_export(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_taxonomies_export(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_taxonomies_export(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2980,7 +2983,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["serialized-taxonomies", "taxonomies"].iter().map(|v|*v));
+                                                                           v.extend(["taxonomies", "serialized-taxonomies"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2999,7 +3002,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3014,7 +3017,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_taxonomies_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_taxonomies_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_taxonomies_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3051,7 +3054,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3066,7 +3069,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_taxonomies_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_taxonomies_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3136,7 +3139,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3151,7 +3154,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_taxonomies_import(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_taxonomies_import(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3220,7 +3223,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3235,7 +3238,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_taxonomies_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_taxonomies_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_taxonomies_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3260,7 +3263,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3279,7 +3282,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3294,7 +3297,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_taxonomies_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_taxonomies_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3371,7 +3374,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3386,7 +3389,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_taxonomies_policy_tags_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_taxonomies_policy_tags_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3460,7 +3463,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3475,7 +3478,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_taxonomies_policy_tags_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_taxonomies_policy_tags_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_taxonomies_policy_tags_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3512,7 +3515,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3527,7 +3530,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_taxonomies_policy_tags_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_taxonomies_policy_tags_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_taxonomies_policy_tags_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3564,7 +3567,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3579,7 +3582,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_taxonomies_policy_tags_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_taxonomies_policy_tags_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3649,7 +3652,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3664,7 +3667,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_taxonomies_policy_tags_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_taxonomies_policy_tags_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_taxonomies_policy_tags_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -3689,7 +3692,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-size", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3708,7 +3711,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3723,7 +3726,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_taxonomies_policy_tags_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_taxonomies_policy_tags_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3801,7 +3804,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3816,7 +3819,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_taxonomies_policy_tags_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_taxonomies_policy_tags_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3887,7 +3890,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3902,7 +3905,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_taxonomies_policy_tags_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_taxonomies_policy_tags_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -3972,7 +3975,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -3987,7 +3990,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_taxonomies_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_taxonomies_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4058,7 +4061,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4073,7 +4076,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_taxonomies_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_taxonomies_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -4143,7 +4146,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -4158,7 +4161,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
+    async fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
         let mut err = InvalidOptionsError::new();
         let mut call_result: Result<(), DoitError> = Ok(());
         let mut err_opt: Option<InvalidOptionsError> = None;
@@ -4166,7 +4169,7 @@ impl<'n> Engine<'n> {
             ("catalog", Some(opt)) => {
                 match opt.subcommand() {
                     ("search", Some(opt)) => {
-                        call_result = self._catalog_search(opt, dry_run, &mut err);
+                        call_result = self._catalog_search(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("catalog".to_string()));
@@ -4177,7 +4180,7 @@ impl<'n> Engine<'n> {
             ("entries", Some(opt)) => {
                 match opt.subcommand() {
                     ("lookup", Some(opt)) => {
-                        call_result = self._entries_lookup(opt, dry_run, &mut err);
+                        call_result = self._entries_lookup(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("entries".to_string()));
@@ -4188,160 +4191,160 @@ impl<'n> Engine<'n> {
             ("projects", Some(opt)) => {
                 match opt.subcommand() {
                     ("locations-entry-groups-create", Some(opt)) => {
-                        call_result = self._projects_locations_entry_groups_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_entry_groups_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-entry-groups-delete", Some(opt)) => {
-                        call_result = self._projects_locations_entry_groups_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_entry_groups_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-entry-groups-entries-create", Some(opt)) => {
-                        call_result = self._projects_locations_entry_groups_entries_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_entry_groups_entries_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-entry-groups-entries-delete", Some(opt)) => {
-                        call_result = self._projects_locations_entry_groups_entries_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_entry_groups_entries_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-entry-groups-entries-get", Some(opt)) => {
-                        call_result = self._projects_locations_entry_groups_entries_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_entry_groups_entries_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-entry-groups-entries-get-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_entry_groups_entries_get_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_entry_groups_entries_get_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-entry-groups-entries-list", Some(opt)) => {
-                        call_result = self._projects_locations_entry_groups_entries_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_entry_groups_entries_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-entry-groups-entries-patch", Some(opt)) => {
-                        call_result = self._projects_locations_entry_groups_entries_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_entry_groups_entries_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-entry-groups-entries-tags-create", Some(opt)) => {
-                        call_result = self._projects_locations_entry_groups_entries_tags_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_entry_groups_entries_tags_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-entry-groups-entries-tags-delete", Some(opt)) => {
-                        call_result = self._projects_locations_entry_groups_entries_tags_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_entry_groups_entries_tags_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-entry-groups-entries-tags-list", Some(opt)) => {
-                        call_result = self._projects_locations_entry_groups_entries_tags_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_entry_groups_entries_tags_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-entry-groups-entries-tags-patch", Some(opt)) => {
-                        call_result = self._projects_locations_entry_groups_entries_tags_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_entry_groups_entries_tags_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-entry-groups-entries-test-iam-permissions", Some(opt)) => {
-                        call_result = self._projects_locations_entry_groups_entries_test_iam_permissions(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_entry_groups_entries_test_iam_permissions(opt, dry_run, &mut err).await;
                     },
                     ("locations-entry-groups-get", Some(opt)) => {
-                        call_result = self._projects_locations_entry_groups_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_entry_groups_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-entry-groups-get-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_entry_groups_get_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_entry_groups_get_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-entry-groups-list", Some(opt)) => {
-                        call_result = self._projects_locations_entry_groups_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_entry_groups_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-entry-groups-patch", Some(opt)) => {
-                        call_result = self._projects_locations_entry_groups_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_entry_groups_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-entry-groups-set-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_entry_groups_set_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_entry_groups_set_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-entry-groups-tags-create", Some(opt)) => {
-                        call_result = self._projects_locations_entry_groups_tags_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_entry_groups_tags_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-entry-groups-tags-delete", Some(opt)) => {
-                        call_result = self._projects_locations_entry_groups_tags_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_entry_groups_tags_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-entry-groups-tags-list", Some(opt)) => {
-                        call_result = self._projects_locations_entry_groups_tags_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_entry_groups_tags_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-entry-groups-tags-patch", Some(opt)) => {
-                        call_result = self._projects_locations_entry_groups_tags_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_entry_groups_tags_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-entry-groups-test-iam-permissions", Some(opt)) => {
-                        call_result = self._projects_locations_entry_groups_test_iam_permissions(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_entry_groups_test_iam_permissions(opt, dry_run, &mut err).await;
                     },
                     ("locations-tag-templates-create", Some(opt)) => {
-                        call_result = self._projects_locations_tag_templates_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_tag_templates_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-tag-templates-delete", Some(opt)) => {
-                        call_result = self._projects_locations_tag_templates_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_tag_templates_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-tag-templates-fields-create", Some(opt)) => {
-                        call_result = self._projects_locations_tag_templates_fields_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_tag_templates_fields_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-tag-templates-fields-delete", Some(opt)) => {
-                        call_result = self._projects_locations_tag_templates_fields_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_tag_templates_fields_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-tag-templates-fields-patch", Some(opt)) => {
-                        call_result = self._projects_locations_tag_templates_fields_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_tag_templates_fields_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-tag-templates-fields-rename", Some(opt)) => {
-                        call_result = self._projects_locations_tag_templates_fields_rename(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_tag_templates_fields_rename(opt, dry_run, &mut err).await;
                     },
                     ("locations-tag-templates-get", Some(opt)) => {
-                        call_result = self._projects_locations_tag_templates_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_tag_templates_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-tag-templates-get-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_tag_templates_get_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_tag_templates_get_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-tag-templates-patch", Some(opt)) => {
-                        call_result = self._projects_locations_tag_templates_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_tag_templates_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-tag-templates-set-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_tag_templates_set_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_tag_templates_set_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-tag-templates-test-iam-permissions", Some(opt)) => {
-                        call_result = self._projects_locations_tag_templates_test_iam_permissions(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_tag_templates_test_iam_permissions(opt, dry_run, &mut err).await;
                     },
                     ("locations-taxonomies-create", Some(opt)) => {
-                        call_result = self._projects_locations_taxonomies_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_taxonomies_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-taxonomies-delete", Some(opt)) => {
-                        call_result = self._projects_locations_taxonomies_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_taxonomies_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-taxonomies-export", Some(opt)) => {
-                        call_result = self._projects_locations_taxonomies_export(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_taxonomies_export(opt, dry_run, &mut err).await;
                     },
                     ("locations-taxonomies-get", Some(opt)) => {
-                        call_result = self._projects_locations_taxonomies_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_taxonomies_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-taxonomies-get-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_taxonomies_get_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_taxonomies_get_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-taxonomies-import", Some(opt)) => {
-                        call_result = self._projects_locations_taxonomies_import(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_taxonomies_import(opt, dry_run, &mut err).await;
                     },
                     ("locations-taxonomies-list", Some(opt)) => {
-                        call_result = self._projects_locations_taxonomies_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_taxonomies_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-taxonomies-patch", Some(opt)) => {
-                        call_result = self._projects_locations_taxonomies_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_taxonomies_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-taxonomies-policy-tags-create", Some(opt)) => {
-                        call_result = self._projects_locations_taxonomies_policy_tags_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_taxonomies_policy_tags_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-taxonomies-policy-tags-delete", Some(opt)) => {
-                        call_result = self._projects_locations_taxonomies_policy_tags_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_taxonomies_policy_tags_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-taxonomies-policy-tags-get", Some(opt)) => {
-                        call_result = self._projects_locations_taxonomies_policy_tags_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_taxonomies_policy_tags_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-taxonomies-policy-tags-get-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_taxonomies_policy_tags_get_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_taxonomies_policy_tags_get_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-taxonomies-policy-tags-list", Some(opt)) => {
-                        call_result = self._projects_locations_taxonomies_policy_tags_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_taxonomies_policy_tags_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-taxonomies-policy-tags-patch", Some(opt)) => {
-                        call_result = self._projects_locations_taxonomies_policy_tags_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_taxonomies_policy_tags_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-taxonomies-policy-tags-set-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_taxonomies_policy_tags_set_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_taxonomies_policy_tags_set_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-taxonomies-policy-tags-test-iam-permissions", Some(opt)) => {
-                        call_result = self._projects_locations_taxonomies_policy_tags_test_iam_permissions(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_taxonomies_policy_tags_test_iam_permissions(opt, dry_run, &mut err).await;
                     },
                     ("locations-taxonomies-set-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_taxonomies_set_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_taxonomies_set_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-taxonomies-test-iam-permissions", Some(opt)) => {
-                        call_result = self._projects_locations_taxonomies_test_iam_permissions(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_taxonomies_test_iam_permissions(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("projects".to_string()));
@@ -4366,7 +4369,7 @@ impl<'n> Engine<'n> {
     }
 
     // Please note that this call will fail if any part of the opt can't be handled
-    fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
+    async fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
             let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
@@ -4380,18 +4383,10 @@ impl<'n> Engine<'n> {
             }
         };
 
-        let auth = Authenticator::new(  &secret, DefaultAuthenticatorDelegate,
-                                        if opt.is_present("debug-auth") {
-                                            hyper::Client::with_connector(mock::TeeConnector {
-                                                    connector: hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
-                                                })
-                                        } else {
-                                            hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new()))
-                                        },
-                                        JsonTokenStorage {
-                                          program_name: "datacatalog1-beta1",
-                                          db_dir: config_dir.clone(),
-                                        }, Some(FlowType::InstalledRedirect(54324)));
+        let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+            secret,
+            yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+        ).persist_tokens_to_disk(format!("{}/datacatalog1-beta1", config_dir)).build().await.unwrap();
 
         let client =
             if opt.is_present("debug") {
@@ -4416,22 +4411,23 @@ impl<'n> Engine<'n> {
                 ]
         };
 
-        match engine._doit(true) {
+        match engine._doit(true).await {
             Err(Some(err)) => Err(err),
             Err(None)      => Ok(engine),
             Ok(_)          => unreachable!(),
         }
     }
 
-    fn doit(&self) -> Result<(), DoitError> {
-        match self._doit(false) {
+    async fn doit(&self) -> Result<(), DoitError> {
+        match self._doit(false).await {
             Ok(res) => res,
             Err(_) => unreachable!(),
         }
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut exit_status = 0i32;
     let arg_data = [
         ("catalog", "methods: 'search'", vec![
@@ -6221,7 +6217,7 @@ fn main() {
             writeln!(io::stderr(), "{}", err).ok();
         },
         Ok(engine) => {
-            if let Err(doit_err) = engine.doit() {
+            if let Err(doit_err) = engine.doit().await {
                 exit_status = 1;
                 match doit_err {
                     DoitError::IoError(path, err) => {

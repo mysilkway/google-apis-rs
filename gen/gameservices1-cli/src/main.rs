@@ -4,6 +4,9 @@
 #![allow(unused_variables, unused_imports, dead_code, unused_mut)]
 
 #[macro_use]
+extern crate tokio;
+
+#[macro_use]
 extern crate clap;
 extern crate yup_oauth2 as oauth2;
 extern crate yup_hyper_mock as mock;
@@ -23,14 +26,13 @@ use google_gameservices1::{api, Error};
 
 mod client;
 
-use client::{InvalidOptionsError, CLIError, JsonTokenStorage, arg_from_str, writer_from_opts, parse_kv_arg,
+use client::{InvalidOptionsError, CLIError, arg_from_str, writer_from_opts, parse_kv_arg,
           input_file_from_opts, input_mime_from_opts, FieldCursor, FieldError, CallType, UploadProtocol,
           calltype_from_str, remove_json_null_values, ComplexType, JsonType, JsonTypeInfo};
 
 use std::default::Default;
 use std::str::FromStr;
 
-use oauth2::{Authenticator, DefaultAuthenticatorDelegate, FlowType};
 use serde_json as json;
 use clap::ArgMatches;
 
@@ -41,14 +43,15 @@ enum DoitError {
 
 struct Engine<'n> {
     opt: ArgMatches<'n>,
-    hub: api::GameServices<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>, Authenticator<DefaultAuthenticatorDelegate, JsonTokenStorage, hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>>>,
+    hub: api::GameServices<hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>, hyper::body::Body>
+    >,
     gp: Vec<&'static str>,
     gpm: Vec<(&'static str, &'static str)>,
 }
 
 
 impl<'n> Engine<'n> {
-    fn _projects_locations_game_server_deployments_configs_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_game_server_deployments_configs_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -126,7 +129,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -141,7 +144,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_game_server_deployments_configs_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_game_server_deployments_configs_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_game_server_deployments_configs_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -178,7 +181,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -193,7 +196,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_game_server_deployments_configs_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_game_server_deployments_configs_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_game_server_deployments_configs_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -230,7 +233,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -245,7 +248,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_game_server_deployments_configs_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_game_server_deployments_configs_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_game_server_deployments_configs_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -276,7 +279,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-size", "page-token", "filter", "order-by"].iter().map(|v|*v));
+                                                                           v.extend(["order-by", "page-size", "filter", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -295,7 +298,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -310,7 +313,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_game_server_deployments_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_game_server_deployments_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -389,7 +392,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -404,7 +407,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_game_server_deployments_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_game_server_deployments_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_game_server_deployments_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -441,7 +444,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -456,7 +459,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_game_server_deployments_fetch_deployment_state(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_game_server_deployments_fetch_deployment_state(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -525,7 +528,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -540,7 +543,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_game_server_deployments_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_game_server_deployments_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_game_server_deployments_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -577,7 +580,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -592,7 +595,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_game_server_deployments_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_game_server_deployments_get_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_game_server_deployments_get_iam_policy(opt.value_of("resource").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -633,7 +636,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -648,7 +651,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_game_server_deployments_get_rollout(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_game_server_deployments_get_rollout(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_game_server_deployments_get_rollout(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -685,7 +688,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -700,7 +703,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_game_server_deployments_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_game_server_deployments_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_game_server_deployments_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -731,7 +734,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-size", "page-token", "filter", "order-by"].iter().map(|v|*v));
+                                                                           v.extend(["order-by", "page-size", "filter", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -750,7 +753,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -765,7 +768,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_game_server_deployments_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_game_server_deployments_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -844,7 +847,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -859,7 +862,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_game_server_deployments_preview_rollout(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_game_server_deployments_preview_rollout(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -921,7 +924,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["update-mask", "preview-time"].iter().map(|v|*v));
+                                                                           v.extend(["preview-time", "update-mask"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -940,7 +943,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -955,7 +958,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_game_server_deployments_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_game_server_deployments_set_iam_policy(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1028,7 +1031,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1043,7 +1046,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_game_server_deployments_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_game_server_deployments_test_iam_permissions(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1113,7 +1116,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1128,7 +1131,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_game_server_deployments_update_rollout(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_game_server_deployments_update_rollout(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1206,7 +1209,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1221,7 +1224,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1258,7 +1261,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1273,7 +1276,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_list(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1304,7 +1307,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-size", "page-token", "filter", "include-unrevealed-locations"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "include-unrevealed-locations", "filter", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1323,7 +1326,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1338,7 +1341,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_operations_cancel(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_operations_cancel(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1407,7 +1410,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1422,7 +1425,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_operations_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_operations_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_operations_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1459,7 +1462,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1474,7 +1477,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_operations_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_operations_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_operations_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1511,7 +1514,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1526,7 +1529,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_operations_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_operations_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_operations_list(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1554,7 +1557,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-size", "page-token", "filter"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "filter", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1573,7 +1576,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1588,7 +1591,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_realms_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_realms_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1668,7 +1671,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1683,7 +1686,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_realms_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_realms_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_realms_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1720,7 +1723,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1735,7 +1738,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_realms_game_server_clusters_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_realms_game_server_clusters_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -1816,7 +1819,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1831,7 +1834,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_realms_game_server_clusters_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_realms_game_server_clusters_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_realms_game_server_clusters_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1868,7 +1871,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1883,7 +1886,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_realms_game_server_clusters_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_realms_game_server_clusters_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_realms_game_server_clusters_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1920,7 +1923,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -1935,7 +1938,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_realms_game_server_clusters_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_realms_game_server_clusters_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_realms_game_server_clusters_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -1966,7 +1969,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-size", "page-token", "filter", "order-by"].iter().map(|v|*v));
+                                                                           v.extend(["order-by", "page-size", "filter", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1985,7 +1988,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2000,7 +2003,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_realms_game_server_clusters_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_realms_game_server_clusters_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2081,7 +2084,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2096,7 +2099,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_realms_game_server_clusters_preview_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_realms_game_server_clusters_preview_create(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2180,7 +2183,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2195,7 +2198,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_realms_game_server_clusters_preview_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_realms_game_server_clusters_preview_delete(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_realms_game_server_clusters_preview_delete(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2236,7 +2239,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2251,7 +2254,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_realms_game_server_clusters_preview_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_realms_game_server_clusters_preview_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2316,7 +2319,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["update-mask", "preview-time"].iter().map(|v|*v));
+                                                                           v.extend(["preview-time", "update-mask"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2335,7 +2338,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2350,7 +2353,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_realms_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_realms_get(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_realms_get(opt.value_of("name").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2387,7 +2390,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2402,7 +2405,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_realms_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_realms_list(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         let mut call = self.hub.projects().locations_realms_list(opt.value_of("parent").unwrap_or(""));
         for parg in opt.values_of("v").map(|i|i.collect()).unwrap_or(Vec::new()).iter() {
@@ -2433,7 +2436,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-size", "page-token", "filter", "order-by"].iter().map(|v|*v));
+                                                                           v.extend(["order-by", "page-size", "filter", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2452,7 +2455,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2467,7 +2470,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_realms_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_realms_patch(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2547,7 +2550,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2562,7 +2565,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _projects_locations_realms_preview_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
+    async fn _projects_locations_realms_preview_update(&self, opt: &ArgMatches<'n>, dry_run: bool, err: &mut InvalidOptionsError)
                                                     -> Result<(), DoitError> {
         
         let mut field_cursor = FieldCursor::default();
@@ -2626,7 +2629,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["update-mask", "preview-time"].iter().map(|v|*v));
+                                                                           v.extend(["preview-time", "update-mask"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2645,7 +2648,7 @@ impl<'n> Engine<'n> {
                 Err(io_err) => return Err(DoitError::IoError(opt.value_of("out").unwrap_or("-").to_string(), io_err)),
             };
             match match protocol {
-                CallType::Standard => call.doit(),
+                CallType::Standard => call.doit().await,
                 _ => unreachable!()
             } {
                 Err(api_err) => Err(DoitError::ApiError(api_err)),
@@ -2660,7 +2663,7 @@ impl<'n> Engine<'n> {
         }
     }
 
-    fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
+    async fn _doit(&self, dry_run: bool) -> Result<Result<(), DoitError>, Option<InvalidOptionsError>> {
         let mut err = InvalidOptionsError::new();
         let mut call_result: Result<(), DoitError> = Ok(());
         let mut err_opt: Option<InvalidOptionsError> = None;
@@ -2668,112 +2671,112 @@ impl<'n> Engine<'n> {
             ("projects", Some(opt)) => {
                 match opt.subcommand() {
                     ("locations-game-server-deployments-configs-create", Some(opt)) => {
-                        call_result = self._projects_locations_game_server_deployments_configs_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_game_server_deployments_configs_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-game-server-deployments-configs-delete", Some(opt)) => {
-                        call_result = self._projects_locations_game_server_deployments_configs_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_game_server_deployments_configs_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-game-server-deployments-configs-get", Some(opt)) => {
-                        call_result = self._projects_locations_game_server_deployments_configs_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_game_server_deployments_configs_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-game-server-deployments-configs-list", Some(opt)) => {
-                        call_result = self._projects_locations_game_server_deployments_configs_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_game_server_deployments_configs_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-game-server-deployments-create", Some(opt)) => {
-                        call_result = self._projects_locations_game_server_deployments_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_game_server_deployments_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-game-server-deployments-delete", Some(opt)) => {
-                        call_result = self._projects_locations_game_server_deployments_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_game_server_deployments_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-game-server-deployments-fetch-deployment-state", Some(opt)) => {
-                        call_result = self._projects_locations_game_server_deployments_fetch_deployment_state(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_game_server_deployments_fetch_deployment_state(opt, dry_run, &mut err).await;
                     },
                     ("locations-game-server-deployments-get", Some(opt)) => {
-                        call_result = self._projects_locations_game_server_deployments_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_game_server_deployments_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-game-server-deployments-get-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_game_server_deployments_get_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_game_server_deployments_get_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-game-server-deployments-get-rollout", Some(opt)) => {
-                        call_result = self._projects_locations_game_server_deployments_get_rollout(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_game_server_deployments_get_rollout(opt, dry_run, &mut err).await;
                     },
                     ("locations-game-server-deployments-list", Some(opt)) => {
-                        call_result = self._projects_locations_game_server_deployments_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_game_server_deployments_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-game-server-deployments-patch", Some(opt)) => {
-                        call_result = self._projects_locations_game_server_deployments_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_game_server_deployments_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-game-server-deployments-preview-rollout", Some(opt)) => {
-                        call_result = self._projects_locations_game_server_deployments_preview_rollout(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_game_server_deployments_preview_rollout(opt, dry_run, &mut err).await;
                     },
                     ("locations-game-server-deployments-set-iam-policy", Some(opt)) => {
-                        call_result = self._projects_locations_game_server_deployments_set_iam_policy(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_game_server_deployments_set_iam_policy(opt, dry_run, &mut err).await;
                     },
                     ("locations-game-server-deployments-test-iam-permissions", Some(opt)) => {
-                        call_result = self._projects_locations_game_server_deployments_test_iam_permissions(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_game_server_deployments_test_iam_permissions(opt, dry_run, &mut err).await;
                     },
                     ("locations-game-server-deployments-update-rollout", Some(opt)) => {
-                        call_result = self._projects_locations_game_server_deployments_update_rollout(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_game_server_deployments_update_rollout(opt, dry_run, &mut err).await;
                     },
                     ("locations-get", Some(opt)) => {
-                        call_result = self._projects_locations_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-list", Some(opt)) => {
-                        call_result = self._projects_locations_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-operations-cancel", Some(opt)) => {
-                        call_result = self._projects_locations_operations_cancel(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_operations_cancel(opt, dry_run, &mut err).await;
                     },
                     ("locations-operations-delete", Some(opt)) => {
-                        call_result = self._projects_locations_operations_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_operations_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-operations-get", Some(opt)) => {
-                        call_result = self._projects_locations_operations_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_operations_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-operations-list", Some(opt)) => {
-                        call_result = self._projects_locations_operations_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_operations_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-realms-create", Some(opt)) => {
-                        call_result = self._projects_locations_realms_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_realms_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-realms-delete", Some(opt)) => {
-                        call_result = self._projects_locations_realms_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_realms_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-realms-game-server-clusters-create", Some(opt)) => {
-                        call_result = self._projects_locations_realms_game_server_clusters_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_realms_game_server_clusters_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-realms-game-server-clusters-delete", Some(opt)) => {
-                        call_result = self._projects_locations_realms_game_server_clusters_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_realms_game_server_clusters_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-realms-game-server-clusters-get", Some(opt)) => {
-                        call_result = self._projects_locations_realms_game_server_clusters_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_realms_game_server_clusters_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-realms-game-server-clusters-list", Some(opt)) => {
-                        call_result = self._projects_locations_realms_game_server_clusters_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_realms_game_server_clusters_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-realms-game-server-clusters-patch", Some(opt)) => {
-                        call_result = self._projects_locations_realms_game_server_clusters_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_realms_game_server_clusters_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-realms-game-server-clusters-preview-create", Some(opt)) => {
-                        call_result = self._projects_locations_realms_game_server_clusters_preview_create(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_realms_game_server_clusters_preview_create(opt, dry_run, &mut err).await;
                     },
                     ("locations-realms-game-server-clusters-preview-delete", Some(opt)) => {
-                        call_result = self._projects_locations_realms_game_server_clusters_preview_delete(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_realms_game_server_clusters_preview_delete(opt, dry_run, &mut err).await;
                     },
                     ("locations-realms-game-server-clusters-preview-update", Some(opt)) => {
-                        call_result = self._projects_locations_realms_game_server_clusters_preview_update(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_realms_game_server_clusters_preview_update(opt, dry_run, &mut err).await;
                     },
                     ("locations-realms-get", Some(opt)) => {
-                        call_result = self._projects_locations_realms_get(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_realms_get(opt, dry_run, &mut err).await;
                     },
                     ("locations-realms-list", Some(opt)) => {
-                        call_result = self._projects_locations_realms_list(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_realms_list(opt, dry_run, &mut err).await;
                     },
                     ("locations-realms-patch", Some(opt)) => {
-                        call_result = self._projects_locations_realms_patch(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_realms_patch(opt, dry_run, &mut err).await;
                     },
                     ("locations-realms-preview-update", Some(opt)) => {
-                        call_result = self._projects_locations_realms_preview_update(opt, dry_run, &mut err);
+                        call_result = self._projects_locations_realms_preview_update(opt, dry_run, &mut err).await;
                     },
                     _ => {
                         err.issues.push(CLIError::MissingMethodError("projects".to_string()));
@@ -2798,7 +2801,7 @@ impl<'n> Engine<'n> {
     }
 
     // Please note that this call will fail if any part of the opt can't be handled
-    fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
+    async fn new(opt: ArgMatches<'n>) -> Result<Engine<'n>, InvalidOptionsError> {
         let (config_dir, secret) = {
             let config_dir = match client::assure_config_dir_exists(opt.value_of("folder").unwrap_or("~/.google-service-cli")) {
                 Err(e) => return Err(InvalidOptionsError::single(e, 3)),
@@ -2812,18 +2815,10 @@ impl<'n> Engine<'n> {
             }
         };
 
-        let auth = Authenticator::new(  &secret, DefaultAuthenticatorDelegate,
-                                        if opt.is_present("debug-auth") {
-                                            hyper::Client::with_connector(mock::TeeConnector {
-                                                    connector: hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
-                                                })
-                                        } else {
-                                            hyper::Client::with_connector(hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new()))
-                                        },
-                                        JsonTokenStorage {
-                                          program_name: "gameservices1",
-                                          db_dir: config_dir.clone(),
-                                        }, Some(FlowType::InstalledRedirect(54324)));
+        let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+            secret,
+            yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+        ).persist_tokens_to_disk(format!("{}/gameservices1", config_dir)).build().await.unwrap();
 
         let client =
             if opt.is_present("debug") {
@@ -2848,22 +2843,23 @@ impl<'n> Engine<'n> {
                 ]
         };
 
-        match engine._doit(true) {
+        match engine._doit(true).await {
             Err(Some(err)) => Err(err),
             Err(None)      => Ok(engine),
             Ok(_)          => unreachable!(),
         }
     }
 
-    fn doit(&self) -> Result<(), DoitError> {
-        match self._doit(false) {
+    async fn doit(&self) -> Result<(), DoitError> {
+        match self._doit(false).await {
             Ok(res) => res,
             Err(_) => unreachable!(),
         }
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut exit_status = 0i32;
     let arg_data = [
         ("projects", "methods: 'locations-game-server-deployments-configs-create', 'locations-game-server-deployments-configs-delete', 'locations-game-server-deployments-configs-get', 'locations-game-server-deployments-configs-list', 'locations-game-server-deployments-create', 'locations-game-server-deployments-delete', 'locations-game-server-deployments-fetch-deployment-state', 'locations-game-server-deployments-get', 'locations-game-server-deployments-get-iam-policy', 'locations-game-server-deployments-get-rollout', 'locations-game-server-deployments-list', 'locations-game-server-deployments-patch', 'locations-game-server-deployments-preview-rollout', 'locations-game-server-deployments-set-iam-policy', 'locations-game-server-deployments-test-iam-permissions', 'locations-game-server-deployments-update-rollout', 'locations-get', 'locations-list', 'locations-operations-cancel', 'locations-operations-delete', 'locations-operations-get', 'locations-operations-list', 'locations-realms-create', 'locations-realms-delete', 'locations-realms-game-server-clusters-create', 'locations-realms-game-server-clusters-delete', 'locations-realms-game-server-clusters-get', 'locations-realms-game-server-clusters-list', 'locations-realms-game-server-clusters-patch', 'locations-realms-game-server-clusters-preview-create', 'locations-realms-game-server-clusters-preview-delete', 'locations-realms-game-server-clusters-preview-update', 'locations-realms-get', 'locations-realms-list', 'locations-realms-patch' and 'locations-realms-preview-update'", vec![
@@ -3943,7 +3939,7 @@ fn main() {
             writeln!(io::stderr(), "{}", err).ok();
         },
         Ok(engine) => {
-            if let Err(doit_err) = engine.doit() {
+            if let Err(doit_err) = engine.doit().await {
                 exit_status = 1;
                 match doit_err {
                     DoitError::IoError(path, err) => {
