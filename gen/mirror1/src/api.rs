@@ -1867,7 +1867,7 @@ impl<'a, C> ContactDeleteCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rust
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -2115,7 +2115,7 @@ impl<'a, C> ContactGetCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rustls:
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -2366,7 +2366,7 @@ impl<'a, C> ContactInsertCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rust
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -2602,7 +2602,7 @@ impl<'a, C> ContactListCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rustls
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -2866,7 +2866,7 @@ impl<'a, C> ContactPatchCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rustl
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -3153,7 +3153,7 @@ impl<'a, C> ContactUpdateCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rust
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -3422,7 +3422,7 @@ impl<'a, C> LocationGetCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rustls
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -3655,7 +3655,7 @@ impl<'a, C> LocationListCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rustl
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -3901,7 +3901,7 @@ impl<'a, C> SettingGetCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rustls:
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -4158,7 +4158,7 @@ impl<'a, C> SubscriptionDeleteCall<'a, C> where C: BorrowMut<hyper::Client<hyper
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -4401,7 +4401,7 @@ impl<'a, C> SubscriptionInsertCall<'a, C> where C: BorrowMut<hyper::Client<hyper
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -4637,7 +4637,7 @@ impl<'a, C> SubscriptionListCall<'a, C> where C: BorrowMut<hyper::Client<hyper_r
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -4901,7 +4901,7 @@ impl<'a, C> SubscriptionUpdateCall<'a, C> where C: BorrowMut<hyper::Client<hyper
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -5171,7 +5171,7 @@ impl<'a, C> TimelineAttachmentDeleteCall<'a, C> where C: BorrowMut<hyper::Client
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -5452,7 +5452,7 @@ impl<'a, C> TimelineAttachmentGetCall<'a, C> where C: BorrowMut<hyper::Client<hy
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -5731,7 +5731,7 @@ impl<'a, C> TimelineAttachmentInsertCall<'a, C> where C: BorrowMut<hyper::Client
         let mut upload_url: Option<String> = None;
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -6083,7 +6083,7 @@ impl<'a, C> TimelineAttachmentListCall<'a, C> where C: BorrowMut<hyper::Client<h
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -6338,7 +6338,7 @@ impl<'a, C> TimelineDeleteCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rus
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -6586,7 +6586,7 @@ impl<'a, C> TimelineGetCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rustls
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -6850,7 +6850,7 @@ impl<'a, C> TimelineInsertCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rus
         let mut upload_url: Option<String> = None;
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -7222,7 +7222,7 @@ impl<'a, C> TimelineListCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rustl
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -7535,7 +7535,7 @@ impl<'a, C> TimelinePatchCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rust
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -7835,7 +7835,7 @@ impl<'a, C> TimelineUpdateCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rus
         let mut upload_url: Option<String> = None;
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {

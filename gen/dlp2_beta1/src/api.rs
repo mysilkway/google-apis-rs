@@ -2955,7 +2955,7 @@ impl<'a, C> ContentDeidentifyCall<'a, C> where C: BorrowMut<hyper::Client<hyper_
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -3216,7 +3216,7 @@ impl<'a, C> ContentInspectCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rus
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -3477,7 +3477,7 @@ impl<'a, C> ContentRedactCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rust
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -3751,7 +3751,7 @@ impl<'a, C> RootCategoryInfoTypeListCall<'a, C> where C: BorrowMut<hyper::Client
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -4004,7 +4004,7 @@ impl<'a, C> RootCategoryListCall<'a, C> where C: BorrowMut<hyper::Client<hyper_r
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -4287,7 +4287,7 @@ impl<'a, C> RiskAnalysiOperationCancelCall<'a, C> where C: BorrowMut<hyper::Clie
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -4566,7 +4566,7 @@ impl<'a, C> RiskAnalysiOperationDeleteCall<'a, C> where C: BorrowMut<hyper::Clie
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -4847,7 +4847,7 @@ impl<'a, C> RiskAnalysiOperationListCall<'a, C> where C: BorrowMut<hyper::Client
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -5136,7 +5136,7 @@ impl<'a, C> RiskAnalysiOperationGetCall<'a, C> where C: BorrowMut<hyper::Client<
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -5394,7 +5394,7 @@ impl<'a, C> DataSourceAnalyzeCall<'a, C> where C: BorrowMut<hyper::Client<hyper_
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -5655,7 +5655,7 @@ impl<'a, C> InspectOperationCreateCall<'a, C> where C: BorrowMut<hyper::Client<h
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -5942,7 +5942,7 @@ impl<'a, C> InspectOperationCancelCall<'a, C> where C: BorrowMut<hyper::Client<h
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -6221,7 +6221,7 @@ impl<'a, C> InspectOperationDeleteCall<'a, C> where C: BorrowMut<hyper::Client<h
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -6502,7 +6502,7 @@ impl<'a, C> InspectOperationListCall<'a, C> where C: BorrowMut<hyper::Client<hyp
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -6791,7 +6791,7 @@ impl<'a, C> InspectOperationGetCall<'a, C> where C: BorrowMut<hyper::Client<hype
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -7072,7 +7072,7 @@ impl<'a, C> InspectResultFindingListCall<'a, C> where C: BorrowMut<hyper::Client
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {

@@ -9096,7 +9096,7 @@ impl<'a, C> AdvertiserAssetUploadCall<'a, C> where C: BorrowMut<hyper::Client<hy
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -9415,7 +9415,7 @@ impl<'a, C> AdvertiserCampaignCreateCall<'a, C> where C: BorrowMut<hyper::Client
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -9697,7 +9697,7 @@ impl<'a, C> AdvertiserCampaignDeleteCall<'a, C> where C: BorrowMut<hyper::Client
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -9973,7 +9973,7 @@ impl<'a, C> AdvertiserCampaignGetCall<'a, C> where C: BorrowMut<hyper::Client<hy
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -10273,7 +10273,7 @@ impl<'a, C> AdvertiserCampaignListCall<'a, C> where C: BorrowMut<hyper::Client<h
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -10622,7 +10622,7 @@ impl<'a, C> AdvertiserCampaignPatchCall<'a, C> where C: BorrowMut<hyper::Client<
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -10940,7 +10940,7 @@ impl<'a, C> AdvertiserChannelSiteBulkEditCall<'a, C> where C: BorrowMut<hyper::C
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -11252,7 +11252,7 @@ impl<'a, C> AdvertiserChannelSiteCreateCall<'a, C> where C: BorrowMut<hyper::Cli
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -11555,7 +11555,7 @@ impl<'a, C> AdvertiserChannelSiteDeleteCall<'a, C> where C: BorrowMut<hyper::Cli
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -11873,7 +11873,7 @@ impl<'a, C> AdvertiserChannelSiteListCall<'a, C> where C: BorrowMut<hyper::Clien
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -12233,7 +12233,7 @@ impl<'a, C> AdvertiserChannelCreateCall<'a, C> where C: BorrowMut<hyper::Client<
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -12524,7 +12524,7 @@ impl<'a, C> AdvertiserChannelGetCall<'a, C> where C: BorrowMut<hyper::Client<hyp
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -12830,7 +12830,7 @@ impl<'a, C> AdvertiserChannelListCall<'a, C> where C: BorrowMut<hyper::Client<hy
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -13189,7 +13189,7 @@ impl<'a, C> AdvertiserChannelPatchCall<'a, C> where C: BorrowMut<hyper::Client<h
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -13509,7 +13509,7 @@ impl<'a, C> AdvertiserCreativeCreateCall<'a, C> where C: BorrowMut<hyper::Client
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -13792,7 +13792,7 @@ impl<'a, C> AdvertiserCreativeDeleteCall<'a, C> where C: BorrowMut<hyper::Client
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -14068,7 +14068,7 @@ impl<'a, C> AdvertiserCreativeGetCall<'a, C> where C: BorrowMut<hyper::Client<hy
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -14368,7 +14368,7 @@ impl<'a, C> AdvertiserCreativeListCall<'a, C> where C: BorrowMut<hyper::Client<h
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -14749,7 +14749,7 @@ impl<'a, C> AdvertiserCreativePatchCall<'a, C> where C: BorrowMut<hyper::Client<
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -15062,7 +15062,7 @@ impl<'a, C> AdvertiserInsertionOrderCreateCall<'a, C> where C: BorrowMut<hyper::
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -15345,7 +15345,7 @@ impl<'a, C> AdvertiserInsertionOrderDeleteCall<'a, C> where C: BorrowMut<hyper::
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -15622,7 +15622,7 @@ impl<'a, C> AdvertiserInsertionOrderGetCall<'a, C> where C: BorrowMut<hyper::Cli
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -15922,7 +15922,7 @@ impl<'a, C> AdvertiserInsertionOrderListCall<'a, C> where C: BorrowMut<hyper::Cl
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -16274,7 +16274,7 @@ impl<'a, C> AdvertiserInsertionOrderPatchCall<'a, C> where C: BorrowMut<hyper::C
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -16591,7 +16591,7 @@ impl<'a, C> AdvertiserLineItemTargetingTypeAssignedTargetingOptionCreateCall<'a,
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -16894,7 +16894,7 @@ impl<'a, C> AdvertiserLineItemTargetingTypeAssignedTargetingOptionDeleteCall<'a,
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -17194,7 +17194,7 @@ impl<'a, C> AdvertiserLineItemTargetingTypeAssignedTargetingOptionGetCall<'a, C>
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -17513,7 +17513,7 @@ impl<'a, C> AdvertiserLineItemTargetingTypeAssignedTargetingOptionListCall<'a, C
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -17882,7 +17882,7 @@ impl<'a, C> AdvertiserLineItemBulkEditLineItemAssignedTargetingOptionCall<'a, C>
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -18191,7 +18191,7 @@ impl<'a, C> AdvertiserLineItemBulkListLineItemAssignedTargetingOptionCall<'a, C>
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -18548,7 +18548,7 @@ impl<'a, C> AdvertiserLineItemCreateCall<'a, C> where C: BorrowMut<hyper::Client
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -18831,7 +18831,7 @@ impl<'a, C> AdvertiserLineItemDeleteCall<'a, C> where C: BorrowMut<hyper::Client
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -19107,7 +19107,7 @@ impl<'a, C> AdvertiserLineItemGetCall<'a, C> where C: BorrowMut<hyper::Client<hy
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -19407,7 +19407,7 @@ impl<'a, C> AdvertiserLineItemListCall<'a, C> where C: BorrowMut<hyper::Client<h
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -19761,7 +19761,7 @@ impl<'a, C> AdvertiserLineItemPatchCall<'a, C> where C: BorrowMut<hyper::Client<
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -20081,7 +20081,7 @@ impl<'a, C> AdvertiserLocationListAssignedLocationBulkEditCall<'a, C> where C: B
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -20384,7 +20384,7 @@ impl<'a, C> AdvertiserLocationListAssignedLocationCreateCall<'a, C> where C: Bor
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -20675,7 +20675,7 @@ impl<'a, C> AdvertiserLocationListAssignedLocationDeleteCall<'a, C> where C: Bor
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -20977,7 +20977,7 @@ impl<'a, C> AdvertiserLocationListAssignedLocationListCall<'a, C> where C: Borro
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -21323,7 +21323,7 @@ impl<'a, C> AdvertiserLocationListCreateCall<'a, C> where C: BorrowMut<hyper::Cl
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -21602,7 +21602,7 @@ impl<'a, C> AdvertiserLocationListGetCall<'a, C> where C: BorrowMut<hyper::Clien
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -21896,7 +21896,7 @@ impl<'a, C> AdvertiserLocationListListCall<'a, C> where C: BorrowMut<hyper::Clie
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -22245,7 +22245,7 @@ impl<'a, C> AdvertiserLocationListPatchCall<'a, C> where C: BorrowMut<hyper::Cli
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -22567,7 +22567,7 @@ impl<'a, C> AdvertiserNegativeKeywordListNegativeKeywordBulkEditCall<'a, C> wher
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -22876,7 +22876,7 @@ impl<'a, C> AdvertiserNegativeKeywordListNegativeKeywordCreateCall<'a, C> where 
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -23169,7 +23169,7 @@ impl<'a, C> AdvertiserNegativeKeywordListNegativeKeywordDeleteCall<'a, C> where 
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -23477,7 +23477,7 @@ impl<'a, C> AdvertiserNegativeKeywordListNegativeKeywordListCall<'a, C> where C:
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -23829,7 +23829,7 @@ impl<'a, C> AdvertiserNegativeKeywordListCreateCall<'a, C> where C: BorrowMut<hy
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -24110,7 +24110,7 @@ impl<'a, C> AdvertiserNegativeKeywordListDeleteCall<'a, C> where C: BorrowMut<hy
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -24387,7 +24387,7 @@ impl<'a, C> AdvertiserNegativeKeywordListGetCall<'a, C> where C: BorrowMut<hyper
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -24672,7 +24672,7 @@ impl<'a, C> AdvertiserNegativeKeywordListListCall<'a, C> where C: BorrowMut<hype
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -24984,7 +24984,7 @@ impl<'a, C> AdvertiserNegativeKeywordListPatchCall<'a, C> where C: BorrowMut<hyp
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -25299,7 +25299,7 @@ impl<'a, C> AdvertiserTargetingTypeAssignedTargetingOptionCreateCall<'a, C> wher
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -25590,7 +25590,7 @@ impl<'a, C> AdvertiserTargetingTypeAssignedTargetingOptionDeleteCall<'a, C> wher
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -25878,7 +25878,7 @@ impl<'a, C> AdvertiserTargetingTypeAssignedTargetingOptionGetCall<'a, C> where C
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -26185,7 +26185,7 @@ impl<'a, C> AdvertiserTargetingTypeAssignedTargetingOptionListCall<'a, C> where 
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -26538,7 +26538,7 @@ impl<'a, C> AdvertiserBulkEditAdvertiserAssignedTargetingOptionCall<'a, C> where
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -26835,7 +26835,7 @@ impl<'a, C> AdvertiserBulkListAdvertiserAssignedTargetingOptionCall<'a, C> where
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -27150,7 +27150,7 @@ impl<'a, C> AdvertiserCreateCall<'a, C> where C: BorrowMut<hyper::Client<hyper_r
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -27420,7 +27420,7 @@ impl<'a, C> AdvertiserDeleteCall<'a, C> where C: BorrowMut<hyper::Client<hyper_r
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -27684,7 +27684,7 @@ impl<'a, C> AdvertiserGetCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rust
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -27952,7 +27952,7 @@ impl<'a, C> AdvertiserListCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rus
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -28296,7 +28296,7 @@ impl<'a, C> AdvertiserPatchCall<'a, C> where C: BorrowMut<hyper::Client<hyper_ru
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -28590,7 +28590,7 @@ impl<'a, C> CombinedAudienceGetCall<'a, C> where C: BorrowMut<hyper::Client<hype
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -28875,7 +28875,7 @@ impl<'a, C> CombinedAudienceListCall<'a, C> where C: BorrowMut<hyper::Client<hyp
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -29207,7 +29207,7 @@ impl<'a, C> CustomListGetCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rust
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -29480,7 +29480,7 @@ impl<'a, C> CustomListListCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rus
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -29810,7 +29810,7 @@ impl<'a, C> FirstAndThirdPartyAudienceGetCall<'a, C> where C: BorrowMut<hyper::C
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -30096,7 +30096,7 @@ impl<'a, C> FirstAndThirdPartyAudienceListCall<'a, C> where C: BorrowMut<hyper::
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -30429,7 +30429,7 @@ impl<'a, C> FloodlightGroupGetCall<'a, C> where C: BorrowMut<hyper::Client<hyper
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -30725,7 +30725,7 @@ impl<'a, C> FloodlightGroupPatchCall<'a, C> where C: BorrowMut<hyper::Client<hyp
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -31026,7 +31026,7 @@ impl<'a, C> GoogleAudienceGetCall<'a, C> where C: BorrowMut<hyper::Client<hyper_
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -31310,7 +31310,7 @@ impl<'a, C> GoogleAudienceListCall<'a, C> where C: BorrowMut<hyper::Client<hyper
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -31660,7 +31660,7 @@ impl<'a, C> InventorySourceGroupAssignedInventorySourceBulkEditCall<'a, C> where
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -31967,7 +31967,7 @@ impl<'a, C> InventorySourceGroupAssignedInventorySourceCreateCall<'a, C> where C
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -32278,7 +32278,7 @@ impl<'a, C> InventorySourceGroupAssignedInventorySourceDeleteCall<'a, C> where C
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -32601,7 +32601,7 @@ impl<'a, C> InventorySourceGroupAssignedInventorySourceListCall<'a, C> where C: 
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -32942,7 +32942,7 @@ impl<'a, C> InventorySourceGroupCreateCall<'a, C> where C: BorrowMut<hyper::Clie
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -33239,7 +33239,7 @@ impl<'a, C> InventorySourceGroupDeleteCall<'a, C> where C: BorrowMut<hyper::Clie
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -33531,7 +33531,7 @@ impl<'a, C> InventorySourceGroupGetCall<'a, C> where C: BorrowMut<hyper::Client<
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -33820,7 +33820,7 @@ impl<'a, C> InventorySourceGroupListCall<'a, C> where C: BorrowMut<hyper::Client
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -34175,7 +34175,7 @@ impl<'a, C> InventorySourceGroupPatchCall<'a, C> where C: BorrowMut<hyper::Clien
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -34482,7 +34482,7 @@ impl<'a, C> InventorySourceGetCall<'a, C> where C: BorrowMut<hyper::Client<hyper
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -34764,7 +34764,7 @@ impl<'a, C> InventorySourceListCall<'a, C> where C: BorrowMut<hyper::Client<hype
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -35118,7 +35118,7 @@ impl<'a, C> MediaDownloadCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rust
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -35407,7 +35407,7 @@ impl<'a, C> PartnerChannelSiteBulkEditCall<'a, C> where C: BorrowMut<hyper::Clie
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -35719,7 +35719,7 @@ impl<'a, C> PartnerChannelSiteCreateCall<'a, C> where C: BorrowMut<hyper::Client
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -36022,7 +36022,7 @@ impl<'a, C> PartnerChannelSiteDeleteCall<'a, C> where C: BorrowMut<hyper::Client
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -36340,7 +36340,7 @@ impl<'a, C> PartnerChannelSiteListCall<'a, C> where C: BorrowMut<hyper::Client<h
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -36700,7 +36700,7 @@ impl<'a, C> PartnerChannelCreateCall<'a, C> where C: BorrowMut<hyper::Client<hyp
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -36991,7 +36991,7 @@ impl<'a, C> PartnerChannelGetCall<'a, C> where C: BorrowMut<hyper::Client<hyper_
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -37297,7 +37297,7 @@ impl<'a, C> PartnerChannelListCall<'a, C> where C: BorrowMut<hyper::Client<hyper
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -37656,7 +37656,7 @@ impl<'a, C> PartnerChannelPatchCall<'a, C> where C: BorrowMut<hyper::Client<hype
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -37957,7 +37957,7 @@ impl<'a, C> SdfdownloadtaskOperationGetCall<'a, C> where C: BorrowMut<hyper::Cli
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -38228,7 +38228,7 @@ impl<'a, C> SdfdownloadtaskCreateCall<'a, C> where C: BorrowMut<hyper::Client<hy
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -38502,7 +38502,7 @@ impl<'a, C> TargetingTypeTargetingOptionGetCall<'a, C> where C: BorrowMut<hyper:
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -38808,7 +38808,7 @@ impl<'a, C> TargetingTypeTargetingOptionListCall<'a, C> where C: BorrowMut<hyper
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {

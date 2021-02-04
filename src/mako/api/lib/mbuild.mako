@@ -702,7 +702,7 @@ else {
 
         loop {
             % if default_scope:
-            let authenticator = ${auth_call};
+            let mut authenticator = ${auth_call};
             let token = match authenticator.token(&self.${api.properties.scopes}.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {

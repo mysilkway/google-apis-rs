@@ -382,7 +382,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["require-open-jobs", "page-token", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "page-size", "require-open-jobs"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -568,7 +568,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["type", "company-name", "scope", "page-size", "language-code", "query", "language-codes"].iter().map(|v|*v));
+                                                                           v.extend(["type", "page-size", "language-codes", "language-code", "scope", "query", "company-name"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -949,7 +949,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-size", "filter", "page-token", "job-view"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "page-size", "filter", "job-view"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }

@@ -1068,7 +1068,7 @@ impl<'a, C> MobileapppanelGetCall<'a, C> where C: BorrowMut<hyper::Client<hyper_
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -1316,7 +1316,7 @@ impl<'a, C> MobileapppanelListCall<'a, C> where C: BorrowMut<hyper::Client<hyper
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -1598,7 +1598,7 @@ impl<'a, C> MobileapppanelUpdateCall<'a, C> where C: BorrowMut<hyper::Client<hyp
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -1906,7 +1906,7 @@ impl<'a, C> ResultGetCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rustls::
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -2175,7 +2175,7 @@ impl<'a, C> SurveyDeleteCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rustl
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -2431,7 +2431,7 @@ impl<'a, C> SurveyGetCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rustls::
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -2682,7 +2682,7 @@ impl<'a, C> SurveyInsertCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rustl
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -2933,7 +2933,7 @@ impl<'a, C> SurveyListCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rustls:
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -3215,7 +3215,7 @@ impl<'a, C> SurveyStartCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rustls
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -3483,7 +3483,7 @@ impl<'a, C> SurveyStopCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rustls:
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {
@@ -3756,7 +3756,7 @@ impl<'a, C> SurveyUpdateCall<'a, C> where C: BorrowMut<hyper::Client<hyper_rustl
 
 
         loop {
-            let authenticator = self.hub.auth.borrow_mut();
+            let mut authenticator = self.hub.auth.borrow_mut();
             let token = match authenticator.token(&self._scopes.keys().collect::<Vec<_>>()[..]).await {
                 Ok(token) => token.clone(),
                 Err(err) => {

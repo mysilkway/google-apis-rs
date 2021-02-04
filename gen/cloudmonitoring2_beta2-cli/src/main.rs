@@ -250,7 +250,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["query", "page-token", "count"].iter().map(|v|*v));
+                                                                           v.extend(["count", "query", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -357,7 +357,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["aggregator", "timespan", "oldest", "window", "count", "labels", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "timespan", "labels", "count", "aggregator", "oldest", "window"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -549,7 +549,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["aggregator", "timespan", "oldest", "window", "count", "labels", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "timespan", "labels", "count", "aggregator", "oldest", "window"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }

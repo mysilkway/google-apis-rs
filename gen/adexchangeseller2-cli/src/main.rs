@@ -637,7 +637,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["start-index", "dimension", "metric", "locale", "sort", "filter", "max-results"].iter().map(|v|*v));
+                                                                           v.extend(["filter", "dimension", "metric", "sort", "max-results", "locale", "start-index"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -704,7 +704,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["locale", "start-index", "max-results"].iter().map(|v|*v));
+                                                                           v.extend(["max-results", "locale", "start-index"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }

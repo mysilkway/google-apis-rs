@@ -94,7 +94,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filters", "segment", "include-empty-rows", "max-results", "dimensions", "sampling-level", "sort", "start-index", "output"].iter().map(|v|*v));
+                                                                           v.extend(["sort", "max-results", "segment", "sampling-level", "dimensions", "start-index", "output", "filters", "include-empty-rows"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -165,7 +165,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["filters", "max-results", "dimensions", "sampling-level", "sort", "start-index"].iter().map(|v|*v));
+                                                                           v.extend(["sort", "max-results", "sampling-level", "dimensions", "start-index", "filters"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -230,7 +230,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["max-results", "dimensions", "filters", "sort"].iter().map(|v|*v));
+                                                                           v.extend(["sort", "max-results", "dimensions", "filters"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -4649,7 +4649,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["max-results", "type", "start-index"].iter().map(|v|*v));
+                                                                           v.extend(["max-results", "start-index", "type"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }

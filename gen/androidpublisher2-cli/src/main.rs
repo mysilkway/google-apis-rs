@@ -2887,7 +2887,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["max-results", "token", "start-index"].iter().map(|v|*v));
+                                                                           v.extend(["token", "max-results", "start-index"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3521,7 +3521,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["max-results", "start-time", "token", "start-index", "end-time"].iter().map(|v|*v));
+                                                                           v.extend(["max-results", "token", "start-time", "start-index", "end-time"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -3642,7 +3642,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["max-results", "token", "start-index", "translation-language"].iter().map(|v|*v));
+                                                                           v.extend(["token", "max-results", "start-index", "translation-language"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }

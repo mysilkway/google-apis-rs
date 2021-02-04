@@ -275,7 +275,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["cid", "format", "model", "source"].iter().map(|v|*v));
+                                                                           v.extend(["cid", "model", "format", "source"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }

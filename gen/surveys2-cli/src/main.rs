@@ -377,7 +377,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["token", "max-results", "start-index"].iter().map(|v|*v));
+                                                                           v.extend(["token", "start-index", "max-results"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }

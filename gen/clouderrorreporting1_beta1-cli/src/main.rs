@@ -140,7 +140,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["service-filter-service", "group-id", "time-range-period", "service-filter-version", "page-size", "page-token", "service-filter-resource-type"].iter().map(|v|*v));
+                                                                           v.extend(["service-filter-resource-type", "service-filter-service", "page-size", "service-filter-version", "page-token", "time-range-period", "group-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -325,7 +325,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["alignment", "service-filter-service", "alignment-time", "group-id", "time-range-period", "timed-count-duration", "order", "service-filter-version", "page-size", "page-token", "service-filter-resource-type"].iter().map(|v|*v));
+                                                                           v.extend(["timed-count-duration", "service-filter-resource-type", "service-filter-service", "page-size", "service-filter-version", "alignment", "page-token", "order", "time-range-period", "group-id", "alignment-time"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }

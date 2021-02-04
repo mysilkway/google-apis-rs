@@ -471,7 +471,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["ranges", "include-grid-data"].iter().map(|v|*v));
+                                                                           v.extend(["include-grid-data", "ranges"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -744,7 +744,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["value-input-option", "insert-data-option", "include-values-in-response", "response-date-time-render-option", "response-value-render-option"].iter().map(|v|*v));
+                                                                           v.extend(["insert-data-option", "response-value-render-option", "value-input-option", "response-date-time-render-option", "include-values-in-response"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1486,7 +1486,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["include-values-in-response", "value-input-option", "response-date-time-render-option", "response-value-render-option"].iter().map(|v|*v));
+                                                                           v.extend(["response-value-render-option", "value-input-option", "response-date-time-render-option", "include-values-in-response"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }

@@ -951,7 +951,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["open-auction-status-filter", "account-id", "deals-status-filter", "buyer-creative-id", "max-results", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["deals-status-filter", "max-results", "open-auction-status-filter", "buyer-creative-id", "page-token", "account-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }

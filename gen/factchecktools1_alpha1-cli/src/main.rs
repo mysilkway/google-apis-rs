@@ -88,7 +88,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["language-code", "query", "page-size", "offset", "review-publisher-site-filter", "max-age-days", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["language-code", "offset", "review-publisher-site-filter", "query", "max-age-days", "page-token", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -347,7 +347,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-size", "offset", "url", "page-token", "organization"].iter().map(|v|*v));
+                                                                           v.extend(["organization", "offset", "url", "page-token", "page-size"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }

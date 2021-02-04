@@ -1338,7 +1338,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["start-line", "end-line", "delimiter", "encoding", "is-strict"].iter().map(|v|*v));
+                                                                           v.extend(["encoding", "end-line", "is-strict", "delimiter", "start-line"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1401,7 +1401,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["delimiter", "encoding"].iter().map(|v|*v));
+                                                                           v.extend(["encoding", "delimiter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1780,7 +1780,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["start-line", "end-line", "delimiter", "encoding", "is-strict"].iter().map(|v|*v));
+                                                                           v.extend(["encoding", "end-line", "is-strict", "delimiter", "start-line"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -2042,7 +2042,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["max-results", "start-index", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["max-results", "page-token", "start-index"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }

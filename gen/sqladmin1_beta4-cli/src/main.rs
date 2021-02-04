@@ -2861,7 +2861,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["sync-mode", "verify-connection-only"].iter().map(|v|*v));
+                                                                           v.extend(["verify-connection-only", "sync-mode"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }

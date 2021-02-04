@@ -428,7 +428,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["current-document-update-time", "current-document-exists"].iter().map(|v|*v));
+                                                                           v.extend(["current-document-exists", "current-document-update-time"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -490,7 +490,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["mask-field-paths", "read-time", "transaction"].iter().map(|v|*v));
+                                                                           v.extend(["read-time", "transaction", "mask-field-paths"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -564,7 +564,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["mask-field-paths", "order-by", "show-missing", "transaction", "page-token", "read-time", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["order-by", "show-missing", "read-time", "mask-field-paths", "transaction", "page-size", "page-token"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -861,7 +861,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["mask-field-paths", "update-mask-field-paths", "current-document-update-time", "current-document-exists"].iter().map(|v|*v));
+                                                                           v.extend(["current-document-exists", "update-mask-field-paths", "current-document-update-time", "mask-field-paths"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1565,7 +1565,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "filter", "page-size"].iter().map(|v|*v));
+                                                                           v.extend(["page-size", "page-token", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }

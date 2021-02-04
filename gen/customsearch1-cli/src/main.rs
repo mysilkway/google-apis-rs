@@ -160,7 +160,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["or-terms", "exclude-terms", "site-search", "lr", "gl", "link-site", "img-color-type", "low-range", "sort", "site-search-filter", "img-dominant-color", "img-size", "hl", "filter", "file-type", "date-restrict", "c2coff", "cx", "exact-terms", "safe", "num", "related-site", "high-range", "googlehost", "search-type", "rights", "hq", "cr", "q", "start", "img-type"].iter().map(|v|*v));
+                                                                           v.extend(["date-restrict", "gl", "site-search-filter", "related-site", "sort", "googlehost", "site-search", "exact-terms", "lr", "rights", "exclude-terms", "link-site", "high-range", "cr", "q", "hq", "img-dominant-color", "file-type", "hl", "search-type", "start", "safe", "img-type", "cx", "img-color-type", "num", "img-size", "low-range", "or-terms", "c2coff", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -303,7 +303,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["or-terms", "exclude-terms", "site-search", "lr", "gl", "link-site", "img-color-type", "low-range", "sort", "site-search-filter", "img-dominant-color", "img-size", "hl", "filter", "file-type", "date-restrict", "c2coff", "cx", "exact-terms", "safe", "num", "related-site", "high-range", "googlehost", "search-type", "rights", "hq", "cr", "q", "start", "img-type"].iter().map(|v|*v));
+                                                                           v.extend(["date-restrict", "gl", "site-search-filter", "related-site", "sort", "googlehost", "site-search", "exact-terms", "lr", "rights", "exclude-terms", "link-site", "high-range", "cr", "q", "hq", "img-dominant-color", "file-type", "hl", "search-type", "start", "safe", "img-type", "cx", "img-color-type", "num", "img-size", "low-range", "or-terms", "c2coff", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }

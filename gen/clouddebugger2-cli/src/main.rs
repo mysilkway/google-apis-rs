@@ -460,7 +460,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["client-version", "strip-results", "action-value", "include-inactive", "wait-token", "include-all-users"].iter().map(|v|*v));
+                                                                           v.extend(["wait-token", "include-all-users", "include-inactive", "action-value", "strip-results", "client-version"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -571,7 +571,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["canary-option", "client-version"].iter().map(|v|*v));
+                                                                           v.extend(["client-version", "canary-option"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -633,7 +633,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["project", "include-inactive", "client-version"].iter().map(|v|*v));
+                                                                           v.extend(["client-version", "project", "include-inactive"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }

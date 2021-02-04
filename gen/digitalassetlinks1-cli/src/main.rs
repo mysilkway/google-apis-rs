@@ -88,7 +88,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["target-android-app-package-name", "relation", "source-web-site", "target-android-app-certificate-sha256-fingerprint", "source-android-app-certificate-sha256-fingerprint", "source-android-app-package-name", "target-web-site"].iter().map(|v|*v));
+                                                                           v.extend(["source-android-app-package-name", "target-android-app-package-name", "target-android-app-certificate-sha256-fingerprint", "source-android-app-certificate-sha256-fingerprint", "relation", "target-web-site", "source-web-site"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -150,7 +150,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["source-web-site", "relation", "source-android-app-package-name", "source-android-app-certificate-sha256-fingerprint"].iter().map(|v|*v));
+                                                                           v.extend(["source-android-app-package-name", "relation", "source-web-site", "source-android-app-certificate-sha256-fingerprint"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }

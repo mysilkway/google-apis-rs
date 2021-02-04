@@ -580,7 +580,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-size", "filter", "page-token", "order-by"].iter().map(|v|*v));
+                                                                           v.extend(["order-by", "page-token", "page-size", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1365,7 +1365,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-size", "filter", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "page-size", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -1430,7 +1430,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["include-unrevealed-locations", "page-size", "filter", "page-token"].iter().map(|v|*v));
+                                                                           v.extend(["page-token", "include-unrevealed-locations", "page-size", "filter"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }

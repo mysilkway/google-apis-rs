@@ -1082,7 +1082,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["trigger-id", "variable-id", "tag-id"].iter().map(|v|*v));
+                                                                           v.extend(["trigger-id", "tag-id", "variable-id"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }

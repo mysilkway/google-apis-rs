@@ -76,7 +76,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["inline-stderr", "inline-output-files", "inline-stdout"].iter().map(|v|*v));
+                                                                           v.extend(["inline-stdout", "inline-stderr", "inline-output-files"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }

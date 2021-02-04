@@ -141,7 +141,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "max-results", "min-ninety-day-epc", "relationship-status", "min-seven-day-epc", "advertiser-category", "min-payout-rank"].iter().map(|v|*v));
+                                                                           v.extend(["advertiser-category", "relationship-status", "min-seven-day-epc", "min-ninety-day-epc", "min-payout-rank", "page-token", "max-results"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -197,7 +197,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["projection", "advertiser"].iter().map(|v|*v));
+                                                                           v.extend(["advertiser", "projection"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -295,7 +295,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["charge-type", "page-token", "event-date-max", "modify-date-max", "link-id", "order-id", "modify-date-min", "max-results", "publisher-id", "product-category", "type", "sku", "member-id", "advertiser-id", "event-date-min", "status"].iter().map(|v|*v));
+                                                                           v.extend(["order-id", "sku", "member-id", "advertiser-id", "link-id", "max-results", "charge-type", "page-token", "status", "publisher-id", "event-date-min", "type", "product-category", "event-date-max", "modify-date-max", "modify-date-min"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -548,7 +548,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["start-date-max", "page-token", "promotion-type", "start-date-min", "authorship", "max-results", "create-date-min", "search-text", "create-date-max", "relationship-status", "link-type", "advertiser-id", "asset-size"].iter().map(|v|*v));
+                                                                           v.extend(["create-date-max", "promotion-type", "advertiser-id", "authorship", "relationship-status", "search-text", "link-type", "page-token", "start-date-max", "start-date-min", "create-date-min", "asset-size", "max-results"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -672,7 +672,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["page-token", "publisher-category", "max-results", "min-ninety-day-epc", "relationship-status", "min-seven-day-epc", "min-payout-rank"].iter().map(|v|*v));
+                                                                           v.extend(["publisher-category", "relationship-status", "min-seven-day-epc", "min-payout-rank", "min-ninety-day-epc", "page-token", "max-results"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
@@ -755,7 +755,7 @@ impl<'n> Engine<'n> {
                         err.issues.push(CLIError::UnknownParameter(key.to_string(),
                                                                   {let mut v = Vec::new();
                                                                            v.extend(self.gp.iter().map(|v|*v));
-                                                                           v.extend(["link-id", "order-id", "max-results", "end-date", "publisher-id", "calculate-totals", "start-index", "advertiser-id", "start-date", "event-type", "status"].iter().map(|v|*v));
+                                                                           v.extend(["order-id", "end-date", "event-type", "calculate-totals", "advertiser-id", "link-id", "start-date", "start-index", "status", "publisher-id", "max-results"].iter().map(|v|*v));
                                                                            v } ));
                     }
                 }
