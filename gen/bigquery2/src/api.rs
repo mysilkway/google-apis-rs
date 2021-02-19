@@ -3208,7 +3208,7 @@ impl client::ResponseResult for Table {}
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct TableCell {
     /// no description provided
-    pub v: Option<String>,
+    pub v: json::Value,
 }
 
 impl client::Part for TableCell {}
