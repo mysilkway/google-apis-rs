@@ -5143,7 +5143,8 @@ where
         let url = url::Url::parse_with_params(&url, params).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -5158,8 +5159,8 @@ where
                 },
             };
             let mut req_result = {
-                // let mut client = &mut *self.hub.client.lock().await;
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::DELETE)
@@ -5435,7 +5436,8 @@ where
         let url = url::Url::parse_with_params(&url, params).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -5450,7 +5452,8 @@ where
                 },
             };
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::GET)
@@ -5740,7 +5743,8 @@ where
         request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -5756,7 +5760,8 @@ where
             };
             request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::POST)
@@ -6064,7 +6069,8 @@ where
         let url = url::Url::parse_with_params(&url, params).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -6079,7 +6085,8 @@ where
                 },
             };
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::GET)
@@ -6391,7 +6398,8 @@ where
         request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -6407,7 +6415,8 @@ where
             };
             request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::PATCH)
@@ -6715,7 +6724,8 @@ where
         request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -6731,7 +6741,8 @@ where
             };
             request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let client = self.hub.client.clone();
+                let mut client = &mut *client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::PUT)
@@ -7027,7 +7038,8 @@ where
         let url = url::Url::parse_with_params(&url, params).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -7042,7 +7054,8 @@ where
                 },
             };
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::POST)
@@ -7330,7 +7343,8 @@ where
         let url = url::Url::parse_with_params(&url, params).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -7345,7 +7359,8 @@ where
                 },
             };
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::GET)
@@ -7666,7 +7681,8 @@ where
         let url = url::Url::parse_with_params(&url, params).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -7681,7 +7697,8 @@ where
                 },
             };
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::GET)
@@ -8036,7 +8053,8 @@ where
         let mut upload_url: Option<String> = None;
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -8093,7 +8111,8 @@ where
                             (CONTENT_TYPE, format!("{}", json_mime_type)),
                         ),
                     };
-                    let mut client = &mut *self.hub.client.lock().await;
+                    let clone_client = self.hub.client.clone();
+                    let mut client = &mut *clone_client.lock().await;
                     dlg.pre_request();
                     let mut req_builder = hyper::Request::builder()
                         .method(hyper::Method::POST)
@@ -8165,7 +8184,9 @@ where
                         let size = reader.seek(io::SeekFrom::End(0)).unwrap();
                         reader.seek(io::SeekFrom::Start(0)).unwrap();
 
-                        let mut client = &mut *self.hub.client.lock().await;
+                        let clone_client = self.hub.client.clone();
+                        let mut client = &mut *clone_client.lock().await;
+                        let auth = self.hub.auth.clone();
                         let upload_result = {
                             let url_str = &reconstructed_result
                                 .headers()
@@ -8185,7 +8206,7 @@ where
                                 } else {
                                     None
                                 },
-                                auth: &mut *self.hub.auth.lock().await,
+                                auth: &mut *auth.lock().await,
                                 user_agent: &self.hub._user_agent,
                                 auth_header: format!("Bearer {}", token.as_str()),
                                 url: url_str,
@@ -8525,7 +8546,8 @@ where
         let url = url::Url::parse_with_params(&url, params).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -8540,7 +8562,8 @@ where
                 },
             };
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::GET)
@@ -8879,7 +8902,8 @@ where
         request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -8895,7 +8919,8 @@ where
             };
             request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::POST)
@@ -9182,7 +9207,8 @@ where
         let url = url::Url::parse_with_params(&url, params).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -9197,7 +9223,8 @@ where
                 },
             };
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::DELETE)
@@ -9485,7 +9512,8 @@ where
         let url = url::Url::parse_with_params(&url, params).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -9500,7 +9528,8 @@ where
                 },
             };
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::GET)
@@ -9803,7 +9832,8 @@ where
         let url = url::Url::parse_with_params(&url, params).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -9818,7 +9848,8 @@ where
                 },
             };
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::GET)
@@ -10137,7 +10168,8 @@ where
         request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -10153,7 +10185,8 @@ where
             };
             request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::PATCH)
@@ -10455,7 +10488,8 @@ where
         let url = url::Url::parse_with_params(&url, params).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -10470,7 +10504,8 @@ where
                 },
             };
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::GET)
@@ -10721,7 +10756,8 @@ where
         let url = url::Url::parse_with_params(&url, params).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -10736,7 +10772,8 @@ where
                 },
             };
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::GET)
@@ -11013,7 +11050,8 @@ where
         let url = url::Url::parse_with_params(&url, params).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -11028,7 +11066,8 @@ where
                 },
             };
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::DELETE)
@@ -11321,7 +11360,8 @@ where
         let url = url::Url::parse_with_params(&url, params).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -11336,7 +11376,8 @@ where
                 },
             };
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::GET)
@@ -11651,7 +11692,8 @@ where
         request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -11667,7 +11709,8 @@ where
             };
             request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::POST)
@@ -11994,7 +12037,8 @@ where
         let url = url::Url::parse_with_params(&url, params).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -12009,7 +12053,8 @@ where
                 },
             };
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::GET)
@@ -12350,7 +12395,8 @@ where
         request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -12366,7 +12412,8 @@ where
             };
             request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::PUT)
@@ -12696,7 +12743,8 @@ where
         request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -12712,7 +12760,8 @@ where
             };
             request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::POST)
@@ -13059,7 +13108,8 @@ where
         let url = url::Url::parse_with_params(&url, params).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -13074,7 +13124,8 @@ where
                 },
             };
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::GET)
@@ -13393,7 +13444,8 @@ where
         let url = url::Url::parse_with_params(&url, params).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -13408,7 +13460,8 @@ where
                 },
             };
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::DELETE)
@@ -13699,7 +13752,8 @@ where
         let url = url::Url::parse_with_params(&url, params).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -13714,7 +13768,8 @@ where
                 },
             };
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::GET)
@@ -14025,7 +14080,8 @@ where
         request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -14041,7 +14097,8 @@ where
             };
             request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::POST)
@@ -14344,7 +14401,8 @@ where
         request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -14360,7 +14418,8 @@ where
             };
             request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::POST)
@@ -14662,7 +14721,8 @@ where
         let url = url::Url::parse_with_params(&url, params).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -14677,7 +14737,8 @@ where
                 },
             };
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::GET)
@@ -14992,7 +15053,8 @@ where
         request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -15008,7 +15070,8 @@ where
             };
             request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::PATCH)
@@ -15327,7 +15390,8 @@ where
         request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -15343,7 +15407,8 @@ where
             };
             request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::POST)
@@ -15654,7 +15719,8 @@ where
         request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -15670,7 +15736,8 @@ where
             };
             request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::POST)
@@ -15982,7 +16049,8 @@ where
         request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
 
         loop {
-            let authenticator = self.hub.auth.lock().await;
+            let auth = self.hub.auth.clone();
+            let authenticator = auth.lock().await;
             let token = match authenticator
                 .token(&self._scopes.keys().collect::<Vec<_>>()[..])
                 .await
@@ -15998,7 +16066,8 @@ where
             };
             request_value_reader.seek(io::SeekFrom::Start(0)).unwrap();
             let mut req_result = {
-                let mut client = &mut *self.hub.client.lock().await;
+                let clone_client = self.hub.client.clone();
+                let mut client = &mut *clone_client.lock().await;
                 dlg.pre_request();
                 let mut req_builder = hyper::Request::builder()
                     .method(hyper::Method::PUT)
