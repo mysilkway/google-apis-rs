@@ -2662,7 +2662,7 @@ pub struct QueryResponse {
     #[serde(rename="pageToken")]
     pub page_token: Option<String>,
     /// An object with as many results as can be contained within the maximum permitted reply size. To get any additional rows, you can call GetQueryResults and specify the jobReference returned above.
-    pub rows: Option<Vec<TableRow>>,
+    pub rows: json::Value,
     /// The schema of the results. Present only when the query completes successfully.
     pub schema: Option<TableSchema>,
     /// The total number of bytes processed for this query. If this query was a dry run, this is the number of bytes that would be processed if the query were run.
